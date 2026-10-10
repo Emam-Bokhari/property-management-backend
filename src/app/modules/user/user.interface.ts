@@ -1,0 +1,76 @@
+import { Model, Types } from "mongoose";
+import { DOCUMENT_TYPE, GENDER, STATUS, USER_ROLES } from "../../../enums/user";
+import { ISoftDeleteModel } from "../../../types/softDelete";
+
+export type IUser = {
+  name: string;
+  role: USER_ROLES;
+  email: string;
+  profileImage?: string;
+  password?: string;
+  verified: boolean;
+  phone?: string;
+  countryCode?: string;
+  status: STATUS;
+  firebaseUid?: string;
+  dateOfBirth?: Date;
+  gender?: GENDER;
+  userName?: string;
+  deviceToken?: string;
+  documentType?: "nid" | "passport" | DOCUMENT_TYPE;
+  documentNumber?: string;
+  documentFront?: string;
+  documentBack?: string;
+  isVerified?: boolean;
+  location?: {
+    type: "Point";
+    coordinates: [number, number]; // [longitude, latitude],
+    address: string;
+    country?: string;
+    province?: string;
+    city?: string;
+    canton?: string;
+    sector?: string;
+    neighborhood?: string;
+  };
+  authentication?: {
+    isResetPassword: boolean;
+    oneTimeCode: number;
+    expireAt: Date;
+  };
+  averageRating?: number;
+  totalRatings?: number;
+  totalReviews?: number;
+  activeRole?: "user" | "seller";
+  hasSellerAccount?: boolean;
+  subscriptionStatus?:
+    | "active"
+    | "inactive"
+    | "trialing"
+    | "past_due"
+    | "canceled"
+    | "expired"
+    | "none";
+  subscriptionPackageId?: Types.ObjectId | string;
+  datafastRegistrationToken?: string;
+  subscriptionExpiresAt?: Date;
+  timezone?: string;
+  country?: string;
+  province?: string;
+  city?: string;
+  canton?: string;
+  sector?: string;
+  neighborhood?: string;
+  postalCode?: string;
+  state?: string;
+  address?: string;
+};
+
+export type UserModal = {
+  isExistUserById(id: string): any;
+  isExistUserByEmail(email: string): any;
+  isAccountCreated(id: string): any;
+  isMatchPassword(password: string, hashPassword: string): boolean;
+} & Model<IUser>;
+
+export type IUserModel = ISoftDeleteModel<IUser> & UserModal;

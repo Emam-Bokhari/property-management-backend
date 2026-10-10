@@ -1,0 +1,32 @@
+import express from "express";
+import { isAuthenticated } from "../../../helpers/authHelper";
+import validateRequest from "../../middlewares/validateRequest";
+import { FavoriteController } from "./favorite.controller";
+import { FavoriteValidation } from "./favorite.validation";
+
+const router = express.Router();
+
+// Toggle favorite (Add if not present, remove if already present)
+router.post(
+  "/toggle",
+  isAuthenticated,
+  validateRequest(FavoriteValidation.toggleFavoriteSchema),
+  FavoriteController.toggleFavorite,
+);
+
+// Check if specific target is favorited
+router.get(
+  "/check",
+  isAuthenticated,
+  validateRequest(FavoriteValidation.checkIsFavoritedSchema),
+  FavoriteController.checkIsFavorited,
+);
+
+// Get user's favorites list (can filter by ?targetType=store|product|service, ?type=store|product|service, or by flags like ?store=true)
+router.get("/", isAuthenticated, FavoriteController.getMyFavorites);
+
+// Remove specific favorite by ID or targetId
+router.delete("/:id", isAuthenticated, FavoriteController.deleteFavorite);
+router.delete("/", isAuthenticated, FavoriteController.deleteFavorite);
+
+export const FavoriteRoutes = router;
