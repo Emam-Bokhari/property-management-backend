@@ -1,10 +1,11 @@
 export enum USER_ROLES {
   ADMIN = "admin",
   SUPER_ADMIN = "super_admin",
-  USER = "user",
-  SELLER = "seller",
+  LANDLORD = "landlord",
+  TENANT = "tenant",
+  CONTRUCTOR = "contructor"
 }
-
+ 
 export enum GENDER {
   MALE = "male",
   FEMALE = "female",
@@ -16,7 +17,3 @@ export enum STATUS {
   INACTIVE = "inactive",
 }
 
-export enum DOCUMENT_TYPE {
-  NID = "nid",
-  PASSPORT = "passport",
-}

@@ -1,5 +1,5 @@
-import { Model, Types } from "mongoose";
-import { DOCUMENT_TYPE, GENDER, STATUS, USER_ROLES } from "../../../enums/user";
+import { Model } from "mongoose";
+import { GENDER, STATUS, USER_ROLES } from "../../../enums/user";
 import { ISoftDeleteModel } from "../../../types/softDelete";
 
 export type IUser = {
@@ -17,53 +17,13 @@ export type IUser = {
   gender?: GENDER;
   userName?: string;
   deviceToken?: string;
-  documentType?: "nid" | "passport" | DOCUMENT_TYPE;
-  documentNumber?: string;
-  documentFront?: string;
-  documentBack?: string;
-  isVerified?: boolean;
-  location?: {
-    type: "Point";
-    coordinates: [number, number]; // [longitude, latitude],
-    address: string;
-    country?: string;
-    province?: string;
-    city?: string;
-    canton?: string;
-    sector?: string;
-    neighborhood?: string;
-  };
+  address?: string;
+  timezone?: string;
   authentication?: {
     isResetPassword: boolean;
     oneTimeCode: number;
     expireAt: Date;
   };
-  averageRating?: number;
-  totalRatings?: number;
-  totalReviews?: number;
-  activeRole?: "user" | "seller";
-  hasSellerAccount?: boolean;
-  subscriptionStatus?:
-    | "active"
-    | "inactive"
-    | "trialing"
-    | "past_due"
-    | "canceled"
-    | "expired"
-    | "none";
-  subscriptionPackageId?: Types.ObjectId | string;
-  datafastRegistrationToken?: string;
-  subscriptionExpiresAt?: Date;
-  timezone?: string;
-  country?: string;
-  province?: string;
-  city?: string;
-  canton?: string;
-  sector?: string;
-  neighborhood?: string;
-  postalCode?: string;
-  state?: string;
-  address?: string;
 };
 
 export type UserModal = {

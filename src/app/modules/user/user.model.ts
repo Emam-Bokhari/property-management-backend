@@ -1,5 +1,5 @@
 import { model, Schema } from "mongoose";
-import { DOCUMENT_TYPE, GENDER, STATUS, USER_ROLES } from "../../../enums/user";
+import { GENDER, STATUS, USER_ROLES } from "../../../enums/user";
 import { IUser, IUserModel, UserModal } from "./user.interface";
 import bcrypt from "bcrypt";
 import config from "../../../config";
@@ -14,16 +14,7 @@ const userSchema = new Schema<IUser, IUserModel>(
     role: {
       type: String,
       enum: Object.values(USER_ROLES),
-      default: USER_ROLES.USER,
-    },
-    activeRole: {
-      type: String,
-      enum: ["user", "seller"],
-      default: "user",
-    },
-    hasSellerAccount: {
-      type: Boolean,
-      default: false,
+      default: USER_ROLES.LANDLORD,
     },
     email: {
       type: String,
@@ -36,7 +27,6 @@ const userSchema = new Schema<IUser, IUserModel>(
       required: false,
       default: "",
     },
-
     dateOfBirth: {
       type: Date,
       required: false,
@@ -83,67 +73,9 @@ const userSchema = new Schema<IUser, IUserModel>(
       type: Boolean,
       default: false,
     },
-    documentType: {
-      type: String,
-      enum: Object.values(DOCUMENT_TYPE),
-      required: false,
-    },
-    documentNumber: {
+    address: {
       type: String,
       required: false,
-      trim: true,
-    },
-    documentFront: {
-      type: String,
-      required: false,
-    },
-    documentBack: {
-      type: String,
-      required: false,
-    },
-    isVerified: {
-      type: Boolean,
-      default: false,
-    },
-    location: {
-      type: {
-        type: String,
-        enum: ["Point"],
-        default: "Point",
-      },
-      coordinates: {
-        type: [Number],
-        default: [0, 0],
-        index: "2dsphere",
-      },
-      address: {
-        type: String,
-        default: "",
-      },
-      country: {
-        type: String,
-        default: "",
-      },
-      province: {
-        type: String,
-        default: "",
-      },
-      city: {
-        type: String,
-        default: "",
-      },
-      canton: {
-        type: String,
-        default: "",
-      },
-      sector: {
-        type: String,
-        default: "",
-      },
-      neighborhood: {
-        type: String,
-        default: "",
-      },
     },
     authentication: {
       type: {
@@ -166,83 +98,9 @@ const userSchema = new Schema<IUser, IUserModel>(
       },
       select: 0,
     },
-    averageRating: {
-      type: Number,
-      default: 0,
-    },
-    totalRatings: {
-      type: Number,
-      default: 0,
-    },
-    totalReviews: {
-      type: Number,
-      default: 0,
-    },
-    subscriptionStatus: {
-      type: String,
-      enum: [
-        "active",
-        "inactive",
-        "trialing",
-        "past_due",
-        "canceled",
-        "expired",
-        "none",
-      ],
-      default: "none",
-    },
-    subscriptionPackageId: {
-      type: Schema.Types.ObjectId,
-      ref: "SubscriptionPackage",
-      required: false,
-    },
-    datafastRegistrationToken: {
-      type: String,
-      required: false,
-    },
-    subscriptionExpiresAt: {
-      type: Date,
-      required: false,
-    },
     timezone: {
       type: String,
       default: "Asia/Dhaka",
-    },
-    country: {
-      type: String,
-      required: false,
-    },
-    province: {
-      type: String,
-      required: false,
-    },
-    city: {
-      type: String,
-      required: false,
-    },
-    canton: {
-      type: String,
-      required: false,
-    },
-    sector: {
-      type: String,
-      required: false,
-    },
-    neighborhood: {
-      type: String,
-      required: false,
-    },
-    postalCode: {
-      type: String,
-      required: false,
-    },
-    state: {
-      type: String,
-      required: false,
-    },
-    address: {
-      type: String,
-      required: false,
     },
   },
   {
@@ -268,13 +126,6 @@ const userSchema = new Schema<IUser, IUserModel>(
 /* ================= PLUGIN ================= */
 userSchema.plugin(softDeletePlugin);
 
-// Link User to Store virtual relation
-userSchema.virtual("store", {
-  ref: "Store",
-  localField: "_id",
-  foreignField: "owner",
-  justOne: true,
-});
 
 //exist user check
 userSchema.statics.isExistUserById = async (id: string) => {

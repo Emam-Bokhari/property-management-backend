@@ -148,17 +148,7 @@ const createUserToDB = async (payload: any) => {
 
   userData.isVerified = false;
 
-  const isExistDocNumber = await User.findOne({
-    documentNumber: userData.documentNumber,
-    _id: { $ne: isExistUser?._id },
-    verified: true,
-  });
-  if (isExistDocNumber) {
-    throw new ApiError(
-      StatusCodes.CONFLICT,
-      "This document number is already registered with another account",
-    );
-  }
+
 
   const createUser = await User.create(userData);
 
