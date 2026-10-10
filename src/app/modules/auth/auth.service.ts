@@ -11,8 +11,6 @@ import {
   IVerifyEmail,
 } from "../../../types/auth";
 import { User } from "../user/user.model";
-import { Seller } from "../seller/seller.model";
-import { Store } from "../store/store.model";
 import cryptoToken from "../../../util/cryptoToken";
 import { ResetToken } from "../resetToken/resetToken.model";
 import { emailHelper } from "../../../helpers/emailHelper";
@@ -88,22 +86,11 @@ const loginUserFromDB = async (payload: ILoginData) => {
     config.jwt.jwt_expire_in as string,
   );
 
-  // Check if seller profile exists and is active
-  const seller = await Seller.findOne({
-    user: isExistUser._id,
-    status: STATUS.ACTIVE,
-  });
 
-  const hasSellerAccount = !!seller;
-  if (isExistUser.hasSellerAccount !== hasSellerAccount) {
-    await User.findByIdAndUpdate(isExistUser._id, { hasSellerAccount });
-    isExistUser.hasSellerAccount = hasSellerAccount;
-  }
 
   const result = {
     token: createToken,
-    user: isExistUser,
-    hasSellerAccount,
+    data: isExistUser,
   };
 
   return result;
@@ -524,100 +511,16 @@ const googleLoginService = async (payload: {
     config.jwt.jwt_expire_in as string,
   );
 
-  // Check if seller profile exists and is active
-  const seller = await Seller.findOne({
-    user: user._id,
-    status: STATUS.ACTIVE,
-  });
 
-  const hasSellerAccount = !!seller;
-  if (user.hasSellerAccount !== hasSellerAccount) {
-    await User.findByIdAndUpdate(user._id, { hasSellerAccount });
-    user.hasSellerAccount = hasSellerAccount;
-  }
+
+
 
   return {
     token: createToken,
     user,
-    hasSellerAccount,
   };
 };
 
-const switchRoleInDB = async (userId: string, requestedRole: string) => {
-  const normalizedRole = requestedRole.toLowerCase();
-
-  const isExistUser = await User.findById(userId);
-  if (!isExistUser) {
-    throw new ApiError(StatusCodes.NOT_FOUND, "User doesn't exist!");
-  }
-
-  if (normalizedRole === "seller") {
-    // Check if store exists and is approved by admin (status: active)
-    const store = await Store.findOne({ owner: userId });
-    if (!store) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        "Please create your store before switching to seller.",
-      );
-    }
-    if (store.status !== "active") {
-      throw new ApiError(
-        StatusCodes.FORBIDDEN,
-        "Your store must be approved by the admin before switching to seller.",
-      );
-    }
-
-    // Check if Seller Profile exists
-    const sellerProfile = await Seller.findOne({ user: userId });
-    if (!sellerProfile) {
-      throw new ApiError(
-        StatusCodes.CONFLICT,
-        "Please create your store before switching to seller.",
-        "SELLER_PROFILE_REQUIRED",
-      );
-    }
-    if (sellerProfile.status !== "active") {
-      throw new ApiError(
-        StatusCodes.FORBIDDEN,
-        "Your seller profile is inactive.",
-      );
-    }
-  }
-
-  // Update activeRole
-  isExistUser.activeRole = normalizedRole as "user" | "seller";
-  await isExistUser.save();
-
-  // Generate new Access Token
-  const accessToken = jwtHelper.createToken(
-    {
-      id: isExistUser._id,
-      role: normalizedRole,
-      email: isExistUser.email,
-    },
-    config.jwt.jwt_secret as Secret,
-    config.jwt.jwt_expire_in as string,
-  );
-
-  let refreshToken = undefined;
-  if (config.jwt.jwtRefreshSecret) {
-    refreshToken = jwtHelper.createToken(
-      {
-        id: isExistUser._id,
-        role: normalizedRole,
-        email: isExistUser.email,
-      },
-      config.jwt.jwtRefreshSecret as Secret,
-      (config.jwt.jwtRefreshExpiresIn as string) || "365d",
-    );
-  }
-
-  return {
-    activeRole: normalizedRole,
-    accessToken,
-    refreshToken,
-  };
-};
 
 export const AuthService = {
   loginUserFromDB,
@@ -629,5 +532,5 @@ export const AuthService = {
   resendVerificationEmailToDB,
   deleteUserFromDB,
   googleLoginService,
-  switchRoleInDB,
+
 };

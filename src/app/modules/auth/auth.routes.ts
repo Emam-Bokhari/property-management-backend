@@ -72,13 +72,6 @@ router.delete(
   AuthController.deleteUser,
 );
 
-router.post(
-  "/switch-role",
-  isUserOrSeller,
-  validateRequest(AuthValidation.switchRoleZodSchema),
-  AuthController.switchRole,
-);
-
 // google login
 router.post("/google-login", AuthController.googleLogin);
 

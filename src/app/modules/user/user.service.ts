@@ -14,9 +14,8 @@ import { emailHelper } from "../../../helpers/emailHelper";
 import bcrypt from "bcrypt";
 import { sendNotifications } from "../../../helpers/notificationsHelper";
 import { NOTIFICATION_TYPE } from "../notification/notification.constant";
-import { Subscription } from "../subscription/subscription.model";
-import { Store } from "../store/store.model";
-import { Seller } from "../seller/seller.model";
+
+
 
 // --- ADMIN SERVICES ---
 const createAdminToDB = async (payload: any): Promise<IUser> => {
@@ -234,134 +233,8 @@ const getMyProfileFromDB = async (userId: string) => {
     throw new ApiError(StatusCodes.NOT_FOUND, "User not found");
   }
 
-  // Find active store subscription, otherwise latest
-  let storeSubscription = await Subscription.findOne({
-    userId,
-    packageType: "store_creation",
-    status: { $in: ["active", "trialing"] },
-    expiresAt: { $gt: new Date() },
-  }).populate("packageId");
+  return result;
 
-  if (!storeSubscription) {
-    storeSubscription = await Subscription.findOne({
-      userId,
-      packageType: "store_creation",
-    })
-      .sort({ createdAt: -1 })
-      .populate("packageId");
-  }
-
-  const store = await Store.findOne({ owner: userId });
-  const isStoreCreated = !!store;
-
-  const now = new Date();
-
-  const isStoreSubscribed = storeSubscription
-    ? ["active", "trialing"].includes(storeSubscription.status) &&
-      new Date(storeSubscription.expiresAt) > now
-    : false;
-
-  const isSubscribed = isStoreSubscribed;
-
-  const calculateRemainingDays = (
-    expiresAt: Date | null | undefined,
-    isActive: boolean,
-  ): number => {
-    if (!expiresAt || !isActive) return 0;
-    const diffMs = new Date(expiresAt).getTime() - now.getTime();
-    return diffMs > 0 ? Math.ceil(diffMs / (1000 * 60 * 60 * 24)) : 0;
-  };
-
-  const storeRemainingDays = calculateRemainingDays(
-    storeSubscription?.expiresAt,
-    isStoreSubscribed,
-  );
-
-  // Synchronized user-level subscription status & expiration (Single Source of Truth)
-  let synchronizedStatus:
-    | "active"
-    | "inactive"
-    | "trialing"
-    | "past_due"
-    | "canceled"
-    | "expired"
-    | "none" = "none";
-  let synchronizedExpiresAt: Date | null = null;
-  let synchronizedPackageId: any = null;
-
-  if (isStoreSubscribed && storeSubscription) {
-    synchronizedStatus = storeSubscription.status as any;
-    synchronizedExpiresAt = storeSubscription.expiresAt;
-    synchronizedPackageId =
-      (storeSubscription.packageId as any)?._id || storeSubscription.packageId;
-  } else if (storeSubscription) {
-    const isPastExpiry =
-      storeSubscription.expiresAt &&
-      new Date(storeSubscription.expiresAt) <= now;
-    synchronizedStatus = isPastExpiry
-      ? "expired"
-      : (storeSubscription.status as any);
-    synchronizedExpiresAt = storeSubscription.expiresAt;
-    synchronizedPackageId =
-      (storeSubscription.packageId as any)?._id || storeSubscription.packageId;
-  }
-
-  // Self-heal: update User document in DB if cached subscription fields are out-of-sync
-  const isStatusChanged = result.subscriptionStatus !== synchronizedStatus;
-  const isExpiresAtChanged =
-    (result.subscriptionExpiresAt
-      ? new Date(result.subscriptionExpiresAt).getTime()
-      : 0) !==
-    (synchronizedExpiresAt ? new Date(synchronizedExpiresAt).getTime() : 0);
-
-  if (isStatusChanged || isExpiresAtChanged) {
-    User.findByIdAndUpdate(userId, {
-      subscriptionStatus: synchronizedStatus,
-      subscriptionExpiresAt: synchronizedExpiresAt || undefined,
-      ...(synchronizedPackageId
-        ? { subscriptionPackageId: synchronizedPackageId }
-        : {}),
-    }).catch(() => {});
-  }
-
-  const seller = await Seller.findOne({
-    user: userId,
-    status: STATUS.ACTIVE,
-  });
-  const hasSellerAccount = !!seller;
-
-  if (result.hasSellerAccount !== hasSellerAccount) {
-    User.findByIdAndUpdate(userId, { hasSellerAccount }).catch(() => {});
-  }
-
-  return {
-    ...result.toObject(),
-    hasSellerAccount,
-    subscriptionStatus: synchronizedStatus,
-    subscriptionExpiresAt: synchronizedExpiresAt,
-    ...(synchronizedPackageId
-      ? { subscriptionPackageId: synchronizedPackageId }
-      : {}),
-    isStoreCreated,
-    storeType: store ? store.storeType : null,
-    isSubscribed,
-    storeSubscription: {
-      isPurchased: isStoreSubscribed,
-      status: storeSubscription
-        ? isStoreSubscribed
-          ? storeSubscription.status
-          : "expired"
-        : "none",
-      expiresAt: storeSubscription ? storeSubscription.expiresAt : null,
-      remainingDays: storeRemainingDays,
-    },
-    postSubscription: {
-      isPurchased: false,
-      status: "none",
-      expiresAt: null,
-      remainingDays: 0,
-    },
-  };
 };
 
 const updateProfileToDB = async (
