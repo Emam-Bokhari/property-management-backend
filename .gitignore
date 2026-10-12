@@ -8,3 +8,4 @@ practice
 *.drawio
 docs/erd/**/*.pdf
 docs/erd/**/*.svg
+README.md

@@ -12,7 +12,7 @@ export type IUser = {
   phone?: string;
   countryCode?: string;
   status: STATUS;
-  firebaseUid?: string;
+  firebaseUid?: string; 
   dateOfBirth?: Date;
   gender?: GENDER;
   userName?: string;

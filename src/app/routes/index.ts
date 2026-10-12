@@ -57,12 +57,10 @@ const apiRoutes = [
     path: "/fcmTokens",
     route: FcmTokenRoutes,
   },
-
   {
     path: "/notification-preferences",
     route: NotificationPreferenceRoutes,
   },
-
 ];
 
 apiRoutes.forEach((route) => router.use(route.path, route.route));
