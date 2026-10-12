@@ -1,4 +1,49 @@
 import { Types } from "mongoose";
+import { FURNISHED_TYPE } from "./flat.constant";
+
+
+// services & meters
+export type TGas = {
+    supplier: string;
+    mprn: number;
+    location: string;
+    shutOff: string;
+    helpline: number;
+    notes?: string;
+    meterPhoto?: string;
+}
+
+export type TElectricity = {
+    supplier: string;
+    mprn: number;
+    location: string;
+    consumerUnit: string;
+    helpline: number;
+    notes?: string;
+    meterPhoto?: string;
+}
+
+export type TWater = {
+    supplier: string;
+    meterNumber: number;
+    stopcock: string;
+    streetValve: string;
+    helpline: number;
+    notes?: string;
+    meterPhoto?: string;
+}
+
+export type TWifi = {
+    provider: string;
+    network: string;
+    password: string;
+    router: string;
+    supportNumber: number;
+    notes?: string;
+    routerPhoto?: string;
+}
+
+
 
 export type TKey = {
     keyType: string;
@@ -17,7 +62,11 @@ export type TFalt = {
     floor: number;
     floorNote?: string;
     unitType?: string;
-    furnished?: string;
+    furnished?: FURNISHED_TYPE;
     property: Types.ObjectId;
+    flatPhotos?: string[];
     key: TKey[];
+    gas: TGas;
+    electricity: TElectricity;
+    water: TWater;
 }
