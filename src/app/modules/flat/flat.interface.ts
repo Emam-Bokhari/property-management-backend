@@ -52,6 +52,14 @@ export type TKey = {
     heldBy: string;
 }
 
+export type TSafetyAlarm = {
+    alarmPhoto?: string;
+    alarmName?: string;
+    locationInProperty?: string;
+    expiry?: string | Date;
+}
+
+
 
 export type TFalt = {
     unitName: string;
@@ -69,4 +77,5 @@ export type TFalt = {
     gas: TGas;
     electricity: TElectricity;
     water: TWater;
+    safetyAlarms: TSafetyAlarm[];
 }
