@@ -34,15 +34,3 @@ export enum CONTRACTOR_STATUS {
   COMPLETED = "completed",
 }
 
-export enum MAINTENANCE_CATEGORY {
-  PLUMBING = "plumbing",
-  ELECTRICAL = "electrical",
-  HEATING = "heating",
-  APPLIANCE = "appliance",
-  ROOFING = "roofing",
-  CARPENTRY = "carpentry",
-  PAINTING = "painting",
-  SECURITY = "security",
-  PEST_CONTROL = "pest_control",
-  OTHER = "other",
-}

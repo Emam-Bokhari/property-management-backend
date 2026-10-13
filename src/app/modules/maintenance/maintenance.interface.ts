@@ -2,7 +2,6 @@ import { Types } from "mongoose";
 import { ISoftDeleteModel } from "../../../types/softDelete";
 import {
     CONTRACTOR_STATUS,
-    MAINTENANCE_CATEGORY,
     MAINTENANCE_PAID_BY,
     MAINTENANCE_PRIORITY,
     MAINTENANCE_REQUESTER,
@@ -16,14 +15,14 @@ export type TMaintenanceSchedule = {
 };
 
 export type TMaintenance = {
-    requestCode?: string;
+    jobId?: string;
     issueTitle: string;
     issueType: Types.ObjectId;
-    priority: MAINTENANCE_PRIORITY; 
+    priority: MAINTENANCE_PRIORITY;
     description: string;
     attachments?: string;
-    locationInProperty?: string; 
-
+    locationInProperty?: string;
+    
     // Property & Unit References
     property: Types.ObjectId;
     flat?: Types.ObjectId;
@@ -49,9 +48,9 @@ export type TMaintenance = {
 
     // Financial & Billing
     paidBy?: MAINTENANCE_PAID_BY;
-    estimatedCost?: number;
-    actualCost?: number;
-    invoice?: string;
+    invoiceAmounts?: number;
+    notes?: string;
+    certificates?: string[];
 
     // Resolution & Completion
     completionPhotos?: string[];
