@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { COUNCIL_TAX, EPC_RATING } from "./property.constant";
+import { COUNCIL_TAX, EPC_RATING, COMPLIANCE_TYPE } from "./property.constant";
 
 export type TCouncil = {
     authority: string;
@@ -20,6 +20,23 @@ export type TParking = {
 }
 
 
+// compliance item maintaining 1 active/current certificate and historical records
+export type TComplianceItem = {
+    current?: string;
+    history?: string[];
+}
+
+// all compliance categories matching the UI screen
+export type TCompliance = {
+    gasSafety?: TComplianceItem;        
+    electrical?: TComplianceItem;        
+    energyPerformance?: TComplianceItem; 
+    landlordInsurance?: TComplianceItem; 
+    depositProtection?: TComplianceItem;
+    propertyLicense?: TComplianceItem;   
+    otherDocuments?: TComplianceItem;   
+}
+
 export type TProperty = {
     propertyName: string;
     propertyPhotos?: string[];
@@ -39,4 +56,6 @@ export type TProperty = {
     buildingNotes: string;
     council?: TCouncil;
     parking: TParking;
+    houseRules: string;
+    compliance?: TCompliance;
 }

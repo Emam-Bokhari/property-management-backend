@@ -59,6 +59,13 @@ export type TSafetyAlarm = {
     expiry?: string | Date;
 }
 
+export type TAppliance = {
+    appliancePhoto?: string;
+    applianceName: string;
+    brand?: string;
+    modelNote?: string;
+    warranty?: string;
+}
 
 
 export type TFalt = {
@@ -78,4 +85,5 @@ export type TFalt = {
     electricity: TElectricity;
     water: TWater;
     safetyAlarms: TSafetyAlarm[];
+    appliances: TAppliance[];
 }

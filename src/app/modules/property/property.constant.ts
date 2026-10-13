@@ -21,3 +21,13 @@ export enum COUNCIL_TAX {
     BAND_H = "band_h",
     NOT_APPLICABLE = "not_applicable"
 }
+
+export enum COMPLIANCE_TYPE {
+    GAS_SAFETY = "gas_safety",
+    ELECTRICAL = "electrical",
+    ENERGY_PERFORMANCE = "energy_performance",
+    LANDLORD_INSURANCE = "landlord_insurance",
+    DEPOSIT_PROTECTION = "deposit_protection",
+    PROPERTY_LICENCE = "property_licence",
+    OTHER_DOCUMENTS = "other_documents"
+}
