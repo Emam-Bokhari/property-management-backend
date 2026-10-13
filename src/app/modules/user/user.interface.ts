@@ -1,6 +1,12 @@
 import { Model } from "mongoose";
 import { GENDER, STATUS, USER_ROLES } from "../../../enums/user";
 import { ISoftDeleteModel } from "../../../types/softDelete";
+import { PRIMARY_TRADE } from "./user.constant";
+
+export type TCertificate = {
+  certificateName?: string;
+  certificateAttachment?: string;
+}
 
 export type IUser = {
   name: string;
@@ -12,13 +18,20 @@ export type IUser = {
   phone?: string;
   countryCode?: string;
   status: STATUS;
-  firebaseUid?: string; 
-  dateOfBirth?: Date;
+  firebaseUid?: string;
   gender?: GENDER;
   userName?: string;
   deviceToken?: string;
   address?: string;
   timezone?: string;
+  dateOfBirth: string | Date;
+  nidNumber?: number;
+  nidPhoto: string;
+  emergencyPhone?: string;
+  homeAddress?: string;
+  certificates?: TCertificate[];
+  companyName?: string;
+  primaryTrade?: PRIMARY_TRADE;
   authentication?: {
     isResetPassword: boolean;
     oneTimeCode: number;
