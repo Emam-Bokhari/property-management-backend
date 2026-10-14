@@ -9,6 +9,9 @@ export type TAnnouncement = {
   title: string;
   message: string;
   image?: string;
+  landlord: Types.ObjectId;
+  category?: string;
+  recipients?: Types.ObjectId[];
 };
 
 export type AnnouncementModel = ISoftDeleteModel<TAnnouncement>;

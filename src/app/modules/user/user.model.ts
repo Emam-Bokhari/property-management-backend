@@ -112,6 +112,16 @@ const userSchema = new Schema<IUser, IUserModel>(
         certificateAttachment: { type: String },
       },
     ],
+    property: {
+      type: Schema.Types.ObjectId,
+      ref: "Property",
+      default: null,
+    },
+    flat: {
+      type: Schema.Types.ObjectId,
+      ref: "Flat",
+      default: null,
+    },
     authentication: {
       type: {
         isResetPassword: {

@@ -20,7 +20,8 @@ export type INotification = {
     | "Support"
     | "Chat"
     | "Message"
-    | "Broadcast";
+    | "Broadcast"
+    | "Announcement";
   type?: string;
   isDeleted?: boolean;
   deletedAt?: Date | null;

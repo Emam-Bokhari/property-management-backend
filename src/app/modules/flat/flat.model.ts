@@ -152,6 +152,17 @@ const flatSchema = new Schema<TFlat, FlatModel>(
     wifi: wifiSchema,
     safetyAlarms: [safetyAlarmSchema],
     appliances: [applianceSchema],
+    tenant: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    tenants: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     timestamps: true,

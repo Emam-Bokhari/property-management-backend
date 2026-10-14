@@ -7,13 +7,15 @@ export const sendNotifications = async (
   data: Partial<INotification>,
 ): Promise<INotification | any> => {
   if (
-    data.type === NOTIFICATION_TYPE.USER ||
-    data.type === NOTIFICATION_TYPE.SELLER ||
+    data.type === NOTIFICATION_TYPE.LANDLORD ||
+    data.type === NOTIFICATION_TYPE.TENANT ||
+    data.type === NOTIFICATION_TYPE.CONTRACTOR ||
+    data.type === NOTIFICATION_TYPE.ANNOUNCEMENT ||
     data.type === NOTIFICATION_TYPE.SUBSCRIPTION_UPDATE ||
     data.type === NOTIFICATION_TYPE.ADVERTISEMENT_UPDATE ||
     data.type === NOTIFICATION_TYPE.REVIEW_UPDATE
   ) {
-    // For User and Seller, use the Push Notification Helper (which also saves to DB)
+    // For landlord, tenant, contractor and announcement, use the Push Notification Helper (which also saves to DB)
     if (!data.receiver) return;
 
     const payload = {

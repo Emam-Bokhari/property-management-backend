@@ -201,7 +201,7 @@ const deleteSingleNotificationFromDB = async (
 
   const filter: Record<string, any> = { _id: id };
 
-  // If normal user/seller, restrict deletion to their own notifications
+  // If non-admin user (landlord, tenant, contractor), restrict deletion to their own notifications
   if (user.role !== USER_ROLES.ADMIN && user.role !== USER_ROLES.SUPER_ADMIN) {
     filter.receiver = user.id;
   }

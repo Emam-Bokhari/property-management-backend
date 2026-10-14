@@ -36,6 +36,22 @@ const announcementSchema = new Schema<TAnnouncement, AnnouncementModel>(
       type: String,
       default: null,
     },
+    landlord: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    category: {
+      type: String,
+      trim: true,
+      default: "Building Notice",
+    },
+    recipients: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     timestamps: true,
@@ -44,6 +60,12 @@ const announcementSchema = new Schema<TAnnouncement, AnnouncementModel>(
 );
 
 announcementSchema.plugin(softDeletePlugin);
+
+announcementSchema.index({ property: 1 });
+announcementSchema.index({ landlord: 1 });
+announcementSchema.index({ flats: 1 });
+announcementSchema.index({ recipients: 1 });
+announcementSchema.index({ createdAt: -1 });
 
 export const Announcement = model<TAnnouncement, AnnouncementModel>(
   "Announcement",

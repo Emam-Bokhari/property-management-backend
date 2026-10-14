@@ -84,6 +84,10 @@ export type TFlat = {
   wifi?: TWifi;
   safetyAlarms?: TSafetyAlarm[];
   appliances?: TAppliance[];
+  tenant?: Types.ObjectId;
+  tenants?: Types.ObjectId[];
+  isDeleted?: boolean;
+  deletedAt?: Date | null;
 };
 
 export type TFalt = TFlat;

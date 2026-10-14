@@ -1,4 +1,4 @@
-import { Model } from "mongoose";
+import { Model, Types } from "mongoose";
 import { GENDER, STATUS, USER_ROLES } from "../../../enums/user";
 import { ISoftDeleteModel } from "../../../types/softDelete";
 import { PRIMARY_TRADE } from "./user.constant";
@@ -32,6 +32,8 @@ export type IUser = {
   certificates?: TCertificate[];
   companyName?: string;
   primaryTrade?: PRIMARY_TRADE;
+  property?: Types.ObjectId;
+  flat?: Types.ObjectId;
   authentication?: {
     isResetPassword?: boolean;
     oneTimeCode?: number | null;
