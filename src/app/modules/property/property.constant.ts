@@ -31,3 +31,13 @@ export enum COMPLIANCE_TYPE {
   PROPERTY_LICENCE = "property_licence",
   OTHER_DOCUMENTS = "other_documents",
 }
+
+export const propertySearchableFields = [
+  "propertyName",
+  "streetAddress",
+  "postCode",
+  "yearBuilt",
+  "floorsInBuilding",
+  "buildingNotes",
+];
+
