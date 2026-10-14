@@ -3,8 +3,7 @@ export enum USER_ROLES {
   SUPER_ADMIN = "super_admin",
   LANDLORD = "landlord",
   TENANT = "tenant",
-  CONTRUCTOR = "contructor",
-  CONTRACTOR = "contructor",
+  CONTRACTOR = "contractor",
 }
 
 export enum GENDER {
@@ -17,4 +16,3 @@ export enum STATUS {
   ACTIVE = "active",
   INACTIVE = "inactive",
 }
-

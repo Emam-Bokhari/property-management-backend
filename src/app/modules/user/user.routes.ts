@@ -106,4 +106,3 @@ router
   .delete(isAdmin, UserController.deleteUserById);
 
 export const UserRoutes = router;
-

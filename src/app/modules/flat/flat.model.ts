@@ -124,7 +124,7 @@ const flatSchema = new Schema<TFlat, FlatModel>(
     },
     floorNote: {
       type: String,
-      trim:true,
+      trim: true,
     },
     unitType: {
       type: String,

@@ -11,4 +11,4 @@ export type TAnnouncement = {
   image?: string;
 };
 
-export type AnnouncementModel = ISoftDeleteModel<TAnnouncement>;
+export type AnnouncementModel = ISoftDeleteModel<TAnnouncement>;

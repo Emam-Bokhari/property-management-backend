@@ -57,7 +57,7 @@ const inventorySchema = new Schema<TInventory, InventoryModel>(
     ],
     inspectionNotes: {
       type: String,
-      trim:true,
+      trim: true,
     },
   },
   {

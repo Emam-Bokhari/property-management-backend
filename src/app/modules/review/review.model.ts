@@ -66,7 +66,10 @@ reviewSchema.pre("validate", function (next) {
     this.tenant.toString() === this.contractor.toString()
   ) {
     return next(
-      new ApiError(StatusCodes.BAD_REQUEST, "You cannot review or rate yourself"),
+      new ApiError(
+        StatusCodes.BAD_REQUEST,
+        "You cannot review or rate yourself",
+      ),
     );
   }
   next();

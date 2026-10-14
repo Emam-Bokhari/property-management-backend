@@ -69,7 +69,7 @@ router.post(
     USER_ROLES.SUPER_ADMIN,
     USER_ROLES.LANDLORD,
     USER_ROLES.TENANT,
-    USER_ROLES.CONTRUCTOR,
+    USER_ROLES.CONTRACTOR,
   ),
   validateRequest(AuthValidation.createChangePasswordZodSchema),
   AuthController.changePassword,
@@ -86,7 +86,7 @@ router.delete(
     USER_ROLES.SUPER_ADMIN,
     USER_ROLES.LANDLORD,
     USER_ROLES.TENANT,
-    USER_ROLES.CONTRUCTOR,
+    USER_ROLES.CONTRACTOR,
   ),
   AuthController.deleteUser,
 );
@@ -95,4 +95,3 @@ router.delete(
 router.post("/google-login", AuthController.googleLogin);
 
 export const AuthRoutes = router;
-

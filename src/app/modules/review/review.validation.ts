@@ -18,7 +18,9 @@ const createReviewZodSchema = z.object({
         .number({
           required_error: "Rating is required",
         })
-        .int("Rating must be an integer (1, 2, 3, 4, or 5). Float is not allowed")
+        .int(
+          "Rating must be an integer (1, 2, 3, 4, or 5). Float is not allowed",
+        )
         .min(1, "Rating must be at least 1")
         .max(5, "Rating cannot exceed 5"),
       feedback: z.string().trim().optional(),

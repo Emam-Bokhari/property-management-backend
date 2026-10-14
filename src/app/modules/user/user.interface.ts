@@ -48,4 +48,3 @@ export type UserModal = {
 } & Model<IUser>;
 
 export type IUserModel = ISoftDeleteModel<IUser> & UserModal;
-

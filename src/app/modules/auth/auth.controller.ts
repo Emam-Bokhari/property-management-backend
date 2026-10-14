@@ -148,4 +148,3 @@ export const AuthController = {
   deleteUser,
   googleLogin,
 };
-

@@ -11,4 +11,4 @@ export const USER_SEARCHABLE_FIELDS = [
   "phone",
   "companyName",
   "userName",
-];
+];

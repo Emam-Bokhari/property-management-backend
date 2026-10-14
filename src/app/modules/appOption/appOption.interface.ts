@@ -7,4 +7,4 @@ export type TAppOption = {
   isActive?: boolean;
 };
 
-export type AppOptionModel = ISoftDeleteModel<TAppOption>;
+export type AppOptionModel = ISoftDeleteModel<TAppOption>;

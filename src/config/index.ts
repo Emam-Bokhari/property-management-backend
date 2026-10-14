@@ -11,8 +11,10 @@ export default {
   jwt: {
     jwt_secret: process.env.JWT_SECRET,
     jwt_expire_in: process.env.JWT_EXPIRE_IN,
-    jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
-    jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN,
+    jwtRefreshSecret:
+      process.env.JWT_REFRESH_SECRET || process.env.jwtRefreshSecret,
+    jwtRefreshExpiresIn:
+      process.env.JWT_REFRESH_EXPIRES_IN || process.env.jwtRefreshExpiresIn,
   },
   redis_host: process.env.REDIS_HOST,
   redis_port: process.env.REDIS_PORT,

@@ -43,7 +43,10 @@ const signUpUserToDB = async (payload: ISignUpData) => {
   const isExistUser = await User.findOne({ email: normalizedEmail });
   if (isExistUser) {
     if (isExistUser.verified) {
-      throw new ApiError(StatusCodes.CONFLICT, "This email is already registered!");
+      throw new ApiError(
+        StatusCodes.CONFLICT,
+        "This email is already registered!",
+      );
     }
     // If not verified, remove stale unverified user to register afresh
     await User.deleteOne({ _id: isExistUser._id });
@@ -68,7 +71,10 @@ const signUpUserToDB = async (payload: ISignUpData) => {
   });
 
   if (!newUser) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "Failed to create user account!");
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Failed to create user account!",
+    );
   }
 
   // Save device token if provided
@@ -101,7 +107,9 @@ const signUpUserToDB = async (payload: ISignUpData) => {
   );
 
   // Notify admin
-  const admin = await User.findOne({ role: USER_ROLES.SUPER_ADMIN }).select("_id");
+  const admin = await User.findOne({ role: USER_ROLES.SUPER_ADMIN }).select(
+    "_id",
+  );
   if (admin) {
     await sendNotifications({
       title: "New User Signup",
@@ -119,7 +127,8 @@ const signUpUserToDB = async (payload: ISignUpData) => {
   delete (userResult as any).authentication;
 
   return {
-    message: "Your account has been successfully created. Please verify your email with the OTP sent to your inbox.",
+    message:
+      "Your account has been successfully created. Please verify your email with the OTP sent to your inbox.",
     token,
     user: userResult,
   };
@@ -262,7 +271,10 @@ const verifyEmailToDB = async (payload: IVerifyEmail) => {
   }
 
   const date = new Date();
-  if (isExistUser.authentication?.expireAt && date > isExistUser.authentication.expireAt) {
+  if (
+    isExistUser.authentication?.expireAt &&
+    date > isExistUser.authentication.expireAt
+  ) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
       "OTP code has expired. Please request a new one.",
@@ -276,7 +288,14 @@ const verifyEmailToDB = async (payload: IVerifyEmail) => {
     // Signup verification flow
     const updatedUser = await User.findOneAndUpdate(
       { _id: isExistUser._id },
-      { verified: true, authentication: { oneTimeCode: null, expireAt: null, isResetPassword: false } },
+      {
+        verified: true,
+        authentication: {
+          oneTimeCode: null,
+          expireAt: null,
+          isResetPassword: false,
+        },
+      },
       { new: true },
     );
 
@@ -326,7 +345,8 @@ const verifyEmailToDB = async (payload: IVerifyEmail) => {
       expireAt: new Date(Date.now() + 5 * 60000),
     });
 
-    message = "Verification successful. Please securely use this token to reset your password.";
+    message =
+      "Verification successful. Please securely use this token to reset your password.";
     data = createToken;
   }
 
@@ -383,7 +403,11 @@ const resetPasswordToDB = async (
     { _id: isExistToken.user },
     {
       password: hashPassword,
-      authentication: { isResetPassword: false, oneTimeCode: null, expireAt: null },
+      authentication: {
+        isResetPassword: false,
+        oneTimeCode: null,
+        expireAt: null,
+      },
     },
     { new: true },
   );
@@ -409,7 +433,10 @@ const changePasswordToDB = async (
     currentPassword &&
     !(await User.isMatchPassword(currentPassword, isExistUser.password!))
   ) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "Current password is incorrect!");
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Current password is incorrect!",
+    );
   }
 
   if (currentPassword === newPassword) {
@@ -482,7 +509,10 @@ const resendVerificationEmailToDB = async (email: string) => {
   }
 
   if (existingUser.verified) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "User account is already verified!");
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "User account is already verified!",
+    );
   }
 
   const otp = generateOTP();
@@ -507,7 +537,9 @@ const resendVerificationEmailToDB = async (email: string) => {
     { new: true },
   );
 
-  return { message: "A new OTP verification code has been sent to your email." };
+  return {
+    message: "A new OTP verification code has been sent to your email.",
+  };
 };
 
 // ========================== Delete User Account ===========================
@@ -572,9 +604,10 @@ const googleLoginService = async (payload: {
   const validRoles = [
     USER_ROLES.LANDLORD,
     USER_ROLES.TENANT,
-    USER_ROLES.CONTRUCTOR,
+    USER_ROLES.CONTRACTOR,
   ];
-  const assignedRole = role && validRoles.includes(role) ? role : USER_ROLES.LANDLORD;
+  const assignedRole =
+    role && validRoles.includes(role) ? role : USER_ROLES.LANDLORD;
 
   if (user) {
     if (user.status === STATUS.INACTIVE) {
@@ -662,4 +695,3 @@ export const AuthService = {
   deleteUserFromDB,
   googleLoginService,
 };
-

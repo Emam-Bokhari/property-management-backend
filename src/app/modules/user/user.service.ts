@@ -39,7 +39,9 @@ const createAdminToDB = async (payload: Partial<IUser>): Promise<IUser> => {
 const getAdminFromDB = async (query: any) => {
   const baseQuery = User.find({
     role: { $in: [USER_ROLES.ADMIN] },
-  }).select("name email role profileImage phone countryCode status createdAt updatedAt");
+  }).select(
+    "name email role profileImage phone countryCode status createdAt updatedAt",
+  );
 
   const queryBuilder = new QueryBuilder<IUser>(baseQuery, query)
     .search(["name", "email", "phone"])
@@ -76,7 +78,10 @@ const updateAdminStatusByIdToDB = async (
   status: STATUS.ACTIVE | STATUS.INACTIVE,
 ) => {
   if (![STATUS.ACTIVE, STATUS.INACTIVE].includes(status)) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "Status must be either 'active' or 'inactive'");
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Status must be either 'active' or 'inactive'",
+    );
   }
 
   const user = await User.findOne({
@@ -84,12 +89,18 @@ const updateAdminStatusByIdToDB = async (
     role: USER_ROLES.ADMIN,
   });
   if (!user) {
-    throw new ApiError(StatusCodes.NOT_FOUND, "No admin is found by this user ID");
+    throw new ApiError(
+      StatusCodes.NOT_FOUND,
+      "No admin is found by this user ID",
+    );
   }
 
   const result = await User.findByIdAndUpdate(id, { status }, { new: true });
   if (!result) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "Failed to change status by this user ID");
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Failed to change status by this user ID",
+    );
   }
 
   return result;
@@ -116,7 +127,10 @@ const createUserToDB = async (payload: Partial<IUser>) => {
 
   if (isExistUser) {
     if (isExistUser.verified) {
-      throw new ApiError(StatusCodes.CONFLICT, "This email is already registered");
+      throw new ApiError(
+        StatusCodes.CONFLICT,
+        "This email is already registered",
+      );
     }
     // Delete unverified user to allow clean re-registration
     await User.deleteOne({ _id: isExistUser._id });
@@ -125,12 +139,13 @@ const createUserToDB = async (payload: Partial<IUser>) => {
   const validRoles = [
     USER_ROLES.LANDLORD,
     USER_ROLES.TENANT,
-    USER_ROLES.CONTRUCTOR,
+    USER_ROLES.CONTRACTOR,
   ];
 
-  const role = payload.role && validRoles.includes(payload.role)
-    ? payload.role
-    : USER_ROLES.LANDLORD;
+  const role =
+    payload.role && validRoles.includes(payload.role)
+      ? payload.role
+      : USER_ROLES.LANDLORD;
 
   // Generate OTP
   const otp = generateOTP();
@@ -201,7 +216,9 @@ const createUserToDB = async (payload: Partial<IUser>) => {
 };
 
 const getMyProfileFromDB = async (userId: string) => {
-  const result = await User.findById(userId).select("-password -authentication");
+  const result = await User.findById(userId).select(
+    "-password -authentication",
+  );
 
   if (!result) {
     throw new ApiError(StatusCodes.NOT_FOUND, "User not found");
@@ -240,11 +257,7 @@ const getUsersFromDB = async (query: Record<string, unknown>) => {
     ? { role: query.role }
     : {
         role: {
-          $in: [
-            USER_ROLES.LANDLORD,
-            USER_ROLES.TENANT,
-            USER_ROLES.CONTRUCTOR,
-          ],
+          $in: [USER_ROLES.LANDLORD, USER_ROLES.TENANT, USER_ROLES.CONTRACTOR],
         },
       };
 
@@ -274,11 +287,7 @@ const getUserByIdFromDB = async (id: string) => {
   const result = await User.findOne({
     _id: id,
     role: {
-      $in: [
-        USER_ROLES.LANDLORD,
-        USER_ROLES.TENANT,
-        USER_ROLES.CONTRUCTOR,
-      ],
+      $in: [USER_ROLES.LANDLORD, USER_ROLES.TENANT, USER_ROLES.CONTRACTOR],
     },
   }).select("-password -authentication -deviceToken");
 
@@ -294,7 +303,10 @@ const updateUserStatusByIdToDB = async (
   status: STATUS.ACTIVE | STATUS.INACTIVE,
 ) => {
   if (![STATUS.ACTIVE, STATUS.INACTIVE].includes(status)) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "Status must be either 'active' or 'inactive'");
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Status must be either 'active' or 'inactive'",
+    );
   }
 
   const user = await User.findById(id);
@@ -302,9 +314,11 @@ const updateUserStatusByIdToDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "No user is found by this ID");
   }
 
-  const result = await User.findByIdAndUpdate(id, { status }, { new: true }).select(
-    "-password -authentication",
-  );
+  const result = await User.findByIdAndUpdate(
+    id,
+    { status },
+    { new: true },
+  ).select("-password -authentication");
 
   if (!result) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Failed to update status");
@@ -364,4 +378,3 @@ export const UserService = {
   deleteUserByIdFromD,
   deleteProfileFromDB,
 };
-

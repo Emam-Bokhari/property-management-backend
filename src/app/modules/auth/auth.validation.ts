@@ -75,4 +75,3 @@ export const AuthValidation = {
   createResetPasswordZodSchema,
   createChangePasswordZodSchema,
 };
-

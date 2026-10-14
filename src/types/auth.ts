@@ -1,4 +1,3 @@
-
 export type ISignUpData = {
   name: string;
   email: string;
@@ -32,4 +31,3 @@ export type IChangePassword = {
   newPassword: string;
   confirmPassword: string;
 };
-

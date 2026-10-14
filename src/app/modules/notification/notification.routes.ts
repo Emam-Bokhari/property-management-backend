@@ -7,7 +7,7 @@ const router = express.Router();
 const allRoles = [
   USER_ROLES.LANDLORD,
   USER_ROLES.TENANT,
-  USER_ROLES.CONTRUCTOR,
+  USER_ROLES.CONTRACTOR,
   USER_ROLES.ADMIN,
   USER_ROLES.SUPER_ADMIN,
 ];
@@ -15,18 +15,9 @@ const allRoles = [
 // user notification collection routes
 router
   .route("/")
-  .get(
-    auth(...allRoles),
-    NotificationController.getNotificationFromDB,
-  )
-  .patch(
-    auth(...allRoles),
-    NotificationController.readNotification,
-  )
-  .delete(
-    auth(...allRoles),
-    NotificationController.deleteNotification,
-  );
+  .get(auth(...allRoles), NotificationController.getNotificationFromDB)
+  .patch(auth(...allRoles), NotificationController.readNotification)
+  .delete(auth(...allRoles), NotificationController.deleteNotification);
 
 router.get(
   "/recent",
@@ -37,18 +28,9 @@ router.get(
 // message notification routes
 router
   .route("/messages")
-  .get(
-    auth(...allRoles),
-    NotificationController.getMessageNotifications,
-  )
-  .patch(
-    auth(...allRoles),
-    NotificationController.readMessageNotifications,
-  )
-  .delete(
-    auth(...allRoles),
-    NotificationController.deleteMessageNotifications,
-  );
+  .get(auth(...allRoles), NotificationController.getMessageNotifications)
+  .patch(auth(...allRoles), NotificationController.readMessageNotifications)
+  .delete(auth(...allRoles), NotificationController.deleteMessageNotifications);
 
 router.patch(
   "/messages/read",
@@ -98,14 +80,8 @@ router.patch(
 // user single routes
 router
   .route("/:id")
-  .get(
-    auth(...allRoles),
-    NotificationController.getSingleNotification,
-  )
-  .delete(
-    auth(...allRoles),
-    NotificationController.deleteSingleNotification,
-  );
+  .get(auth(...allRoles), NotificationController.getSingleNotification)
+  .delete(auth(...allRoles), NotificationController.deleteSingleNotification);
 
 router.patch(
   "/:id/read",
@@ -114,4 +90,3 @@ router.patch(
 );
 
 export const NotificationRoutes = router;
-

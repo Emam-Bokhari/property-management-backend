@@ -7,7 +7,6 @@ import { socketHelper } from "./helpers/socketHelper";
 import { Server } from "socket.io";
 import seedSuperAdmin from "./DB";
 
-
 //uncaught exception
 process.on("uncaughtException", (error) => {
   errorLogger.error("uncaughtException Detected", error);
@@ -24,7 +23,6 @@ async function main() {
 
     mongoose.connect(config.database_url as string);
     logger.info(colors.green("🚀 Database connected successfully"));
-
 
     const port =
       typeof config.port === "number" ? config.port : Number(config.port);

@@ -30,11 +30,7 @@ const createUserZodSchema = z.object({
       .string({ required_error: "Password is required" })
       .min(8, "Password must be at least 8 characters"),
     role: z
-      .enum([
-        USER_ROLES.LANDLORD,
-        USER_ROLES.TENANT,
-        USER_ROLES.CONTRUCTOR,
-      ])
+      .enum([USER_ROLES.LANDLORD, USER_ROLES.TENANT, USER_ROLES.CONTRACTOR])
       .optional()
       .default(USER_ROLES.LANDLORD),
     phone: z.string().optional(),
@@ -84,4 +80,3 @@ export const UserValidation = {
   updateProfileZodSchema,
   updateUserStatusZodSchema,
 };
-
