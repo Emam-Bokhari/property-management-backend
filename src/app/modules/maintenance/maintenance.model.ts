@@ -8,6 +8,7 @@ import {
   MAINTENANCE_STATUS,
 } from "./maintenance.constant";
 import { MaintenanceModel, TMaintenance } from "./maintenance.interface";
+import "../appOption/appOption.model";
 
 const maintenanceSchema = new Schema<TMaintenance, MaintenanceModel>(
   {

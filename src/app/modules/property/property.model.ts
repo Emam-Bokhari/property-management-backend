@@ -9,6 +9,7 @@ import {
   TParking,
   TProperty,
 } from "./property.interface";
+import "../appOption/appOption.model";
 
 const councilSchema = new Schema<TCouncil>(
   {

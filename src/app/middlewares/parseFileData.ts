@@ -44,7 +44,13 @@ const resolveMode = (
   files?: Express.Multer.File[],
 ): "single" | "multiple" => {
   if (mode !== "auto") return mode;
-  if (fieldName === "images") return "multiple";
+  if (
+    fieldName === "images" ||
+    fieldName === "propertyPhotos" ||
+    fieldName === "floorPlanPhotos"
+  ) {
+    return "multiple";
+  }
   return files && files.length <= 1 ? "single" : "multiple";
 };
 
@@ -64,6 +70,25 @@ export const parseFileData = (...fields: FieldInput[]) => {
         parsedBody = safeJsonParse(req.body.data);
       }
 
+      // Parse JSON string fields in req.body or parsedBody if sent as form-data
+      const jsonFieldsToParse = ["council", "parking", "compliance"];
+      for (const f of jsonFieldsToParse) {
+        if (typeof req.body?.[f] === "string") {
+          try {
+            req.body[f] = JSON.parse(req.body[f]);
+          } catch {
+            // Keep original string if not valid JSON
+          }
+        }
+        if (typeof parsedBody[f] === "string") {
+          try {
+            parsedBody[f] = JSON.parse(parsedBody[f] as string);
+          } catch {
+            // Keep original string
+          }
+        }
+      }
+
       // Alias image -> images if images is not explicitly set in parsedBody or req.body
       if (parsedBody.image !== undefined && parsedBody.images === undefined) {
         parsedBody.images = parsedBody.image;
@@ -72,7 +97,15 @@ export const parseFileData = (...fields: FieldInput[]) => {
         req.body.images = req.body.image;
       }
 
-      for (const { fieldName, mode } of normalized) {
+      const effectiveNormalized =
+        normalized.length > 0
+          ? normalized
+          : (Object.keys(files) as IFolderName[]).map((name) => ({
+              fieldName: name,
+              mode: "auto" as const,
+            }));
+
+      for (const { fieldName, mode } of effectiveNormalized) {
         let fieldFiles = files[fieldName];
 
         // Fallback for image / images field name mismatch
@@ -129,6 +162,42 @@ export const parseFileData = (...fields: FieldInput[]) => {
         }
       }
 
+      // Certificate mapping fallback for compliance updates
+      if (
+        fileData.certificate ||
+        fileData.certificateUrl ||
+        fileData.complianceDocument ||
+        fileData.file ||
+        fileData.document
+      ) {
+        fileData.certificateUrl =
+          fileData.certificateUrl ||
+          fileData.certificate ||
+          fileData.complianceDocument ||
+          fileData.file ||
+          fileData.document;
+      }
+
+      // If councilPhoto was uploaded and council object exists
+      if (fileData.councilPhoto) {
+        if (parsedBody.council && typeof parsedBody.council === "object") {
+          (parsedBody.council as any).councilPhoto = fileData.councilPhoto;
+        }
+        if (req.body?.council && typeof req.body.council === "object") {
+          req.body.council.councilPhoto = fileData.councilPhoto;
+        }
+      }
+
+      // If parkingPhoto was uploaded and parking object exists
+      if (fileData.parkingPhoto) {
+        if (parsedBody.parking && typeof parsedBody.parking === "object") {
+          (parsedBody.parking as any).parkingPhoto = fileData.parkingPhoto;
+        }
+        if (req.body?.parking && typeof req.body.parking === "object") {
+          req.body.parking.parkingPhoto = fileData.parkingPhoto;
+        }
+      }
+
       // Merge taxDocuments data from parsedBody with file data
       if (fileData.taxDocuments && parsedBody.taxDocuments) {
         const taxDocsFromBody = Array.isArray(parsedBody.taxDocuments)
@@ -174,9 +243,14 @@ export const parseFileData = (...fields: FieldInput[]) => {
         delete parsedBody.uploadedFiles;
       }
 
-      // Normalize single string images in parsedBody / req.body for multiple mode / images field
-      for (const { fieldName, mode } of normalized) {
-        if (fieldName === "images" || mode === "multiple") {
+      // Normalize single string images in parsedBody / req.body for multiple mode / images / propertyPhotos / floorPlanPhotos
+      for (const { fieldName, mode } of effectiveNormalized) {
+        if (
+          fieldName === "images" ||
+          fieldName === "propertyPhotos" ||
+          fieldName === "floorPlanPhotos" ||
+          mode === "multiple"
+        ) {
           if (typeof parsedBody[fieldName] === "string") {
             parsedBody[fieldName] = [parsedBody[fieldName] as string];
           }
@@ -209,6 +283,22 @@ export const parseFileData = (...fields: FieldInput[]) => {
         ...parsedBody,
         ...fileData,
       };
+
+      // If council or parking was wrapped inside req.body.council/parking without top-level propertyName (sub-route update)
+      if (
+        req.body?.council &&
+        typeof req.body.council === "object" &&
+        !req.body.propertyName
+      ) {
+        req.body = { ...req.body.council, ...req.body };
+      }
+      if (
+        req.body?.parking &&
+        typeof req.body.parking === "object" &&
+        !req.body.propertyName
+      ) {
+        req.body = { ...req.body.parking, ...req.body };
+      }
 
       if (req.body.data) {
         delete req.body.data;

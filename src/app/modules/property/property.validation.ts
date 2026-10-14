@@ -34,7 +34,16 @@ const parkingZodSchema = z.object({
   permit: z
     .string({ required_error: "Permit info is required" })
     .min(1, "Permit info cannot be empty"),
-  allocatedCount: z.number().optional().default(0),
+  allocatedCount: z
+    .union([
+      z.number(),
+      z.string().transform((val) => {
+        const num = Number(val);
+        return isNaN(num) ? 0 : num;
+      }),
+    ])
+    .optional()
+    .default(0),
   notes: z.string().optional(),
   parkingPhoto: z.string().optional(),
 });
@@ -72,14 +81,30 @@ const createPropertyZodSchema = z.object({
       .string({ required_error: "Floors in building is required" })
       .min(1, "Floors in building cannot be empty"),
     propertyType: z.string({ required_error: "Property type ID is required" }),
-    isHmo: z.boolean().optional().default(false),
+    isHmo: z
+      .union([
+        z.boolean(),
+        z.string().transform((val) => val === "true" || val === "1"),
+      ])
+      .optional()
+      .default(false),
     yearBuilt: z
       .string({ required_error: "Year built is required" })
       .min(1, "Year built cannot be empty"),
     datePurchased: z.union([z.string(), z.date()], {
       required_error: "Date purchased is required",
     }),
-    valuation: z.number({ required_error: "Valuation is required" }),
+    valuation: z.union(
+      [
+        z.number(),
+        z.string().transform((val) => {
+          const cleaned = val.replace(/,/g, "").trim();
+          const num = Number(cleaned);
+          return isNaN(num) ? 0 : num;
+        }),
+      ],
+      { required_error: "Valuation is required" },
+    ),
     valuationDate: z.union([z.string(), z.date()], {
       required_error: "Valuation date is required",
     }),
@@ -119,10 +144,24 @@ const updatePropertyZodSchema = z.object({
       .min(1, "Floors in building cannot be empty")
       .optional(),
     propertyType: z.string().optional(),
-    isHmo: z.boolean().optional(),
+    isHmo: z
+      .union([
+        z.boolean(),
+        z.string().transform((val) => val === "true" || val === "1"),
+      ])
+      .optional(),
     yearBuilt: z.string().min(1, "Year built cannot be empty").optional(),
     datePurchased: z.union([z.string(), z.date()]).optional(),
-    valuation: z.number().optional(),
+    valuation: z
+      .union([
+        z.number(),
+        z.string().transform((val) => {
+          const cleaned = val.replace(/,/g, "").trim();
+          const num = Number(cleaned);
+          return isNaN(num) ? 0 : num;
+        }),
+      ])
+      .optional(),
     valuationDate: z.union([z.string(), z.date()]).optional(),
     epcRating: z.nativeEnum(EPC_RATING).optional(),
     epcExpireDate: z.union([z.string(), z.date()]).optional(),
