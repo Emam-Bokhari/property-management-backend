@@ -94,8 +94,14 @@ const createAnnouncementToDB = async (
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid user ID");
   }
 
-  if (!payload.property || !mongoose.Types.ObjectId.isValid(payload.property.toString())) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "Valid property ID is required");
+  if (
+    !payload.property ||
+    !mongoose.Types.ObjectId.isValid(payload.property.toString())
+  ) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Valid property ID is required",
+    );
   }
 
   const propertyDoc = await Property.findById(payload.property);
@@ -148,7 +154,10 @@ const createAnnouncementToDB = async (
   const result = await Announcement.create(payload);
 
   if (!result) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "Failed to create announcement");
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Failed to create announcement",
+    );
   }
 
   // Send push notification & in-app notification if recipients exist
@@ -258,7 +267,9 @@ const getMyAnnouncementsForTenantFromDB = async (
     isDeleted: false,
   }).select("_id property");
 
-  const tenantFlatIds: Types.ObjectId[] = flats.map((f) => f._id as Types.ObjectId);
+  const tenantFlatIds: Types.ObjectId[] = flats.map(
+    (f) => f._id as Types.ObjectId,
+  );
   if (tenantUser?.flat) {
     tenantFlatIds.push(tenantUser.flat as Types.ObjectId);
   }
@@ -342,7 +353,11 @@ const getSingleAnnouncementFromDB = async (
 
   // Authorization checks
   if (user.role === USER_ROLES.LANDLORD) {
-    if (announcement.landlord && (announcement.landlord as any)._id?.toString() !== user.id && announcement.landlord.toString() !== user.id) {
+    if (
+      announcement.landlord &&
+      (announcement.landlord as any)._id?.toString() !== user.id &&
+      announcement.landlord.toString() !== user.id
+    ) {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
         "You do not have permission to view this announcement",
@@ -366,9 +381,12 @@ const getSingleAnnouncementFromDB = async (
 
       const propertyMatch =
         (tenantUser?.property &&
-          tenantUser.property.toString() === announcement.property.toString()) ||
+          tenantUser.property.toString() ===
+            announcement.property.toString()) ||
         flatDocs.some(
-          (f) => f.property && f.property.toString() === announcement.property.toString(),
+          (f) =>
+            f.property &&
+            f.property.toString() === announcement.property.toString(),
         );
 
       const flatMatch =
@@ -382,8 +400,10 @@ const getSingleAnnouncementFromDB = async (
         });
 
       const hasScopeAccess =
-        (announcement.visibilityScope === VISIBILITY_SCOPE.ENTIRE_PROPERTY && propertyMatch) ||
-        (announcement.visibilityScope === VISIBILITY_SCOPE.SELECTED_FLATS && flatMatch);
+        (announcement.visibilityScope === VISIBILITY_SCOPE.ENTIRE_PROPERTY &&
+          propertyMatch) ||
+        (announcement.visibilityScope === VISIBILITY_SCOPE.SELECTED_FLATS &&
+          flatMatch);
 
       if (!hasScopeAccess) {
         throw new ApiError(
@@ -424,7 +444,11 @@ const updateAnnouncementToDB = async (
   }
 
   // If a new image is provided and old image exists, clean up old image
-  if (payload.image && existingAnnouncement.image && existingAnnouncement.image !== payload.image) {
+  if (
+    payload.image &&
+    existingAnnouncement.image &&
+    existingAnnouncement.image !== payload.image
+  ) {
     unlinkFile(existingAnnouncement.image);
   }
 
@@ -432,9 +456,13 @@ const updateAnnouncementToDB = async (
   const propertyId = payload.property || existingAnnouncement.property;
   const visibilityScope =
     payload.visibilityScope || existingAnnouncement.visibilityScope;
-  const flats = payload.flats !== undefined ? payload.flats : existingAnnouncement.flats;
+  const flats =
+    payload.flats !== undefined ? payload.flats : existingAnnouncement.flats;
 
-  if (visibilityScope === VISIBILITY_SCOPE.SELECTED_FLATS && (!flats || flats.length === 0)) {
+  if (
+    visibilityScope === VISIBILITY_SCOPE.SELECTED_FLATS &&
+    (!flats || flats.length === 0)
+  ) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
       "Please select at least one flat for this announcement",

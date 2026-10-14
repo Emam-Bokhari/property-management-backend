@@ -5,7 +5,10 @@ import { User } from "../src/app/modules/user/user.model";
 import { AppOption } from "../src/app/modules/appOption/appOption.model";
 import { AppOptionType } from "../src/app/modules/appOption/appOption.constant";
 import { Property } from "../src/app/modules/property/property.model";
-import { COUNCIL_TAX, EPC_RATING } from "../src/app/modules/property/property.constant";
+import {
+  COUNCIL_TAX,
+  EPC_RATING,
+} from "../src/app/modules/property/property.constant";
 import { Flat } from "../src/app/modules/flat/flat.model";
 import { FURNISHED_TYPE } from "../src/app/modules/flat/flat.constant";
 import { USER_ROLES, STATUS } from "../src/enums/user";
@@ -17,7 +20,10 @@ async function seedProperties() {
   const landlordEmail = "studentemam@gmail.com";
   let user = await User.findOne({ email: landlordEmail }).select("+password");
 
-  const hashedPassword = await bcrypt.hash("hello123", Number(config.bcrypt_salt_rounds) || 10);
+  const hashedPassword = await bcrypt.hash(
+    "hello123",
+    Number(config.bcrypt_salt_rounds) || 10,
+  );
 
   if (!user) {
     console.log(`Creating user: ${landlordEmail}...`);
@@ -30,7 +36,8 @@ async function seedProperties() {
       verified: true,
       phone: "+44 7911 123456",
       countryCode: "+44",
-      profileImage: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=500&q=80",
+      profileImage:
+        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=500&q=80",
     });
     console.log(`Created Landlord user: ID ${user._id}`);
   } else {
@@ -39,7 +46,9 @@ async function seedProperties() {
     user.status = STATUS.ACTIVE;
     user.verified = true;
     await user.save();
-    console.log(`Updated Landlord user (${user.email}) password to 'hello123', ID: ${user._id}`);
+    console.log(
+      `Updated Landlord user (${user.email}) password to 'hello123', ID: ${user._id}`,
+    );
   }
 
   // Ensure Property Types exist in AppOption
@@ -54,7 +63,10 @@ async function seedProperties() {
   const propertyTypeMap = new Map<string, mongoose.Types.ObjectId>();
 
   for (const name of propertyTypeNames) {
-    let option = await AppOption.findOne({ name, type: AppOptionType.PROPERTY_TYPE });
+    let option = await AppOption.findOne({
+      name,
+      type: AppOptionType.PROPERTY_TYPE,
+    });
     if (!option) {
       option = await AppOption.create({
         name,
@@ -74,7 +86,9 @@ async function seedProperties() {
     const propIds = existingProps.map((p) => p._id);
     await Flat.deleteMany({ property: { $in: propIds } });
     await Property.deleteMany({ _id: { $in: propIds } });
-    console.log(`Cleaned up ${existingProps.length} existing properties and their flats.`);
+    console.log(
+      `Cleaned up ${existingProps.length} existing properties and their flats.`,
+    );
   }
 
   // Define 5 detailed properties with full Council, Parking, and Compliance records
@@ -102,14 +116,16 @@ async function seedProperties() {
       epcExpireDate: new Date("2031-04-15"),
       insuranceRenewal: new Date("2027-04-15"),
       councilTax: COUNCIL_TAX.BAND_C,
-      buildingNotes: "Modern 2-bedroom luxury apartment with balcony and security concierge.",
+      buildingNotes:
+        "Modern 2-bedroom luxury apartment with balcony and security concierge.",
       council: {
         authority: "Kensington and Chelsea Borough Council",
         taxBand: COUNCIL_TAX.BAND_C,
         reference: "KENC-2023-8821",
         contact: 2073613000,
         bins: "Collected every Tuesday morning (general waste & green recycling)",
-        councilPhoto: "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1000&q=80",
+        councilPhoto:
+          "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1000&q=80",
       },
       parking: {
         parkingType: "Underground Allocated",
@@ -117,36 +133,49 @@ async function seedProperties() {
         permit: "PRM-99214",
         allocatedCount: 1,
         notes: "Electronic fob required for underground barrier access",
-        parkingPhoto: "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1000&q=80",
+        parkingPhoto:
+          "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1000&q=80",
       },
-      houseRules: "No smoking inside building. Quiet hours after 10 PM. Pets allowed upon landlord consent.",
+      houseRules:
+        "No smoking inside building. Quiet hours after 10 PM. Pets allowed upon landlord consent.",
       compliance: {
         gasSafety: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_gas_safety.pdf",
-          history: ["https://res.cloudinary.com/demo/image/upload/sample_gas_safety_2023.pdf"],
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_gas_safety.pdf",
+          history: [
+            "https://res.cloudinary.com/demo/image/upload/sample_gas_safety_2023.pdf",
+          ],
         },
         electrical: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_electrical.pdf",
-          history: ["https://res.cloudinary.com/demo/image/upload/sample_electrical_2022.pdf"],
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_electrical.pdf",
+          history: [
+            "https://res.cloudinary.com/demo/image/upload/sample_electrical_2022.pdf",
+          ],
         },
         energyPerformance: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_epc.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_epc.pdf",
           history: [],
         },
         landlordInsurance: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_insurance.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_insurance.pdf",
           history: [],
         },
         depositProtection: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_deposit_cert.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_deposit_cert.pdf",
           history: [],
         },
         propertyLicense: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_property_license.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_property_license.pdf",
           history: [],
         },
         otherDocuments: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_fire_safety_audit.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_fire_safety_audit.pdf",
           history: [],
         },
       },
@@ -174,14 +203,16 @@ async function seedProperties() {
       epcExpireDate: new Date("2032-08-20"),
       insuranceRenewal: new Date("2027-08-20"),
       councilTax: COUNCIL_TAX.BAND_E,
-      buildingNotes: "High-rise modern penthouse offering panoramic views of Canary Wharf and River Thames.",
+      buildingNotes:
+        "High-rise modern penthouse offering panoramic views of Canary Wharf and River Thames.",
       council: {
         authority: "Tower Hamlets Council",
         taxBand: COUNCIL_TAX.BAND_E,
         reference: "TH-PROP-5412",
         contact: 2073645000,
         bins: "Communal waste chute on floor 22; recycling bins on Ground floor",
-        councilPhoto: "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1000&q=80",
+        councilPhoto:
+          "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1000&q=80",
       },
       parking: {
         parkingType: "Dedicated Garage",
@@ -189,36 +220,45 @@ async function seedProperties() {
         permit: "CW-PERMIT-04",
         allocatedCount: 2,
         notes: "Dedicated EV ultra-fast charging unit in space",
-        parkingPhoto: "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1000&q=80",
+        parkingPhoto:
+          "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1000&q=80",
       },
-      houseRules: "Strictly no subletting or Airbnb. Concierge must be notified of visitors staying over 48 hours.",
+      houseRules:
+        "Strictly no subletting or Airbnb. Concierge must be notified of visitors staying over 48 hours.",
       compliance: {
         gasSafety: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_gas_safety_canary.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_gas_safety_canary.pdf",
           history: [],
         },
         electrical: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_electrical_canary.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_electrical_canary.pdf",
           history: [],
         },
         energyPerformance: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_epc_canary.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_epc_canary.pdf",
           history: [],
         },
         landlordInsurance: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_insurance_canary.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_insurance_canary.pdf",
           history: [],
         },
         depositProtection: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_deposit_canary.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_deposit_canary.pdf",
           history: [],
         },
         propertyLicense: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_license_canary.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_license_canary.pdf",
           history: [],
         },
         otherDocuments: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_cladding_cert.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_cladding_cert.pdf",
           history: [],
         },
       },
@@ -246,14 +286,16 @@ async function seedProperties() {
       epcExpireDate: new Date("2029-11-05"),
       insuranceRenewal: new Date("2026-11-05"),
       councilTax: COUNCIL_TAX.BAND_G,
-      buildingNotes: "Period Victorian townhouse fully refurbished with double glazing and private rear garden.",
+      buildingNotes:
+        "Period Victorian townhouse fully refurbished with double glazing and private rear garden.",
       council: {
         authority: "Westminster City Council",
         taxBand: COUNCIL_TAX.BAND_G,
         reference: "WST-2017-9104",
         contact: 2076416000,
         bins: "General waste on Monday, Recycling on Thursday morning",
-        councilPhoto: "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1000&q=80",
+        councilPhoto:
+          "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1000&q=80",
       },
       parking: {
         parkingType: "On-Street Resident",
@@ -261,36 +303,45 @@ async function seedProperties() {
         permit: "WST-RES-883",
         allocatedCount: 1,
         notes: "Resident parking permit required from Westminster council",
-        parkingPhoto: "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1000&q=80",
+        parkingPhoto:
+          "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1000&q=80",
       },
-      houseRules: "Maintain facade aesthetics according to heritage conservation rules.",
+      houseRules:
+        "Maintain facade aesthetics according to heritage conservation rules.",
       compliance: {
         gasSafety: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_gas_safety_victoria.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_gas_safety_victoria.pdf",
           history: [],
         },
         electrical: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_electrical_victoria.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_electrical_victoria.pdf",
           history: [],
         },
         energyPerformance: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_epc_victoria.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_epc_victoria.pdf",
           history: [],
         },
         landlordInsurance: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_insurance_victoria.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_insurance_victoria.pdf",
           history: [],
         },
         depositProtection: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_deposit_victoria.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_deposit_victoria.pdf",
           history: [],
         },
         propertyLicense: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_hmo_license_victoria.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_hmo_license_victoria.pdf",
           history: [],
         },
         otherDocuments: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_legionella_risk.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_legionella_risk.pdf",
           history: [],
         },
       },
@@ -318,14 +369,16 @@ async function seedProperties() {
       epcExpireDate: new Date("2030-02-14"),
       insuranceRenewal: new Date("2027-02-14"),
       councilTax: COUNCIL_TAX.BAND_B,
-      buildingNotes: "Chic open-plan studio loft ideal for creative professionals near Camden Market.",
+      buildingNotes:
+        "Chic open-plan studio loft ideal for creative professionals near Camden Market.",
       council: {
         authority: "Camden London Borough Council",
         taxBand: COUNCIL_TAX.BAND_B,
         reference: "CMD-LOFT-731",
         contact: 2079744444,
         bins: "Communal bins in rear courtyard (blue lid: dry mixed recycling)",
-        councilPhoto: "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1000&q=80",
+        councilPhoto:
+          "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1000&q=80",
       },
       parking: {
         parkingType: "Off-Street Gated",
@@ -333,36 +386,44 @@ async function seedProperties() {
         permit: "CAM-3312",
         allocatedCount: 1,
         notes: "Gated entry code #4521 required for access",
-        parkingPhoto: "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1000&q=80",
+        parkingPhoto:
+          "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1000&q=80",
       },
       houseRules: "Bicycles to be kept in designated outdoor racks only.",
       compliance: {
         gasSafety: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_gas_safety_camden.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_gas_safety_camden.pdf",
           history: [],
         },
         electrical: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_electrical_camden.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_electrical_camden.pdf",
           history: [],
         },
         energyPerformance: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_epc_camden.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_epc_camden.pdf",
           history: [],
         },
         landlordInsurance: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_insurance_camden.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_insurance_camden.pdf",
           history: [],
         },
         depositProtection: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_deposit_camden.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_deposit_camden.pdf",
           history: [],
         },
         propertyLicense: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_license_camden.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_license_camden.pdf",
           history: [],
         },
         otherDocuments: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_inventory_check_in.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_inventory_check_in.pdf",
           history: [],
         },
       },
@@ -390,14 +451,16 @@ async function seedProperties() {
       epcExpireDate: new Date("2029-09-30"),
       insuranceRenewal: new Date("2027-09-30"),
       councilTax: COUNCIL_TAX.BAND_H,
-      buildingNotes: "Stunning detached family villa with direct river views, expansive terrace and solar panels.",
+      buildingNotes:
+        "Stunning detached family villa with direct river views, expansive terrace and solar panels.",
       council: {
         authority: "Richmond upon Thames Council",
         taxBand: COUNCIL_TAX.BAND_H,
         reference: "RCH-RIV-1109",
         contact: 2088911411,
         bins: "Weekly collection on Wednesday mornings (food, green waste & general)",
-        councilPhoto: "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1000&q=80",
+        councilPhoto:
+          "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1000&q=80",
       },
       parking: {
         parkingType: "Private Driveway",
@@ -405,36 +468,45 @@ async function seedProperties() {
         permit: "Not Required",
         allocatedCount: 3,
         notes: "Space for up to 3 cars with dual EV chargers",
-        parkingPhoto: "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1000&q=80",
+        parkingPhoto:
+          "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1000&q=80",
       },
-      houseRules: "No loud outdoor music after 11 PM. Strictly non-commercial residential use.",
+      houseRules:
+        "No loud outdoor music after 11 PM. Strictly non-commercial residential use.",
       compliance: {
         gasSafety: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_gas_safety_richmond.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_gas_safety_richmond.pdf",
           history: [],
         },
         electrical: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_electrical_richmond.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_electrical_richmond.pdf",
           history: [],
         },
         energyPerformance: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_epc_richmond.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_epc_richmond.pdf",
           history: [],
         },
         landlordInsurance: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_insurance_richmond.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_insurance_richmond.pdf",
           history: [],
         },
         depositProtection: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_deposit_richmond.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_deposit_richmond.pdf",
           history: [],
         },
         propertyLicense: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_license_richmond.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_license_richmond.pdf",
           history: [],
         },
         otherDocuments: {
-          current: "https://res.cloudinary.com/demo/image/upload/sample_solar_pv_certificate.pdf",
+          current:
+            "https://res.cloudinary.com/demo/image/upload/sample_solar_pv_certificate.pdf",
           history: [],
         },
       },
@@ -442,12 +514,16 @@ async function seedProperties() {
   ];
 
   const createdProperties = await Property.insertMany(propertiesData);
-  console.log(`\n🎉 Successfully created ${createdProperties.length} properties for landlord ${user.email}:`);
+  console.log(
+    `\n🎉 Successfully created ${createdProperties.length} properties for landlord ${user.email}:`,
+  );
 
   // Now create units/flats for each property
   for (const prop of createdProperties) {
-    console.log(`\n🏡 Property: [${prop._id}] ${prop.propertyName} (${prop.streetAddress})`);
-    
+    console.log(
+      `\n🏡 Property: [${prop._id}] ${prop.propertyName} (${prop.streetAddress})`,
+    );
+
     // Create 2 flats/units for this property
     const flatsData = [
       {
@@ -466,8 +542,18 @@ async function seedProperties() {
           "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80",
         ],
         key: [
-          { keyType: "Front Door Key", quantity: 2, location: "Key Safe 1", heldBy: "Tenant & Landlord" },
-          { keyType: "Mailbox Key", quantity: 1, location: "Apartment Lobby", heldBy: "Tenant" },
+          {
+            keyType: "Front Door Key",
+            quantity: 2,
+            location: "Key Safe 1",
+            heldBy: "Tenant & Landlord",
+          },
+          {
+            keyType: "Mailbox Key",
+            quantity: 1,
+            location: "Apartment Lobby",
+            heldBy: "Tenant",
+          },
         ],
         gas: {
           supplier: "British Gas",
@@ -476,7 +562,8 @@ async function seedProperties() {
           shutOff: "Lever valve next to meter",
           helpline: 8000480202,
           notes: "Annual inspection every March",
-          meterPhoto: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80",
+          meterPhoto:
+            "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80",
         },
         electricity: {
           supplier: "EDF Energy",
@@ -485,7 +572,8 @@ async function seedProperties() {
           consumerUnit: "Main RCD board in coat closet",
           helpline: 3332005100,
           notes: "Smart meter installed 2022",
-          meterPhoto: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80",
+          meterPhoto:
+            "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80",
         },
         water: {
           supplier: "Thames Water",
@@ -494,7 +582,8 @@ async function seedProperties() {
           streetValve: "Pavement boundary box outside entrance",
           helpline: 8003169800,
           notes: "Meter read biannually",
-          meterPhoto: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80",
+          meterPhoto:
+            "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80",
         },
         wifi: {
           provider: "Hyperoptic",
@@ -503,17 +592,20 @@ async function seedProperties() {
           router: "Nokia WiFi Beacon 1",
           supportNumber: 3333321111,
           notes: "1Gbps symmetric fiber connection",
-          routerPhoto: "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=600&q=80",
+          routerPhoto:
+            "https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=600&q=80",
         },
         safetyAlarms: [
           {
-            alarmPhoto: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80",
+            alarmPhoto:
+              "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80",
             alarmName: "Optical Smoke Detector",
             locationInProperty: "Living Room Ceiling",
             expiry: new Date("2030-05-01"),
           },
           {
-            alarmPhoto: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80",
+            alarmPhoto:
+              "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80",
             alarmName: "Carbon Monoxide Alarm",
             locationInProperty: "Kitchen Boiler Cupboard",
             expiry: new Date("2029-08-15"),
@@ -521,14 +613,16 @@ async function seedProperties() {
         ],
         appliances: [
           {
-            appliancePhoto: "https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&w=600&q=80",
+            appliancePhoto:
+              "https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&w=600&q=80",
             applianceName: "Washing Machine & Dryer",
             brand: "Bosch Serie 6",
             modelNote: "WVG30462GB Washer Dryer 8kg/5kg",
             warranty: "Valid until Nov 2026",
           },
           {
-            appliancePhoto: "https://images.unsplash.com/photo-1571175443880-49e1d25b2bc5?auto=format&fit=crop&w=600&q=80",
+            appliancePhoto:
+              "https://images.unsplash.com/photo-1571175443880-49e1d25b2bc5?auto=format&fit=crop&w=600&q=80",
             applianceName: "Frost Free Fridge Freezer",
             brand: "Samsung",
             modelNote: "RB34T602EWW 70/30 split",
@@ -551,7 +645,12 @@ async function seedProperties() {
           "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80",
         ],
         key: [
-          { keyType: "Master Keycard", quantity: 2, location: "Key Safe 2", heldBy: "Tenant" },
+          {
+            keyType: "Master Keycard",
+            quantity: 2,
+            location: "Key Safe 2",
+            heldBy: "Tenant",
+          },
         ],
         gas: {
           supplier: "Octopus Energy",
@@ -604,7 +703,9 @@ async function seedProperties() {
     const createdFlats = await Flat.insertMany(flatsData);
     console.log(`   + Created ${createdFlats.length} flats/units:`);
     createdFlats.forEach((f) => {
-      console.log(`     - [${f._id}] ${f.unitName} (Rent: £${f.rentPerMonth}/mo, Beds: ${f.beds}, Baths: ${f.baths})`);
+      console.log(
+        `     - [${f._id}] ${f.unitName} (Rent: £${f.rentPerMonth}/mo, Beds: ${f.beds}, Baths: ${f.baths})`,
+      );
     });
   }
 

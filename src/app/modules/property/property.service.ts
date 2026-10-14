@@ -9,10 +9,7 @@ import {
   TParking,
   TCompliance,
 } from "./property.interface";
-import {
-  propertySearchableFields,
-  COMPLIANCE_TYPE,
-} from "./property.constant";
+import { propertySearchableFields, COMPLIANCE_TYPE } from "./property.constant";
 
 const complianceKeyMap: Record<string, keyof TCompliance> = {
   [COMPLIANCE_TYPE.GAS_SAFETY]: "gasSafety",
@@ -339,12 +336,10 @@ const updateComplianceToDB = async (
   property.markModified("compliance");
   await property.save();
 
-  return await Property.findById(id)
-    .populate("propertyType")
-    .populate({
-      path: "landlord",
-      select: "firstName lastName email role profileImage",
-    });
+  return await Property.findById(id).populate("propertyType").populate({
+    path: "landlord",
+    select: "firstName lastName email role profileImage",
+  });
 };
 
 // Delete property by ID (SaaS: owner only)

@@ -176,33 +176,40 @@ const updatePropertyZodSchema = z.object({
 });
 
 const updateCouncilZodSchema = z.object({
-  body: councilZodSchema.partial().refine((data) => Object.keys(data).length > 0, {
-    message: "At least one council field must be provided to update",
-  }),
+  body: councilZodSchema
+    .partial()
+    .refine((data) => Object.keys(data).length > 0, {
+      message: "At least one council field must be provided to update",
+    }),
 });
 
 const updateParkingZodSchema = z.object({
-  body: parkingZodSchema.partial().refine((data) => Object.keys(data).length > 0, {
-    message: "At least one parking field must be provided to update",
-  }),
+  body: parkingZodSchema
+    .partial()
+    .refine((data) => Object.keys(data).length > 0, {
+      message: "At least one parking field must be provided to update",
+    }),
 });
 
 const updateComplianceZodSchema = z.object({
   body: z.object({
-    complianceType: z.union([
-      z.nativeEnum(COMPLIANCE_TYPE),
-      z.enum([
-        "gasSafety",
-        "electrical",
-        "energyPerformance",
-        "landlordInsurance",
-        "depositProtection",
-        "propertyLicense",
-        "otherDocuments",
-      ]),
-    ], {
-      required_error: "Compliance type is required",
-    }),
+    complianceType: z.union(
+      [
+        z.nativeEnum(COMPLIANCE_TYPE),
+        z.enum([
+          "gasSafety",
+          "electrical",
+          "energyPerformance",
+          "landlordInsurance",
+          "depositProtection",
+          "propertyLicense",
+          "otherDocuments",
+        ]),
+      ],
+      {
+        required_error: "Compliance type is required",
+      },
+    ),
     certificateUrl: z
       .string({ required_error: "Certificate URL is required" })
       .min(1, "Certificate URL cannot be empty"),

@@ -40,4 +40,3 @@ export const propertySearchableFields = [
   "floorsInBuilding",
   "buildingNotes",
 ];
-
