@@ -1,6 +1,7 @@
 import { model, Schema } from "mongoose";
 import { GENDER, STATUS, USER_ROLES } from "../../../enums/user";
-import { IUser, IUserModel, UserModal } from "./user.interface";
+import { IUser, IUserModel } from "./user.interface";
+import { PRIMARY_TRADE } from "./user.constant";
 import bcrypt from "bcrypt";
 import config from "../../../config";
 import { softDeletePlugin } from "../../../DB/plugins/softDeletePlugin";
@@ -10,6 +11,7 @@ const userSchema = new Schema<IUser, IUserModel>(
     name: {
       type: String,
       required: true,
+      trim: true,
     },
     role: {
       type: String,
@@ -21,6 +23,7 @@ const userSchema = new Schema<IUser, IUserModel>(
       required: true,
       unique: true,
       lowercase: true,
+      trim: true,
     },
     profileImage: {
       type: String,
@@ -77,6 +80,38 @@ const userSchema = new Schema<IUser, IUserModel>(
       type: String,
       required: false,
     },
+    homeAddress: {
+      type: String,
+      required: false,
+    },
+    emergencyPhone: {
+      type: String,
+      required: false,
+    },
+    nidNumber: {
+      type: Schema.Types.Mixed,
+      required: false,
+    },
+    nidPhoto: {
+      type: String,
+      required: false,
+      default: "",
+    },
+    companyName: {
+      type: String,
+      required: false,
+    },
+    primaryTrade: {
+      type: String,
+      enum: Object.values(PRIMARY_TRADE),
+      required: false,
+    },
+    certificates: [
+      {
+        certificateName: { type: String },
+        certificateAttachment: { type: String },
+      },
+    ],
     authentication: {
       type: {
         isResetPassword: {
@@ -126,25 +161,16 @@ const userSchema = new Schema<IUser, IUserModel>(
 /* ================= PLUGIN ================= */
 userSchema.plugin(softDeletePlugin);
 
-
-//exist user check
+// exist user check
 userSchema.statics.isExistUserById = async (id: string) => {
-  const isExist = await User.findById(id);
-  return isExist;
+  return await User.findById(id);
 };
 
 userSchema.statics.isExistUserByEmail = async (email: string) => {
-  const isExist = await User.findOne({ email });
-  return isExist;
+  return await User.findOne({ email });
 };
 
-//account check
-userSchema.statics.isAccountCreated = async (id: string) => {
-  const isUserExist: any = await User.findById(id);
-  return isUserExist.accountInformation.status;
-};
-
-//is match password
+// is match password
 userSchema.statics.isMatchPassword = async (
   password: string,
   hashPassword: string,
@@ -152,29 +178,19 @@ userSchema.statics.isMatchPassword = async (
   return await bcrypt.compare(password, hashPassword);
 };
 
-//check user
+// hash password pre-save
 userSchema.pre("save", async function (next) {
-  if (this.isNew) {
-    // password hash
-    if (this.password) {
-      this.password = await bcrypt.hash(
-        this.password,
-        Number(config.bcrypt_salt_rounds),
-      );
-    }
-  } else {
-    if (this.isModified("password") && this.password) {
-      this.password = await bcrypt.hash(
-        this.password,
-        Number(config.bcrypt_salt_rounds),
-      );
-    }
+  if (this.isModified("password") && this.password) {
+    this.password = await bcrypt.hash(
+      this.password,
+      Number(config.bcrypt_salt_rounds),
+    );
   }
   next();
 });
 
 userSchema.index({ role: 1 });
 userSchema.index({ role: 1, status: 1 });
-userSchema.index({ documentNumber: 1 }, { sparse: true });
 
 export const User = model<IUser, IUserModel>("User", userSchema);
+

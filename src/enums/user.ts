@@ -3,9 +3,10 @@ export enum USER_ROLES {
   SUPER_ADMIN = "super_admin",
   LANDLORD = "landlord",
   TENANT = "tenant",
-  CONTRUCTOR = "contructor"
+  CONTRUCTOR = "contructor",
+  CONTRACTOR = "contructor",
 }
- 
+
 export enum GENDER {
   MALE = "male",
   FEMALE = "female",

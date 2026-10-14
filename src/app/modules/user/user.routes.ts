@@ -17,8 +17,25 @@ const router = express.Router();
 router
   .route("/profile")
   .get(isAuthenticated, UserController.getMyProfile)
+  .patch(
+    isAuthenticated,
+    fileUploadHandler(),
+    parseFileData(
+      {
+        fieldName: "profileImage",
+        mode: "single",
+      },
+      {
+        fieldName: "nidPhoto",
+        mode: "single",
+      },
+    ),
+    validateRequest(UserValidation.updateProfileZodSchema),
+    UserController.updateProfile,
+  )
   .delete(isAuthenticated, UserController.deleteProfile);
-/* ---------------------------- SUPER ADMIN (PUBLIC) ---------------------- */
+
+/* ---------------------------- SUPER ADMIN ------------------------------- */
 router.get("/super-admin", UserController.getSuperAdmin);
 
 /* ---------------------------- ADMIN CREATE ------------------------------ */
@@ -33,7 +50,7 @@ router.post(
 router.get("/admins", isSuperAdmin, UserController.getAdmin);
 router.delete("/admins/:id", isSuperAdmin, UserController.deleteAdmin);
 
-/* ---------------------------- USER CREATE & UPDATE & LIST ---------------------- */
+/* ---------------------------- USER CREATE & LIST ------------------------ */
 router
   .route("/")
   .get(isAdmin, UserController.getUsers)
@@ -41,22 +58,17 @@ router
     fileUploadHandler(),
     parseFileData(
       {
-        fieldName: "documentFront",
-        mode: "single",
-      },
-      {
-        fieldName: "documentBack",
-        mode: "single",
-      },
-      {
         fieldName: "profileImage",
+        mode: "single",
+      },
+      {
+        fieldName: "nidPhoto",
         mode: "single",
       },
     ),
     validateRequest(UserValidation.createUserZodSchema),
     UserController.createUser,
   )
-
   .patch(
     isAuthenticated,
     fileUploadHandler(),
@@ -66,18 +78,11 @@ router
         mode: "single",
       },
       {
-        fieldName: "coverImage",
-        mode: "single",
-      },
-      {
-        fieldName: "documentFront",
-        mode: "single",
-      },
-      {
-        fieldName: "documentBack",
+        fieldName: "nidPhoto",
         mode: "single",
       },
     ),
+    validateRequest(UserValidation.updateProfileZodSchema),
     UserController.updateProfile,
   );
 
@@ -87,7 +92,12 @@ router.patch(
   isAdmin,
   UserController.updateAdminStatusById,
 );
-router.patch("/status/:id", isAdmin, UserController.updateUserStatusById);
+router.patch(
+  "/status/:id",
+  isAdmin,
+  validateRequest(UserValidation.updateUserStatusZodSchema),
+  UserController.updateUserStatusById,
+);
 
 /* ---------------------------- DYNAMIC USER ID ROUTES (KEEP LAST!) ------- */
 router
@@ -96,3 +106,4 @@ router
   .delete(isAdmin, UserController.deleteUserById);
 
 export const UserRoutes = router;
+

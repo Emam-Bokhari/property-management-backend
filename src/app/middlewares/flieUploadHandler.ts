@@ -181,6 +181,17 @@ export const FILE_CONFIG = {
       "application/pdf",
     ]),
   },
+  nidPhoto: {
+    dir: "nidPhoto",
+    maxCount: 1,
+    mimeTypes: new Set([
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/webp",
+      "application/pdf",
+    ]),
+  },
   nidBackPic: {
     dir: "documentBack",
     maxCount: 1,

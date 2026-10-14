@@ -58,11 +58,7 @@ const optionalAuth =
       }
 
       // Attach database role to verified user info
-      verifyUser.role = [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN].includes(
-        user.role as any,
-      )
-        ? user.role
-        : user.activeRole || user.role;
+      verifyUser.role = user.role;
 
       if (roles.length && !roles.includes(verifyUser?.role)) {
         throw new ApiError(

@@ -1,70 +1,87 @@
 import { z } from "zod";
-import { GENDER, USER_ROLES } from "../../../enums/user";
+import { GENDER, STATUS, USER_ROLES } from "../../../enums/user";
+import { PRIMARY_TRADE } from "./user.constant";
 
 const createAdminZodSchema = z.object({
   body: z.object({
     name: z.string({ required_error: "Name is required" }),
-    email: z.string().optional(),
+    email: z
+      .string({ required_error: "Email is required" })
+      .email("Invalid email format"),
+    password: z
+      .string({ required_error: "Password is required" })
+      .min(8, "Password must be at least 8 characters"),
+    role: z
+      .enum([USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN])
+      .optional()
+      .default(USER_ROLES.ADMIN),
     phone: z.string().optional(),
     countryCode: z.string().optional(),
-    password: z.string({ required_error: "Password is required" }),
-    role: z.string({ required_error: "Role is required" }),
   }),
 });
 
 const createUserZodSchema = z.object({
-  body: z
-    .object({
-      name: z.string({ required_error: "Name is required" }),
-      email: z
-        .string({ required_error: "Email is required" })
-        .email("Invalid email format"),
-      password: z
-        .string({ required_error: "Password is required" })
-        .min(8, "Password must be at least 8 characters"),
-      documentType: z.enum(["nid", "passport"], {
-        required_error: "Document type must be either 'nid' or 'passport'",
-      }),
-      documentNumber: z.string().optional(),
-      idNumber: z.string().optional(),
-      cedula: z.string().optional(),
-      passportNumber: z.string().optional(),
-      documentFront: z.string({
-        required_error: "Identity document (front) is required",
-      }),
-      documentBack: z.string().optional(),
-      role: z
-        .enum([USER_ROLES.USER, USER_ROLES.SELLER])
-        .optional()
-        .default(USER_ROLES.USER),
-      phone: z.string().optional(),
-      countryCode: z.string().optional(),
-      profileImage: z.string().optional(),
-      gender: z.nativeEnum(GENDER).optional(),
-      dateOfBirth: z.string().optional(),
-      address: z.string().optional(),
-      country: z.string().optional(),
-      province: z.string().optional(),
-      city: z.string().optional(),
-      canton: z.string().optional(),
-      sector: z.string().optional(),
-      neighborhood: z.string().optional(),
-      postalCode: z.string().optional(),
-      referredByCode: z.string().optional(),
-    })
-    .refine(
-      (data) =>
-        Boolean(
-          (data.documentNumber && data.documentNumber.trim().length > 0) ||
-          (data.idNumber && data.idNumber.trim().length > 0) ||
-          (data.cedula && data.cedula.trim().length > 0) ||
-          (data.passportNumber && data.passportNumber.trim().length > 0),
-        ),
-      {
-        message: "National ID (Cédula) or passport number is required",
-        path: ["documentNumber"],
-      },
-    ),
+  body: z.object({
+    name: z.string({ required_error: "Name is required" }),
+    email: z
+      .string({ required_error: "Email is required" })
+      .email("Invalid email format"),
+    password: z
+      .string({ required_error: "Password is required" })
+      .min(8, "Password must be at least 8 characters"),
+    role: z
+      .enum([
+        USER_ROLES.LANDLORD,
+        USER_ROLES.TENANT,
+        USER_ROLES.CONTRUCTOR,
+      ])
+      .optional()
+      .default(USER_ROLES.LANDLORD),
+    phone: z.string().optional(),
+    countryCode: z.string().optional(),
+    profileImage: z.string().optional(),
+    gender: z.nativeEnum(GENDER).optional(),
+    dateOfBirth: z.string().optional(),
+    address: z.string().optional(),
+    homeAddress: z.string().optional(),
+    emergencyPhone: z.string().optional(),
+    nidNumber: z.union([z.string(), z.number()]).optional(),
+    nidPhoto: z.string().optional(),
+    companyName: z.string().optional(),
+    primaryTrade: z.nativeEnum(PRIMARY_TRADE).optional(),
+  }),
 });
 
-export const UserValidation = { createAdminZodSchema, createUserZodSchema };
+const updateProfileZodSchema = z.object({
+  body: z.object({
+    name: z.string().optional(),
+    phone: z.string().optional(),
+    countryCode: z.string().optional(),
+    profileImage: z.string().optional(),
+    gender: z.nativeEnum(GENDER).optional(),
+    dateOfBirth: z.string().optional(),
+    address: z.string().optional(),
+    homeAddress: z.string().optional(),
+    emergencyPhone: z.string().optional(),
+    nidNumber: z.union([z.string(), z.number()]).optional(),
+    nidPhoto: z.string().optional(),
+    companyName: z.string().optional(),
+    primaryTrade: z.nativeEnum(PRIMARY_TRADE).optional(),
+  }),
+});
+
+const updateUserStatusZodSchema = z.object({
+  body: z.object({
+    status: z.nativeEnum(STATUS, {
+      required_error: "Status is required (active or inactive)",
+    }),
+  }),
+});
+
+export const UserValidation = {
+  createAdminZodSchema,
+  createUserZodSchema,
+  updateProfileZodSchema,
+  updateUserStatusZodSchema,
+};
+

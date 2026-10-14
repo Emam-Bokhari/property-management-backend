@@ -4,45 +4,33 @@ import { USER_ROLES } from "../../../enums/user";
 import { NotificationController } from "./notification.controller";
 const router = express.Router();
 
+const allRoles = [
+  USER_ROLES.LANDLORD,
+  USER_ROLES.TENANT,
+  USER_ROLES.CONTRUCTOR,
+  USER_ROLES.ADMIN,
+  USER_ROLES.SUPER_ADMIN,
+];
+
 // user notification collection routes
 router
   .route("/")
   .get(
-    auth(
-      USER_ROLES.USER,
-      USER_ROLES.SELLER,
-      USER_ROLES.ADMIN,
-      USER_ROLES.SUPER_ADMIN,
-    ),
+    auth(...allRoles),
     NotificationController.getNotificationFromDB,
   )
   .patch(
-    auth(
-      USER_ROLES.USER,
-      USER_ROLES.SELLER,
-      USER_ROLES.ADMIN,
-      USER_ROLES.SUPER_ADMIN,
-    ),
+    auth(...allRoles),
     NotificationController.readNotification,
   )
   .delete(
-    auth(
-      USER_ROLES.USER,
-      USER_ROLES.SELLER,
-      USER_ROLES.ADMIN,
-      USER_ROLES.SUPER_ADMIN,
-    ),
+    auth(...allRoles),
     NotificationController.deleteNotification,
   );
 
 router.get(
   "/recent",
-  auth(
-    USER_ROLES.USER,
-    USER_ROLES.SELLER,
-    USER_ROLES.ADMIN,
-    USER_ROLES.SUPER_ADMIN,
-  ),
+  auth(...allRoles),
   NotificationController.getRecentActivities,
 );
 
@@ -50,41 +38,21 @@ router.get(
 router
   .route("/messages")
   .get(
-    auth(
-      USER_ROLES.USER,
-      USER_ROLES.SELLER,
-      USER_ROLES.ADMIN,
-      USER_ROLES.SUPER_ADMIN,
-    ),
+    auth(...allRoles),
     NotificationController.getMessageNotifications,
   )
   .patch(
-    auth(
-      USER_ROLES.USER,
-      USER_ROLES.SELLER,
-      USER_ROLES.ADMIN,
-      USER_ROLES.SUPER_ADMIN,
-    ),
+    auth(...allRoles),
     NotificationController.readMessageNotifications,
   )
   .delete(
-    auth(
-      USER_ROLES.USER,
-      USER_ROLES.SELLER,
-      USER_ROLES.ADMIN,
-      USER_ROLES.SUPER_ADMIN,
-    ),
+    auth(...allRoles),
     NotificationController.deleteMessageNotifications,
   );
 
 router.patch(
   "/messages/read",
-  auth(
-    USER_ROLES.USER,
-    USER_ROLES.SELLER,
-    USER_ROLES.ADMIN,
-    USER_ROLES.SUPER_ADMIN,
-  ),
+  auth(...allRoles),
   NotificationController.readMessageNotifications,
 );
 
@@ -131,33 +99,19 @@ router.patch(
 router
   .route("/:id")
   .get(
-    auth(
-      USER_ROLES.USER,
-      USER_ROLES.SELLER,
-      USER_ROLES.ADMIN,
-      USER_ROLES.SUPER_ADMIN,
-    ),
+    auth(...allRoles),
     NotificationController.getSingleNotification,
   )
   .delete(
-    auth(
-      USER_ROLES.USER,
-      USER_ROLES.SELLER,
-      USER_ROLES.ADMIN,
-      USER_ROLES.SUPER_ADMIN,
-    ),
+    auth(...allRoles),
     NotificationController.deleteSingleNotification,
   );
 
 router.patch(
   "/:id/read",
-  auth(
-    USER_ROLES.USER,
-    USER_ROLES.SELLER,
-    USER_ROLES.ADMIN,
-    USER_ROLES.SUPER_ADMIN,
-  ),
+  auth(...allRoles),
   NotificationController.readSingleNotification,
 );
 
 export const NotificationRoutes = router;
+

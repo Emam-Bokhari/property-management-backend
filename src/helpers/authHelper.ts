@@ -1,19 +1,26 @@
 import auth from "../app/middlewares/auth";
 import { USER_ROLES } from "../enums/user";
 
-export const isUser = auth(USER_ROLES.USER);
+export const isLandlord = auth(USER_ROLES.LANDLORD);
 
-export const isSeller = auth(USER_ROLES.SELLER);
+export const isTenant = auth(USER_ROLES.TENANT);
 
-export const isUserOrSeller = auth(USER_ROLES.USER, USER_ROLES.SELLER);
+export const isContructor = auth(USER_ROLES.CONTRUCTOR);
+
+export const isLandlordOrTenant = auth(
+  USER_ROLES.LANDLORD,
+  USER_ROLES.TENANT,
+);
 
 export const isAdmin = auth(USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN);
 
 export const isSuperAdmin = auth(USER_ROLES.SUPER_ADMIN);
 
 export const isAuthenticated = auth(
-  USER_ROLES.USER,
-  USER_ROLES.SELLER,
+  USER_ROLES.LANDLORD,
+  USER_ROLES.TENANT,
+  USER_ROLES.CONTRUCTOR,
   USER_ROLES.ADMIN,
   USER_ROLES.SUPER_ADMIN,
 );
+

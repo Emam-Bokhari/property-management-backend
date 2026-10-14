@@ -8,6 +8,7 @@ import {
   IAuthResetPassword,
   IChangePassword,
   ILoginData,
+  ISignUpData,
   IVerifyEmail,
 } from "../../../types/auth";
 import { User } from "../user/user.model";
@@ -19,7 +20,120 @@ import { emailTemplate } from "../../../shared/emailTemplate";
 import { STATUS, USER_ROLES } from "../../../enums/user";
 import { firebaseAdmin } from "../../../config/firebase";
 import { FcmTokenService } from "../fcmToken/fcmService";
+import { sendNotifications } from "../../../helpers/notificationsHelper";
+import { NOTIFICATION_TYPE } from "../notification/notification.constant";
 
+// ========================== Sign Up via Email ===========================
+const signUpUserToDB = async (payload: ISignUpData) => {
+  const { email, password, name, role, phone, countryCode, address, fcmToken, deviceId, deviceType } = payload;
+
+  if (!email) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Email is required!");
+  }
+  if (!password) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Password is required!");
+  }
+  if (!name) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Name is required!");
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  // Check if user already exists
+  const isExistUser = await User.findOne({ email: normalizedEmail });
+  if (isExistUser) {
+    if (isExistUser.verified) {
+      throw new ApiError(StatusCodes.CONFLICT, "This email is already registered!");
+    }
+    // If not verified, remove stale unverified user to register afresh
+    await User.deleteOne({ _id: isExistUser._id });
+  }
+
+  const allowedRoles = [
+    USER_ROLES.LANDLORD,
+    USER_ROLES.TENANT,
+    USER_ROLES.CONTRUCTOR,
+  ];
+
+  const userRole = role && allowedRoles.includes(role)
+    ? role
+    : USER_ROLES.LANDLORD;
+
+  // Generate 6-digit OTP
+  const otp = generateOTP();
+  const authentication = {
+    oneTimeCode: Number(otp),
+    expireAt: new Date(Date.now() + 3 * 60000), // 3 minutes validity
+    isResetPassword: false,
+  };
+
+  const newUser = await User.create({
+    name,
+    email: normalizedEmail,
+    password,
+    role: userRole,
+    phone,
+    countryCode,
+    address,
+    verified: false,
+    status: STATUS.ACTIVE,
+    authentication,
+  });
+
+  if (!newUser) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Failed to create user account!");
+  }
+
+  // Save device token if provided
+  if (fcmToken && deviceId && deviceType) {
+    await FcmTokenService.saveDeviceToken(newUser._id, {
+      fcmToken,
+      deviceId,
+      deviceType,
+    });
+  }
+
+  // Send verification email
+  const emailValues = {
+    name: newUser.name,
+    otp: Number(otp),
+    email: newUser.email,
+  };
+  const accountEmailTemplate = emailTemplate.createAccount(emailValues);
+  emailHelper.sendEmail(accountEmailTemplate);
+
+  // Generate token
+  const token = jwtHelper.createToken(
+    {
+      id: newUser._id,
+      email: newUser.email,
+      role: newUser.role,
+    },
+    config.jwt.jwt_secret as Secret,
+    config.jwt.jwt_expire_in as string,
+  );
+
+  // Notify admin
+  const admin = await User.findOne({ role: USER_ROLES.SUPER_ADMIN }).select("_id");
+  if (admin) {
+    await sendNotifications({
+      title: "New User Signup",
+      text: `${newUser.name} has registered as a ${newUser.role}.`,
+      receiver: admin._id.toString(),
+      type: NOTIFICATION_TYPE.ADMIN,
+      referenceId: newUser._id.toString(),
+      referenceModel: "User",
+    });
+  }
+
+  return {
+    message: "Your account has been successfully created. Please verify your email with the OTP sent to your inbox.",
+    token,
+    user: newUser,
+  };
+};
+
+// ========================== Login ===========================
 const loginUserFromDB = async (payload: ILoginData) => {
   const { email, password, fcmToken, deviceId, deviceType } = payload;
   const cleanInput = email ? email.trim() : "";
@@ -32,29 +146,28 @@ const loginUserFromDB = async (payload: ILoginData) => {
       { userName: normalizedEmail },
     ],
   }).select("+password");
+
   if (!isExistUser) {
-    throw new ApiError(400, "User doesn't exist!");
+    throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
   }
 
-  // check verified and status
+  // check verification status
   if (!isExistUser.verified) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
-
-      "Please verify your account, then try to login again",
+      "Please verify your account before logging in.",
     );
   }
 
-  // check user status
+  // check active status
   if (isExistUser.status === STATUS.INACTIVE) {
     throw new ApiError(
-      StatusCodes.BAD_REQUEST,
-
-      "You don’t have permission to access this content. It looks like your account has been deactivated.",
+      StatusCodes.FORBIDDEN,
+      "Your account has been deactivated. Please contact support.",
     );
   }
 
-  // check match password
+  // check password
   if (
     password &&
     !(await User.isMatchPassword(password, isExistUser.password!))
@@ -71,32 +184,36 @@ const loginUserFromDB = async (payload: ILoginData) => {
     });
   }
 
-  // create token
+  // create access token
   const createToken = jwtHelper.createToken(
     {
       id: isExistUser._id,
-      role: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN].includes(
-        isExistUser.role as any,
-      )
-        ? isExistUser.role
-        : isExistUser.activeRole || isExistUser.role,
+      role: isExistUser.role,
       email: isExistUser.email,
     },
     config.jwt.jwt_secret as Secret,
     config.jwt.jwt_expire_in as string,
   );
 
+  // create refresh token
+  const refreshToken = jwtHelper.createToken(
+    {
+      id: isExistUser._id,
+      role: isExistUser.role,
+      email: isExistUser.email,
+    },
+    config.jwt.jwtRefreshSecret as Secret,
+    config.jwt.jwtRefreshExpiresIn || "30d",
+  );
 
-
-  const result = {
+  return {
     token: createToken,
+    refreshToken,
     data: isExistUser,
   };
-
-  return result;
 };
 
-// ========================== forget password ===========================
+// ========================== Forget Password ===========================
 const forgetPasswordToDB = async (email: string) => {
   const normalizedEmail = email?.trim().toLowerCase();
   const isExistUser = await User.findOne({
@@ -106,7 +223,6 @@ const forgetPasswordToDB = async (email: string) => {
     throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
   }
 
-  //send mail
   const otp = generateOTP();
   const value = {
     otp: Number(otp),
@@ -116,24 +232,28 @@ const forgetPasswordToDB = async (email: string) => {
   const forgetPassword = emailTemplate.resetPassword(value);
   emailHelper.sendEmail(forgetPassword);
 
-  //save to DB
   const authentication = {
-    oneTimeCode: otp,
+    oneTimeCode: Number(otp),
     expireAt: new Date(Date.now() + 3 * 60000),
+    isResetPassword: false,
   };
+
   await User.findOneAndUpdate(
     { _id: isExistUser._id },
     { $set: { authentication } },
   );
+
+  return { message: "A password reset OTP has been sent to your email." };
 };
 
-// =======================afriksms verify phone otp=============
+// ========================== Verify Email / OTP ===========================
 const verifyEmailToDB = async (payload: IVerifyEmail) => {
   const { email, oneTimeCode } = payload;
   const normalizedEmail = email?.trim().toLowerCase();
   const isExistUser = await User.findOne({
     $or: [{ email: normalizedEmail }, { userName: email?.trim() }],
   }).select("+authentication");
+
   if (!isExistUser) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
   }
@@ -141,20 +261,19 @@ const verifyEmailToDB = async (payload: IVerifyEmail) => {
   if (!oneTimeCode) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
-      "Please give the otp, check your email we send a code",
+      "Please provide the OTP code sent to your email.",
     );
   }
 
   if (isExistUser.authentication?.oneTimeCode !== oneTimeCode) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "You provided wrong otp");
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid OTP code!");
   }
 
   const date = new Date();
-  if (date > isExistUser.authentication?.expireAt) {
+  if (isExistUser.authentication?.expireAt && date > isExistUser.authentication.expireAt) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
-
-      "Otp already expired, Please try again",
+      "OTP code has expired. Please request a new one.",
     );
   }
 
@@ -162,12 +281,41 @@ const verifyEmailToDB = async (payload: IVerifyEmail) => {
   let data;
 
   if (!isExistUser.verified) {
-    await User.findOneAndUpdate(
+    // Signup verification flow
+    const updatedUser = await User.findOneAndUpdate(
       { _id: isExistUser._id },
-      { verified: true, authentication: { oneTimeCode: null, expireAt: null } },
+      { verified: true, authentication: { oneTimeCode: null, expireAt: null, isResetPassword: false } },
+      { new: true },
     );
-    message = "Email verify successfully";
+
+    const token = jwtHelper.createToken(
+      {
+        id: isExistUser._id,
+        role: isExistUser.role,
+        email: isExistUser.email,
+      },
+      config.jwt.jwt_secret as Secret,
+      config.jwt.jwt_expire_in as string,
+    );
+
+    const refreshToken = jwtHelper.createToken(
+      {
+        id: isExistUser._id,
+        role: isExistUser.role,
+        email: isExistUser.email,
+      },
+      config.jwt.jwtRefreshSecret as Secret,
+      config.jwt.jwtRefreshExpiresIn || "30d",
+    );
+
+    message = "Email verified successfully.";
+    data = {
+      token,
+      refreshToken,
+      user: updatedUser,
+    };
   } else {
+    // Forgot password flow
     await User.findOneAndUpdate(
       { _id: isExistUser._id },
       {
@@ -179,56 +327,58 @@ const verifyEmailToDB = async (payload: IVerifyEmail) => {
       },
     );
 
-    // create token ;
     const createToken = cryptoToken();
     await ResetToken.create({
       user: isExistUser._id,
       token: createToken,
       expireAt: new Date(Date.now() + 5 * 60000),
     });
-    message =
-      "Verification Successful: Please securely store and utilize this code for reset password";
+
+    message = "Verification successful. Please securely use this token to reset your password.";
     data = createToken;
   }
+
   return { data, message };
 };
 
+// ========================== Reset Password ===========================
 const resetPasswordToDB = async (
   token: string,
   payload: IAuthResetPassword,
 ) => {
   const { newPassword, confirmPassword } = payload;
-  // isExist token
-  const isExistToken = await ResetToken.isExistToken(token);
-  if (!isExistToken) {
-    throw new ApiError(StatusCodes.UNAUTHORIZED, "You are not authorized");
+
+  if (!token) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "Reset token is required!");
   }
 
-  // user permission check
+  const isExistToken = await ResetToken.isExistToken(token);
+  if (!isExistToken) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "You are not authorized!");
+  }
+
   const isExistUser = await User.findById(isExistToken.user).select(
     "+authentication",
   );
   if (!isExistUser?.authentication?.isResetPassword) {
     throw new ApiError(
       StatusCodes.UNAUTHORIZED,
-      "You don't have permission to change the password. Please click again to 'Forgot Password'",
+      "You don't have permission to change the password. Please initiate 'Forgot Password' again.",
     );
   }
 
-  // validity check
   const isValid = await ResetToken.isExpireToken(token);
   if (!isValid) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
-      "Token expired, Please click again to the forget password",
+      "Reset token expired. Please initiate 'Forgot Password' again.",
     );
   }
 
-  // check password
   if (newPassword !== confirmPassword) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
-      "New password and Confirm password doesn't match!",
+      "New password and confirm password do not match!",
     );
   }
 
@@ -237,16 +387,22 @@ const resetPasswordToDB = async (
     Number(config.bcrypt_salt_rounds),
   );
 
-  const updateData = {
-    password: hashPassword,
-    authentication: { isResetPassword: false },
-  };
+  await User.findOneAndUpdate(
+    { _id: isExistToken.user },
+    {
+      password: hashPassword,
+      authentication: { isResetPassword: false, oneTimeCode: null, expireAt: null },
+    },
+    { new: true },
+  );
 
-  await User.findOneAndUpdate({ _id: isExistToken.user }, updateData, {
-    new: true,
-  });
+  // Clean up used token
+  await ResetToken.deleteOne({ token });
+
+  return { message: "Password reset successfully." };
 };
 
+// ========================== Change Password ===========================
 const changePasswordToDB = async (
   user: JwtPayload,
   payload: IChangePassword,
@@ -257,47 +413,43 @@ const changePasswordToDB = async (
     throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
   }
 
-  // current password match
   if (
     currentPassword &&
     !(await User.isMatchPassword(currentPassword, isExistUser.password!))
   ) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "Password is incorrect");
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Current password is incorrect!");
   }
 
-  // newPassword and current password
   if (currentPassword === newPassword) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
-      "Please give different password from current password",
+      "New password must be different from current password!",
     );
   }
 
-  // new password and confirm password check
   if (newPassword !== confirmPassword) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
-      "Password and Confirm password doesn't matched",
+      "New password and confirm password do not match!",
     );
   }
 
-  // hash password
   const hashPassword = await bcrypt.hash(
     newPassword,
     Number(config.bcrypt_salt_rounds),
   );
 
-  const updateData = {
-    password: hashPassword,
-  };
-
-  await User.findOneAndUpdate({ _id: user.id }, updateData, { new: true });
+  await User.findOneAndUpdate(
+    { _id: user.id },
+    { password: hashPassword },
+    { new: true },
+  );
 };
 
+// ========================== Refresh Access Token ===========================
 const newAccessTokenToUser = async (token: string) => {
-  // Check if the token is provided
   if (!token) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "Token is required!");
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Refresh token is required!");
   }
 
   const verifyUser = jwtHelper.verifyToken(
@@ -307,18 +459,13 @@ const newAccessTokenToUser = async (token: string) => {
 
   const isExistUser = await User.findById(verifyUser?.id);
   if (!isExistUser) {
-    throw new ApiError(StatusCodes.UNAUTHORIZED, "Unauthorized access");
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "Unauthorized access!");
   }
 
-  // create token
   const accessToken = jwtHelper.createToken(
     {
       id: isExistUser._id,
-      role: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN].includes(
-        isExistUser.role as any,
-      )
-        ? isExistUser.role
-        : isExistUser.activeRole || isExistUser.role,
+      role: isExistUser.role,
       email: isExistUser.email,
     },
     config.jwt.jwt_secret as Secret,
@@ -328,27 +475,24 @@ const newAccessTokenToUser = async (token: string) => {
   return { accessToken };
 };
 
-// ==================resend otp phone afriksms=======================
+// ========================== Resend Verification OTP ===========================
 const resendVerificationEmailToDB = async (email: string) => {
   const normalizedEmail = email?.trim().toLowerCase();
-  // Find the user by ID
-  const existingUser: any = await User.findOne({
+  const existingUser = await User.findOne({
     $or: [{ email: normalizedEmail }, { userName: email?.trim() }],
-  }).lean();
+  });
 
   if (!existingUser) {
     throw new ApiError(
       StatusCodes.NOT_FOUND,
-
       "User with this email does not exist!",
     );
   }
 
-  if (existingUser?.verified) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "User is already verified!");
+  if (existingUser.verified) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "User account is already verified!");
   }
 
-  // Generate OTP and prepare email
   const otp = generateOTP();
   const emailValues = {
     name: existingUser.name,
@@ -359,54 +503,54 @@ const resendVerificationEmailToDB = async (email: string) => {
   const accountEmailTemplate = emailTemplate.createAccount(emailValues);
   emailHelper.sendEmail(accountEmailTemplate);
 
-  // Update user with authentication details
   const authentication = {
-    oneTimeCode: otp,
+    oneTimeCode: Number(otp),
     expireAt: new Date(Date.now() + 3 * 60000),
+    isResetPassword: false,
   };
 
   await User.findOneAndUpdate(
-    { email: email },
+    { _id: existingUser._id },
     { $set: { authentication } },
     { new: true },
   );
+
+  return { message: "A new OTP verification code has been sent to your email." };
 };
 
-const deleteUserFromDB = async (user: JwtPayload, password: string) => {
+// ========================== Delete User Account ===========================
+const deleteUserFromDB = async (user: JwtPayload, password?: string) => {
   const isExistUser = await User.findById(user.id).select("+password");
   if (!isExistUser) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
   }
 
-  // check match password
   if (
+    isExistUser.password &&
     password &&
-    !(await User.isMatchPassword(password, isExistUser.password!))
+    !(await User.isMatchPassword(password, isExistUser.password))
   ) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "Password is incorrect");
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Password is incorrect!");
   }
 
-  const updateUser = await User.findByIdAndDelete(user.id);
-  if (!updateUser) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
-  }
+  await User.softDeleteById(user.id);
   return;
 };
 
+// ========================== Google Social Login ===========================
 const googleLoginService = async (payload: {
   token: string;
   fcmToken?: string;
   deviceId?: string;
   deviceType?: "ios" | "android" | "web";
+  role?: USER_ROLES;
 }) => {
-  const { token, fcmToken, deviceId, deviceType } = payload;
-
-  console.log(token, fcmToken, "Token and device token");
+  const { token, fcmToken, deviceId, deviceType, role } = payload;
 
   if (!token) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
-      "Firebase ID token is required",
+      "Firebase ID token is required!",
     );
   }
 
@@ -416,35 +560,31 @@ const googleLoginService = async (payload: {
   } catch (error) {
     throw new ApiError(
       StatusCodes.UNAUTHORIZED,
-      "Invalid or expired Firebase token",
+      "Invalid or expired Firebase token!",
     );
   }
 
   const { uid: firebaseUid, email, name, picture, email_verified } = decoded;
 
-  // Email must exist for Google login
   if (!email) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
-      "Email not found in Google account",
+      "Email not found in Google account!",
     );
   }
 
-  // Optionally enforce email verification
-  if (!email_verified) {
-    throw new ApiError(
-      StatusCodes.FORBIDDEN,
-      "Please verify your email address with Google",
-    );
-  }
-
-  // Check if user exists
   let user = await User.findOne({
-    firebaseUid,
+    $or: [{ firebaseUid }, { email: email.toLowerCase() }],
   });
 
+  const validRoles = [
+    USER_ROLES.LANDLORD,
+    USER_ROLES.TENANT,
+    USER_ROLES.CONTRUCTOR,
+  ];
+  const assignedRole = role && validRoles.includes(role) ? role : USER_ROLES.LANDLORD;
+
   if (user) {
-    // Check user status
     if (user.status === STATUS.INACTIVE) {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
@@ -452,21 +592,15 @@ const googleLoginService = async (payload: {
       );
     }
 
-    // Update user info if changed
-    if (user.email !== email || user.profileImage !== picture) {
-      user.email = email;
-      user.profileImage = picture || user.profileImage;
-      user.verified = email_verified;
-      await user.save();
+    if (!user.firebaseUid) {
+      user.firebaseUid = firebaseUid;
     }
+    user.verified = true;
+    if (picture && !user.profileImage) {
+      user.profileImage = picture;
+    }
+    await user.save();
   } else {
-    const [firstName, ...rest] = (name || "").trim().split(" ");
-    const lastName = rest.join(" ");
-
-    // create full name
-    const fullName = [firstName, lastName].filter(Boolean).join(" ");
-
-    // Generate unique username
     const baseUsername = email.split("@")[0];
     let userName = baseUsername;
     let counter = 1;
@@ -478,12 +612,13 @@ const googleLoginService = async (payload: {
 
     user = await User.create({
       firebaseUid,
-      email,
+      email: email.toLowerCase(),
       userName,
-      name: fullName,
-      profileImage: picture,
-      verified: email_verified,
+      name: name || baseUsername,
+      profileImage: picture || "",
+      verified: true,
       status: STATUS.ACTIVE,
+      role: assignedRole,
     });
   }
 
@@ -496,33 +631,35 @@ const googleLoginService = async (payload: {
     });
   }
 
-  // create token
   const createToken = jwtHelper.createToken(
     {
       id: user._id,
-      role: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN].includes(
-        user.role as any,
-      )
-        ? user.role
-        : user.activeRole || user.role,
+      role: user.role,
       email: user.email,
     },
     config.jwt.jwt_secret as Secret,
     config.jwt.jwt_expire_in as string,
   );
 
-
-
-
+  const refreshToken = jwtHelper.createToken(
+    {
+      id: user._id,
+      role: user.role,
+      email: user.email,
+    },
+    config.jwt.jwtRefreshSecret as Secret,
+    config.jwt.jwtRefreshExpiresIn || "30d",
+  );
 
   return {
     token: createToken,
+    refreshToken,
     user,
   };
 };
 
-
 export const AuthService = {
+  signUpUserToDB,
   loginUserFromDB,
   forgetPasswordToDB,
   resetPasswordToDB,
@@ -532,5 +669,5 @@ export const AuthService = {
   resendVerificationEmailToDB,
   deleteUserFromDB,
   googleLoginService,
-
 };
+

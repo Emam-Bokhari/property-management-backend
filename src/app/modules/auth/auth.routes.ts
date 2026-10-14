@@ -4,25 +4,30 @@ import validateRequest from "../../middlewares/validateRequest";
 import { AuthController } from "./auth.controller";
 import { AuthValidation } from "./auth.validation";
 import { USER_ROLES } from "../../../enums/user";
-import { isUserOrSeller } from "../../../helpers/authHelper";
+
 const router = express.Router();
 
+/* ---------------------------- SIGNUP / REGISTER ---------------------------- */
+router.post(
+  "/signup",
+  validateRequest(AuthValidation.signUpZodSchema),
+  AuthController.signUp,
+);
+
+router.post(
+  "/register",
+  validateRequest(AuthValidation.signUpZodSchema),
+  AuthController.signUp,
+);
+
+/* ---------------------------- LOGIN ---------------------------------------- */
 router.post(
   "/login",
   validateRequest(AuthValidation.createLoginZodSchema),
   AuthController.loginUser,
 );
 
-router.post(
-  "/forget-password",
-  validateRequest(AuthValidation.createForgetPasswordZodSchema),
-  AuthController.forgetPassword,
-);
-
-router.post("/refresh-token", AuthController.newAccessToken);
-
-router.post("/resend-otp", AuthController.resendVerificationEmail);
-
+/* ---------------------------- VERIFY EMAIL --------------------------------- */
 router.post(
   "/verify-email",
   async (req: Request, res: Response, next: NextFunction) => {
@@ -41,6 +46,16 @@ router.post(
   AuthController.verifyEmail,
 );
 
+/* ---------------------------- RESEND OTP ----------------------------------- */
+router.post("/resend-otp", AuthController.resendVerificationEmail);
+
+/* ---------------------------- PASSWORD MANAGEMENT -------------------------- */
+router.post(
+  "/forget-password",
+  validateRequest(AuthValidation.createForgetPasswordZodSchema),
+  AuthController.forgetPassword,
+);
+
 router.post(
   "/reset-password",
   validateRequest(AuthValidation.createResetPasswordZodSchema),
@@ -51,28 +66,33 @@ router.post(
   "/change-password",
   auth(
     USER_ROLES.ADMIN,
-    USER_ROLES.SELLER,
-    USER_ROLES.USER,
     USER_ROLES.SUPER_ADMIN,
+    USER_ROLES.LANDLORD,
+    USER_ROLES.TENANT,
+    USER_ROLES.CONTRUCTOR,
   ),
   validateRequest(AuthValidation.createChangePasswordZodSchema),
   AuthController.changePassword,
 );
 
-router.post("/resend-otp", AuthController.resendVerificationEmail);
+/* ---------------------------- TOKEN REFRESH -------------------------------- */
+router.post("/refresh-token", AuthController.newAccessToken);
 
+/* ---------------------------- DELETE ACCOUNT ------------------------------- */
 router.delete(
   "/delete-account",
   auth(
     USER_ROLES.ADMIN,
-    USER_ROLES.SELLER,
-    USER_ROLES.USER,
     USER_ROLES.SUPER_ADMIN,
+    USER_ROLES.LANDLORD,
+    USER_ROLES.TENANT,
+    USER_ROLES.CONTRUCTOR,
   ),
   AuthController.deleteUser,
 );
 
-// google login
+/* ---------------------------- SOCIAL LOGIN --------------------------------- */
 router.post("/google-login", AuthController.googleLogin);
 
 export const AuthRoutes = router;
+

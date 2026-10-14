@@ -5,20 +5,29 @@ import { NotificationPreferenceController } from "./notificationPreference.contr
 
 const router = express.Router();
 
+const authorizedRoles = [
+  USER_ROLES.LANDLORD,
+  USER_ROLES.TENANT,
+  USER_ROLES.CONTRUCTOR,
+  USER_ROLES.ADMIN,
+  USER_ROLES.SUPER_ADMIN,
+];
+
 // user routes
 router
   .route("/")
   .get(
-    auth(USER_ROLES.USER, USER_ROLES.SELLER),
+    auth(...authorizedRoles),
     NotificationPreferenceController.getNotificationPreference,
   )
   .patch(
-    auth(USER_ROLES.USER, USER_ROLES.SELLER),
+    auth(...authorizedRoles),
     NotificationPreferenceController.updateNotificationPreference,
   )
   .delete(
-    auth(USER_ROLES.USER, USER_ROLES.SELLER),
+    auth(...authorizedRoles),
     NotificationPreferenceController.deleteNotificationPreference,
   );
 
 export const NotificationPreferenceRoutes = router;
+

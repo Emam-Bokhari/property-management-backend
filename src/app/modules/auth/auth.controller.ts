@@ -5,6 +5,17 @@ import { JwtPayload } from "jsonwebtoken";
 import catchAsync from "../../../shared/catchAsync";
 import sendResponse from "../../../shared/sendResponse";
 
+const signUp = catchAsync(async (req: Request, res: Response) => {
+  const result = await AuthService.signUpUserToDB(req.body);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.CREATED,
+    message: result.message,
+    data: result,
+  });
+});
+
 const verifyEmail = catchAsync(async (req: Request, res: Response) => {
   const { ...verifyData } = req.body;
   const result = await AuthService.verifyEmailToDB(verifyData);
@@ -36,7 +47,7 @@ const forgetPassword = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, {
     success: true,
     statusCode: StatusCodes.OK,
-    message: "Please check your email, we send a OTP!",
+    message: result.message || "Please check your email, we send an OTP!",
     data: result,
   });
 });
@@ -49,7 +60,7 @@ const resetPassword = catchAsync(async (req, res) => {
   sendResponse(res, {
     success: true,
     statusCode: StatusCodes.OK,
-    message: "Your password has been successfully reset.",
+    message: result.message || "Your password has been successfully reset.",
     data: result,
   });
 });
@@ -86,7 +97,7 @@ const resendVerificationEmail = catchAsync(
     sendResponse(res, {
       success: true,
       statusCode: StatusCodes.OK,
-      message: "Generate OTP and send successfully",
+      message: result.message || "OTP sent successfully",
       data: result,
     });
   },
@@ -102,7 +113,7 @@ const deleteUser = catchAsync(async (req: Request, res: Response) => {
   sendResponse(res, {
     success: true,
     statusCode: StatusCodes.OK,
-    message: "Account Deleted successfully",
+    message: "Account deleted successfully",
     data: result,
   });
 });
@@ -115,7 +126,6 @@ const googleLogin = catchAsync(async (req: Request, res: Response) => {
     token,
     deviceToken,
   };
-  console.log(token, deviceToken, "controller token");
   const result = await AuthService.googleLoginService(data);
 
   sendResponse(res, {
@@ -126,9 +136,8 @@ const googleLogin = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-
-
 export const AuthController = {
+  signUp,
   verifyEmail,
   loginUser,
   forgetPassword,
@@ -139,3 +148,4 @@ export const AuthController = {
   deleteUser,
   googleLogin,
 };
+
