@@ -145,6 +145,8 @@ const userSchema = new Schema<IUser, IUserModel>(
       virtuals: true,
       transform: (_doc, ret) => {
         delete ret.id;
+        delete ret.password;
+        delete ret.authentication;
         return ret;
       },
     },
@@ -152,6 +154,8 @@ const userSchema = new Schema<IUser, IUserModel>(
       virtuals: true,
       transform: (_doc, ret) => {
         delete ret.id;
+        delete ret.password;
+        delete ret.authentication;
         return ret;
       },
     },

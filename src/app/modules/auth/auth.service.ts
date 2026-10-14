@@ -23,9 +23,9 @@ import { FcmTokenService } from "../fcmToken/fcmService";
 import { sendNotifications } from "../../../helpers/notificationsHelper";
 import { NOTIFICATION_TYPE } from "../notification/notification.constant";
 
-// ========================== Sign Up via Email ===========================
+// ========================== Sign Up via Email (Landlord) ===========================
 const signUpUserToDB = async (payload: ISignUpData) => {
-  const { email, password, name, role, phone, countryCode, address, fcmToken, deviceId, deviceType } = payload;
+  const { email, password, name, fcmToken, deviceId, deviceType } = payload;
 
   if (!email) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Email is required!");
@@ -49,16 +49,6 @@ const signUpUserToDB = async (payload: ISignUpData) => {
     await User.deleteOne({ _id: isExistUser._id });
   }
 
-  const allowedRoles = [
-    USER_ROLES.LANDLORD,
-    USER_ROLES.TENANT,
-    USER_ROLES.CONTRUCTOR,
-  ];
-
-  const userRole = role && allowedRoles.includes(role)
-    ? role
-    : USER_ROLES.LANDLORD;
-
   // Generate 6-digit OTP
   const otp = generateOTP();
   const authentication = {
@@ -68,13 +58,10 @@ const signUpUserToDB = async (payload: ISignUpData) => {
   };
 
   const newUser = await User.create({
-    name,
+    name: name.trim(),
     email: normalizedEmail,
     password,
-    role: userRole,
-    phone,
-    countryCode,
-    address,
+    role: USER_ROLES.LANDLORD,
     verified: false,
     status: STATUS.ACTIVE,
     authentication,
@@ -126,10 +113,15 @@ const signUpUserToDB = async (payload: ISignUpData) => {
     });
   }
 
+  // Convert user to object and strip sensitive fields
+  const userResult = newUser.toObject();
+  delete (userResult as any).password;
+  delete (userResult as any).authentication;
+
   return {
     message: "Your account has been successfully created. Please verify your email with the OTP sent to your inbox.",
     token,
-    user: newUser,
+    user: userResult,
   };
 };
 

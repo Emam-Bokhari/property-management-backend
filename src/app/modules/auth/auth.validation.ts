@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { USER_ROLES } from "../../../enums/user";
 
 const signUpZodSchema = z.object({
   body: z.object({
@@ -10,17 +9,6 @@ const signUpZodSchema = z.object({
     password: z
       .string({ required_error: "Password is required" })
       .min(8, "Password must be at least 8 characters"),
-    role: z
-      .enum([
-        USER_ROLES.LANDLORD,
-        USER_ROLES.TENANT,
-        USER_ROLES.CONTRUCTOR,
-      ])
-      .optional()
-      .default(USER_ROLES.LANDLORD),
-    phone: z.string().optional(),
-    countryCode: z.string().optional(),
-    address: z.string().optional(),
     fcmToken: z.string().optional(),
     deviceId: z.string().optional(),
     deviceType: z.enum(["ios", "android", "web"]).optional(),
