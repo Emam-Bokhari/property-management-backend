@@ -95,6 +95,10 @@ const propertySchema = new Schema<TProperty, PropertyModel>(
       ref: "AppOption",
       required: true,
     },
+    isHmo: {
+      type: Boolean,
+      default: false,
+    },
     yearBuilt: {
       type: String,
       required: true,

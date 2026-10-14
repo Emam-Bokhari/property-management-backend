@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 import { ISoftDeleteModel } from "../../../types/softDelete";
-import { COUNCIL_TAX, EPC_RATING, COMPLIANCE_TYPE } from "./property.constant";
+import { COUNCIL_TAX, EPC_RATING } from "./property.constant";
 
 export type TCouncil = {
   authority: string;
@@ -46,6 +46,7 @@ export type TProperty = {
   postCode: string;
   floorsInBuilding: string;
   propertyType: Types.ObjectId;
+  isHmo?: boolean;
   yearBuilt: string;
   datePurchased: string | Date;
   valuation: number;

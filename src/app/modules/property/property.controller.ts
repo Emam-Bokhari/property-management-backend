@@ -75,6 +75,61 @@ const updateProperty = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateCouncil = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+  if (!userId) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await PropertyService.updateCouncilToDB(userId, id, req.body);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Property council details updated successfully",
+    data: result,
+  });
+});
+
+const updateParking = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+  if (!userId) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await PropertyService.updateParkingToDB(userId, id, req.body);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Property parking details updated successfully",
+    data: result,
+  });
+});
+
+const updateCompliance = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+  if (!userId) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await PropertyService.updateComplianceToDB(
+    userId,
+    id,
+    req.body,
+  );
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Property compliance certificate updated successfully",
+    data: result,
+  });
+});
+
 const deleteProperty = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.id;
   const { id } = req.params;
@@ -97,5 +152,8 @@ export const PropertyController = {
   getAllProperties,
   getSingleProperty,
   updateProperty,
+  updateCouncil,
+  updateParking,
+  updateCompliance,
   deleteProperty,
 };

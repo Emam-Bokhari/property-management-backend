@@ -35,4 +35,28 @@ router
     PropertyController.deleteProperty,
   );
 
+router
+  .route("/:id/council")
+  .patch(
+    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    validateRequest(PropertyValidation.updateCouncilZodSchema),
+    PropertyController.updateCouncil,
+  );
+
+router
+  .route("/:id/parking")
+  .patch(
+    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    validateRequest(PropertyValidation.updateParkingZodSchema),
+    PropertyController.updateParking,
+  );
+
+router
+  .route("/:id/compliance")
+  .patch(
+    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    validateRequest(PropertyValidation.updateComplianceZodSchema),
+    PropertyController.updateCompliance,
+  );
+
 export const PropertyRoutes = router;

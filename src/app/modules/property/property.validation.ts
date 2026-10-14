@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { COUNCIL_TAX, EPC_RATING } from "./property.constant";
+import { COUNCIL_TAX, EPC_RATING, COMPLIANCE_TYPE } from "./property.constant";
 
 const councilZodSchema = z.object({
   authority: z
@@ -11,7 +11,17 @@ const councilZodSchema = z.object({
   reference: z
     .string({ required_error: "Council reference is required" })
     .min(1, "Council reference cannot be empty"),
-  contact: z.number({ required_error: "Council contact is required" }),
+  contact: z.union(
+    [
+      z.number(),
+      z.string().transform((val) => {
+        const cleaned = val.replace(/\s+/g, "");
+        const num = Number(cleaned);
+        return isNaN(num) ? 0 : num;
+      }),
+    ],
+    { required_error: "Council contact is required" },
+  ),
   bins: z.string().optional(),
   councilPhoto: z.string().optional(),
 });
@@ -62,6 +72,7 @@ const createPropertyZodSchema = z.object({
       .string({ required_error: "Floors in building is required" })
       .min(1, "Floors in building cannot be empty"),
     propertyType: z.string({ required_error: "Property type ID is required" }),
+    isHmo: z.boolean().optional().default(false),
     yearBuilt: z
       .string({ required_error: "Year built is required" })
       .min(1, "Year built cannot be empty"),
@@ -108,6 +119,7 @@ const updatePropertyZodSchema = z.object({
       .min(1, "Floors in building cannot be empty")
       .optional(),
     propertyType: z.string().optional(),
+    isHmo: z.boolean().optional(),
     yearBuilt: z.string().min(1, "Year built cannot be empty").optional(),
     datePurchased: z.union([z.string(), z.date()]).optional(),
     valuation: z.number().optional(),
@@ -124,7 +136,44 @@ const updatePropertyZodSchema = z.object({
   }),
 });
 
+const updateCouncilZodSchema = z.object({
+  body: councilZodSchema.partial().refine((data) => Object.keys(data).length > 0, {
+    message: "At least one council field must be provided to update",
+  }),
+});
+
+const updateParkingZodSchema = z.object({
+  body: parkingZodSchema.partial().refine((data) => Object.keys(data).length > 0, {
+    message: "At least one parking field must be provided to update",
+  }),
+});
+
+const updateComplianceZodSchema = z.object({
+  body: z.object({
+    complianceType: z.union([
+      z.nativeEnum(COMPLIANCE_TYPE),
+      z.enum([
+        "gasSafety",
+        "electrical",
+        "energyPerformance",
+        "landlordInsurance",
+        "depositProtection",
+        "propertyLicense",
+        "otherDocuments",
+      ]),
+    ], {
+      required_error: "Compliance type is required",
+    }),
+    certificateUrl: z
+      .string({ required_error: "Certificate URL is required" })
+      .min(1, "Certificate URL cannot be empty"),
+  }),
+});
+
 export const PropertyValidation = {
   createPropertyZodSchema,
   updatePropertyZodSchema,
+  updateCouncilZodSchema,
+  updateParkingZodSchema,
+  updateComplianceZodSchema,
 };
