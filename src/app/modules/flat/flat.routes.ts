@@ -76,7 +76,7 @@ router
     FlatController.deleteKey,
   );
 
-// ------------------- UTILITIES ROUTES (Single data, create or replace) -------------------
+// ------------------- UTILITIES (Gas) ROUTES (Single data, create or replace) -------------------
 // Gas
 router
   .route("/:id/gas")
