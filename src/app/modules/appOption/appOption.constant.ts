@@ -3,3 +3,5 @@ export enum AppOptionType {
   PROPERTY_TYPE = "property_type",
   COMMUNAL_AREA = "communal_area",
 }
+
+export const appOptionSearchableFields = ["name"];

@@ -8,3 +8,4 @@ export type TAppOption = {
 };
 
 export type AppOptionModel = ISoftDeleteModel<TAppOption>;
+ 
