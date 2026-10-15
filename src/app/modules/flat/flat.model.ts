@@ -16,10 +16,10 @@ import {
 const gasSchema = new Schema<TGas>(
   {
     supplier: { type: String, trim: true },
-    mprn: { type: Number },
+    mprn: { type: Schema.Types.Mixed },
     location: { type: String, trim: true },
     shutOff: { type: String, trim: true },
-    helpline: { type: Number },
+    helpline: { type: Schema.Types.Mixed },
     notes: { type: String },
     meterPhoto: { type: String },
   },
@@ -29,10 +29,10 @@ const gasSchema = new Schema<TGas>(
 const electricitySchema = new Schema<TElectricity>(
   {
     supplier: { type: String, trim: true },
-    mprn: { type: Number },
+    mprn: { type: Schema.Types.Mixed },
     location: { type: String, trim: true },
     consumerUnit: { type: String, trim: true },
-    helpline: { type: Number },
+    helpline: { type: Schema.Types.Mixed },
     notes: { type: String },
     meterPhoto: { type: String },
   },
@@ -42,10 +42,10 @@ const electricitySchema = new Schema<TElectricity>(
 const waterSchema = new Schema<TWater>(
   {
     supplier: { type: String, trim: true },
-    meterNumber: { type: Number },
+    meterNumber: { type: Schema.Types.Mixed },
     stopcock: { type: String, trim: true },
     streetValve: { type: String, trim: true },
-    helpline: { type: Number },
+    helpline: { type: Schema.Types.Mixed },
     notes: { type: String },
     meterPhoto: { type: String },
   },
@@ -58,7 +58,7 @@ const wifiSchema = new Schema<TWifi>(
     network: { type: String, trim: true },
     password: { type: String },
     router: { type: String, trim: true },
-    supportNumber: { type: Number },
+    supportNumber: { type: Schema.Types.Mixed },
     notes: { type: String },
     routerPhoto: { type: String },
   },
@@ -72,7 +72,7 @@ const keySchema = new Schema<TKey>(
     location: { type: String, required: true, trim: true },
     heldBy: { type: String, required: true, trim: true },
   },
-  { _id: false },
+  { _id: true, timestamps: true },
 );
 
 const safetyAlarmSchema = new Schema<TSafetyAlarm>(
@@ -82,7 +82,7 @@ const safetyAlarmSchema = new Schema<TSafetyAlarm>(
     locationInProperty: { type: String, trim: true },
     expiry: { type: Date },
   },
-  { _id: false },
+  { _id: true, timestamps: true },
 );
 
 const applianceSchema = new Schema<TAppliance>(
@@ -93,11 +93,17 @@ const applianceSchema = new Schema<TAppliance>(
     modelNote: { type: String },
     warranty: { type: String },
   },
-  { _id: false },
+  { _id: true, timestamps: true },
 );
 
 const flatSchema = new Schema<TFlat, FlatModel>(
   {
+    landlord: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
     unitName: {
       type: String,
       required: true,
@@ -133,12 +139,13 @@ const flatSchema = new Schema<TFlat, FlatModel>(
     furnished: {
       type: String,
       enum: Object.values(FURNISHED_TYPE),
-      default: FURNISHED_TYPE.NOT_FURNISHED,
+      default: FURNISHED_TYPE.NOT_SET,
     },
     property: {
       type: Schema.Types.ObjectId,
       ref: "Property",
       required: true,
+      index: true,
     },
     flatPhotos: [
       {

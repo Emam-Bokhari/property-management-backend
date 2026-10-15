@@ -4,46 +4,47 @@ import { FURNISHED_TYPE } from "./flat.constant";
 
 // services & meters
 export type TGas = {
-  supplier: string;
-  mprn: number;
-  location: string;
-  shutOff: string;
-  helpline: number;
+  supplier?: string;
+  mprn?: number | string;
+  location?: string;
+  shutOff?: string;
+  helpline?: number | string;
   notes?: string;
   meterPhoto?: string;
 };
 
 export type TElectricity = {
-  supplier: string;
-  mprn: number;
-  location: string;
-  consumerUnit: string;
-  helpline: number;
+  supplier?: string;
+  mprn?: number | string;
+  location?: string;
+  consumerUnit?: string;
+  helpline?: number | string;
   notes?: string;
   meterPhoto?: string;
 };
 
 export type TWater = {
-  supplier: string;
-  meterNumber: number;
-  stopcock: string;
-  streetValve: string;
-  helpline: number;
+  supplier?: string;
+  meterNumber?: number | string;
+  stopcock?: string;
+  streetValve?: string;
+  helpline?: number | string;
   notes?: string;
   meterPhoto?: string;
 };
 
 export type TWifi = {
-  provider: string;
-  network: string;
-  password: string;
-  router: string;
-  supportNumber: number;
+  provider?: string;
+  network?: string;
+  password?: string;
+  router?: string;
+  supportNumber?: number | string;
   notes?: string;
   routerPhoto?: string;
 };
 
 export type TKey = {
+  _id?: Types.ObjectId | string;
   keyType: string;
   quantity: number;
   location: string;
@@ -51,6 +52,7 @@ export type TKey = {
 };
 
 export type TSafetyAlarm = {
+  _id?: Types.ObjectId | string;
   alarmPhoto?: string;
   alarmName?: string;
   locationInProperty?: string;
@@ -58,6 +60,7 @@ export type TSafetyAlarm = {
 };
 
 export type TAppliance = {
+  _id?: Types.ObjectId | string;
   appliancePhoto?: string;
   applianceName: string;
   brand?: string;
@@ -66,6 +69,7 @@ export type TAppliance = {
 };
 
 export type TFlat = {
+  landlord?: Types.ObjectId;
   unitName: string;
   rentPerMonth: number;
   beds?: number;

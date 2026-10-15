@@ -47,7 +47,8 @@ const resolveMode = (
   if (
     fieldName === "images" ||
     fieldName === "propertyPhotos" ||
-    fieldName === "floorPlanPhotos"
+    fieldName === "floorPlanPhotos" ||
+    fieldName === "flatPhotos"
   ) {
     return "multiple";
   }
@@ -76,6 +77,14 @@ export const parseFileData = (...fields: FieldInput[]) => {
         "parking",
         "compliance",
         "floorPlanPhotos",
+        "flatPhotos",
+        "key",
+        "gas",
+        "electricity",
+        "water",
+        "wifi",
+        "safetyAlarms",
+        "appliances",
       ];
       for (const f of jsonFieldsToParse) {
         if (typeof req.body?.[f] === "string") {
@@ -248,12 +257,13 @@ export const parseFileData = (...fields: FieldInput[]) => {
         delete parsedBody.uploadedFiles;
       }
 
-      // Normalize single string images in parsedBody / req.body for multiple mode / images / propertyPhotos / floorPlanPhotos
+      // Normalize single string images in parsedBody / req.body for multiple mode / images / propertyPhotos / floorPlanPhotos / flatPhotos
       for (const { fieldName, mode } of effectiveNormalized) {
         if (
           fieldName === "images" ||
           fieldName === "propertyPhotos" ||
           fieldName === "floorPlanPhotos" ||
+          fieldName === "flatPhotos" ||
           mode === "multiple"
         ) {
           if (typeof parsedBody[fieldName] === "string") {

@@ -11,8 +11,10 @@ import { NotificationRoutes } from "../modules/notification/notification.routes"
 import { FcmTokenRoutes } from "../modules/fcmToken/fcmToken.route";
 import { NotificationPreferenceRoutes } from "../modules/notificationPreference/notificationPreference.route";
 import { PropertyRoutes } from "../modules/property/property.routes";
+import { FlatRoutes } from "../modules/flat/flat.routes";
 import { AnnouncementRoutes } from "../modules/announcement/announcement.routes";
 import { AppOptionRoutes } from "../modules/appOption/appOption.routes";
+
 
 const router = express.Router();
 
@@ -66,9 +68,14 @@ const apiRoutes = [
     route: PropertyRoutes,
   },
   {
+    path: "/flats",
+    route: FlatRoutes,
+  },
+  {
     path: "/announcements",
     route: AnnouncementRoutes,
   },
+
   {
     path: "/app-options",
     route: AppOptionRoutes,

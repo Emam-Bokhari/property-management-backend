@@ -254,7 +254,60 @@ export const FILE_CONFIG = {
       "image/svg+xml",
     ]),
   },
+  flatPhotos: {
+    dir: "flatPhotos",
+    maxCount: 20,
+    mimeTypes: new Set([
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/webp",
+      "image/svg+xml",
+    ]),
+  },
+  meterPhoto: {
+    dir: "meterPhoto",
+    maxCount: 5,
+    mimeTypes: new Set([
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/webp",
+      "application/pdf",
+    ]),
+  },
+  routerPhoto: {
+    dir: "routerPhoto",
+    maxCount: 5,
+    mimeTypes: new Set([
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/webp",
+    ]),
+  },
+  alarmPhoto: {
+    dir: "alarmPhoto",
+    maxCount: 5,
+    mimeTypes: new Set([
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/webp",
+    ]),
+  },
+  appliancePhoto: {
+    dir: "appliancePhoto",
+    maxCount: 5,
+    mimeTypes: new Set([
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/webp",
+    ]),
+  },
   floorPlanPhotos: {
+
     dir: "floorPlanPhotos",
     maxCount: 10,
     mimeTypes: new Set([
