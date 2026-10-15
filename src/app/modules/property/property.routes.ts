@@ -77,11 +77,8 @@ router
     auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
     fileUploadHandler(),
     parseFileData(
-      { fieldName: "certificate", mode: "single" },
       { fieldName: "certificateUrl", mode: "single" },
-      { fieldName: "complianceDocument", mode: "single" },
-      { fieldName: "file", mode: "single" },
-      { fieldName: "document", mode: "single" },
+
     ),
     validateRequest(PropertyValidation.updateComplianceZodSchema),
     PropertyController.updateCompliance,
