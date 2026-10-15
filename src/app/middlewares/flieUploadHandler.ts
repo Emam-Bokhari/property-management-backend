@@ -397,6 +397,34 @@ export const FILE_CONFIG = {
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ]),
   },
+  otherDocuments: {
+    dir: "certificate",
+    maxCount: 20,
+    mimeTypes: new Set([
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/webp",
+      "application/pdf",
+      "text/plain",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ]),
+  },
+  documents: {
+    dir: "certificate",
+    maxCount: 20,
+    mimeTypes: new Set([
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/webp",
+      "application/pdf",
+      "text/plain",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ]),
+  },
 } satisfies Record<string, FileConfig>;
 
 export type IFolderName = keyof typeof FILE_CONFIG;

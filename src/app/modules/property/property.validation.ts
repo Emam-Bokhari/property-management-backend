@@ -60,7 +60,9 @@ const complianceZodSchema = z.object({
   landlordInsurance: complianceItemZodSchema.optional(),
   depositProtection: complianceItemZodSchema.optional(),
   propertyLicense: complianceItemZodSchema.optional(),
-  otherDocuments: complianceItemZodSchema.optional(),
+  otherDocuments: z
+    .union([z.string().transform((val) => [val]), z.array(z.string())])
+    .optional(),
 });
 
 const createPropertyZodSchema = z.object({
@@ -191,27 +193,47 @@ const updateParkingZodSchema = z.object({
     }),
 });
 
+const complianceTypeEnum = z.union(
+  [
+    z.nativeEnum(COMPLIANCE_TYPE),
+    z.enum([
+      "gasSafety",
+      "electrical",
+      "energyPerformance",
+      "landlordInsurance",
+      "depositProtection",
+      "propertyLicense",
+      "otherDocuments",
+    ]),
+  ],
+  {
+    required_error: "Compliance type is required",
+  },
+);
+
 const updateComplianceZodSchema = z.object({
   body: z.object({
-    complianceType: z.union(
+    complianceType: complianceTypeEnum,
+    certificateUrl: z.union(
       [
-        z.nativeEnum(COMPLIANCE_TYPE),
-        z.enum([
-          "gasSafety",
-          "electrical",
-          "energyPerformance",
-          "landlordInsurance",
-          "depositProtection",
-          "propertyLicense",
-          "otherDocuments",
-        ]),
+        z.string().min(1, "Certificate URL cannot be empty"),
+        z
+          .array(z.string().min(1))
+          .min(1, "At least one certificate URL is required"),
       ],
       {
-        required_error: "Compliance type is required",
+        required_error: "Certificate URL is required",
       },
     ),
+    oldCertificateUrl: z.string().optional(),
+  }),
+});
+
+const deleteComplianceZodSchema = z.object({
+  body: z.object({
+    complianceType: complianceTypeEnum,
     certificateUrl: z
-      .string({ required_error: "Certificate URL is required" })
+      .string({ required_error: "Certificate URL is required to delete" })
       .min(1, "Certificate URL cannot be empty"),
   }),
 });
@@ -238,6 +260,7 @@ export const PropertyValidation = {
   updateCouncilZodSchema,
   updateParkingZodSchema,
   updateComplianceZodSchema,
+  deleteComplianceZodSchema,
   updateFloorPlansZodSchema,
   updateHouseRulesZodSchema,
 };

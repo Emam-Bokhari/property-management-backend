@@ -48,7 +48,9 @@ const resolveMode = (
     fieldName === "images" ||
     fieldName === "propertyPhotos" ||
     fieldName === "floorPlanPhotos" ||
-    fieldName === "flatPhotos"
+    fieldName === "flatPhotos" ||
+    fieldName === "otherDocuments" ||
+    fieldName === "documents"
   ) {
     return "multiple";
   }
@@ -79,6 +81,9 @@ export const parseFileData = (...fields: FieldInput[]) => {
         "floorPlanPhotos",
         "flatPhotos",
         "houseRules",
+        "otherDocuments",
+        "documents",
+        "titles",
         "key",
         "gas",
         "electricity",
@@ -183,14 +188,22 @@ export const parseFileData = (...fields: FieldInput[]) => {
         fileData.certificateUrl ||
         fileData.complianceDocument ||
         fileData.file ||
-        fileData.document
+        fileData.document ||
+        fileData.otherDocuments ||
+        fileData.documents
       ) {
         fileData.certificateUrl =
           fileData.certificateUrl ||
           fileData.certificate ||
           fileData.complianceDocument ||
           fileData.file ||
-          fileData.document;
+          fileData.document ||
+          fileData.otherDocuments ||
+          fileData.documents;
+      }
+
+      if (!req.body?.certificateUrl && (req.body?.otherDocuments || req.body?.documents)) {
+        req.body.certificateUrl = req.body.otherDocuments || req.body.documents;
       }
 
       // If councilPhoto was uploaded and council object exists
@@ -265,6 +278,8 @@ export const parseFileData = (...fields: FieldInput[]) => {
           fieldName === "propertyPhotos" ||
           fieldName === "floorPlanPhotos" ||
           fieldName === "flatPhotos" ||
+          fieldName === "otherDocuments" ||
+          fieldName === "documents" ||
           mode === "multiple"
         ) {
           if (typeof parsedBody[fieldName] === "string") {

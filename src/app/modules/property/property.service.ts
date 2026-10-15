@@ -283,11 +283,15 @@ const updateParkingToDB = async (
   return updatedProperty;
 };
 
-// Update/Upload Compliance Document by Property ID with automatic history archiving
+// Update/Upload Compliance Document by Property ID
 const updateComplianceToDB = async (
   userId: string,
   id: string,
-  payload: { complianceType: string; certificateUrl: string },
+  payload: {
+    complianceType: string;
+    certificateUrl: string | string[];
+    oldCertificateUrl?: string;
+  },
 ) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid property ID");
@@ -315,23 +319,129 @@ const updateComplianceToDB = async (
     property.compliance = {};
   }
 
-  const currentItem = property.compliance[categoryKey] || { history: [] };
+  // Handle otherDocuments (Array of string URLs)
+  if (categoryKey === "otherDocuments") {
+    if (!Array.isArray(property.compliance.otherDocuments)) {
+      property.compliance.otherDocuments = [];
+    }
+
+    const newUrls = Array.isArray(payload.certificateUrl)
+      ? payload.certificateUrl
+      : [payload.certificateUrl];
+
+    // If updating a specific document by old URL
+    if (payload.oldCertificateUrl) {
+      const index = property.compliance.otherDocuments.indexOf(
+        payload.oldCertificateUrl,
+      );
+      if (index !== -1) {
+        property.compliance.otherDocuments[index] = newUrls[0];
+      } else {
+        property.compliance.otherDocuments.push(...newUrls);
+      }
+    } else {
+      property.compliance.otherDocuments.push(...newUrls);
+    }
+
+    property.markModified("compliance");
+    await property.save();
+
+    return await Property.findById(id).populate("propertyType").populate({
+      path: "landlord",
+      select: "firstName lastName email role profileImage",
+    });
+  }
+
+  // Handle single certificate compliance (gasSafety, electrical, etc.)
+  const singleUrl = Array.isArray(payload.certificateUrl)
+    ? payload.certificateUrl[0]
+    : payload.certificateUrl;
+
+  const currentItem = (property.compliance[categoryKey] as any) || {
+    history: [],
+  };
   const existingCurrent = currentItem.current;
 
   const history = Array.isArray(currentItem.history)
     ? [...currentItem.history]
     : [];
 
-  if (existingCurrent && existingCurrent !== payload.certificateUrl) {
+  if (existingCurrent && existingCurrent !== singleUrl) {
     if (!history.includes(existingCurrent)) {
       history.push(existingCurrent);
     }
   }
 
-  property.compliance[categoryKey] = {
-    current: payload.certificateUrl,
+  (property.compliance as any)[categoryKey] = {
+    current: singleUrl,
     history,
   };
+
+  property.markModified("compliance");
+  await property.save();
+
+  return await Property.findById(id).populate("propertyType").populate({
+    path: "landlord",
+    select: "firstName lastName email role profileImage",
+  });
+};
+
+// Delete Compliance Document by Property ID
+const deleteComplianceFromDB = async (
+  userId: string,
+  id: string,
+  payload: { complianceType: string; certificateUrl: string },
+) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid property ID");
+  }
+
+  const property = await Property.findById(id);
+  if (!property) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Property not found");
+  }
+
+  const landlordId = property.landlord?.toString();
+  if (landlordId !== userId.toString()) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      "You are not authorized to update this property",
+    );
+  }
+
+  const categoryKey = complianceKeyMap[payload.complianceType];
+  if (!categoryKey) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid compliance type");
+  }
+
+  if (!property.compliance) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "No compliance records found");
+  }
+
+  if (categoryKey === "otherDocuments") {
+    if (
+      !Array.isArray(property.compliance.otherDocuments) ||
+      !property.compliance.otherDocuments.includes(payload.certificateUrl)
+    ) {
+      throw new ApiError(
+        StatusCodes.NOT_FOUND,
+        "Document not found in other documents",
+      );
+    }
+    property.compliance.otherDocuments =
+      property.compliance.otherDocuments.filter(
+        (url) => url !== payload.certificateUrl,
+      );
+  } else {
+    const currentItem = property.compliance[categoryKey] as any;
+    if (currentItem?.current === payload.certificateUrl) {
+      currentItem.current = undefined;
+    } else if (Array.isArray(currentItem?.history)) {
+      currentItem.history = currentItem.history.filter(
+        (url: string) => url !== payload.certificateUrl,
+      );
+    }
+  }
 
   property.markModified("compliance");
   await property.save();
@@ -459,6 +569,7 @@ export const PropertyService = {
   updateCouncilToDB,
   updateParkingToDB,
   updateComplianceToDB,
+  deleteComplianceFromDB,
   updateFloorPlansToDB,
   updateHouseRulesToDB,
   deletePropertyFromDB,

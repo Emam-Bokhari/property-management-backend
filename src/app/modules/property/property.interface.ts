@@ -34,7 +34,7 @@ export type TCompliance = {
   landlordInsurance?: TComplianceItem;
   depositProtection?: TComplianceItem;
   propertyLicense?: TComplianceItem;
-  otherDocuments?: TComplianceItem;
+  otherDocuments?: string[];
 };
 
 export type TProperty = {

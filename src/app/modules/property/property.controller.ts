@@ -189,6 +189,29 @@ const updateHouseRules = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const deleteCompliance = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+  if (!userId) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const complianceType = req.body.complianceType || req.query.complianceType;
+  const certificateUrl = req.body.certificateUrl || req.query.certificateUrl;
+
+  const result = await PropertyService.deleteComplianceFromDB(userId, id, {
+    complianceType,
+    certificateUrl,
+  });
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Property compliance certificate deleted successfully",
+    data: result,
+  });
+});
+
 export const PropertyController = {
   createProperty,
   getAllProperties,
@@ -197,6 +220,7 @@ export const PropertyController = {
   updateCouncil,
   updateParking,
   updateCompliance,
+  deleteCompliance,
   updateFloorPlans,
   updateHouseRules,
   deleteProperty,

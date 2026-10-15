@@ -51,7 +51,42 @@ const complianceSchema = new Schema<TCompliance>(
     landlordInsurance: complianceItemSchema,
     depositProtection: complianceItemSchema,
     propertyLicense: complianceItemSchema,
-    otherDocuments: complianceItemSchema,
+    otherDocuments: {
+      type: [Schema.Types.Mixed],
+      default: [],
+      set: (val: any) => {
+        if (!val) return [];
+        if (typeof val === "string") {
+          try {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed)) {
+              return parsed.map((item) =>
+                typeof item === "string"
+                  ? item
+                  : item?.current || item?.documentUrl || String(item),
+              );
+            }
+            if (typeof parsed === "object" && parsed !== null) {
+              return parsed.current ? [parsed.current] : [];
+            }
+          } catch {
+            return [val];
+          }
+          return [val];
+        }
+        if (Array.isArray(val)) {
+          return val.map((item) =>
+            typeof item === "string"
+              ? item
+              : item?.current || item?.documentUrl || String(item),
+          );
+        }
+        if (typeof val === "object" && val !== null) {
+          return val.current ? [val.current] : [];
+        }
+        return [String(val)];
+      },
+    },
   },
   { _id: false },
 );

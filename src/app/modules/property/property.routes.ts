@@ -73,15 +73,34 @@ router
 
 router
   .route("/:id/compliance")
+  .post(
+    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    fileUploadHandler(),
+    parseFileData(
+      { fieldName: "certificateUrl", mode: "auto" },
+      { fieldName: "otherDocuments", mode: "auto" },
+      { fieldName: "documents", mode: "auto" },
+      { fieldName: "certificate", mode: "auto" },
+    ),
+    validateRequest(PropertyValidation.updateComplianceZodSchema),
+    PropertyController.updateCompliance,
+  )
   .patch(
     auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
     fileUploadHandler(),
     parseFileData(
-      { fieldName: "certificateUrl", mode: "single" },
-
+      { fieldName: "certificateUrl", mode: "auto" },
+      { fieldName: "otherDocuments", mode: "auto" },
+      { fieldName: "documents", mode: "auto" },
+      { fieldName: "certificate", mode: "auto" },
     ),
     validateRequest(PropertyValidation.updateComplianceZodSchema),
     PropertyController.updateCompliance,
+  )
+  .delete(
+    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    validateRequest(PropertyValidation.deleteComplianceZodSchema),
+    PropertyController.deleteCompliance,
   );
 
 router
