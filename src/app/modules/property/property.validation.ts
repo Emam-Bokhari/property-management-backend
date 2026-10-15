@@ -224,6 +224,14 @@ const updateFloorPlansZodSchema = z.object({
   }),
 });
 
+const updateHouseRulesZodSchema = z.object({
+  body: z.object({
+    houseRules: z
+      .string({ required_error: "House rules is required" })
+      .min(1, "House rules cannot be empty"),
+  }),
+});
+
 export const PropertyValidation = {
   createPropertyZodSchema,
   updatePropertyZodSchema,
@@ -231,4 +239,5 @@ export const PropertyValidation = {
   updateParkingZodSchema,
   updateComplianceZodSchema,
   updateFloorPlansZodSchema,
+  updateHouseRulesZodSchema,
 };

@@ -78,6 +78,7 @@ export const parseFileData = (...fields: FieldInput[]) => {
         "compliance",
         "floorPlanPhotos",
         "flatPhotos",
+        "houseRules",
         "key",
         "gas",
         "electricity",

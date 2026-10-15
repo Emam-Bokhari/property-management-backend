@@ -410,6 +410,47 @@ const updateFloorPlansToDB = async (
   return updatedProperty;
 };
 
+// Update House Rules by Property ID (Replaces existing house rules)
+const updateHouseRulesToDB = async (
+  userId: string,
+  id: string,
+  payload: { houseRules: string },
+) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid property ID");
+  }
+
+  const isExistProperty = await Property.findById(id);
+  if (!isExistProperty) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Property not found");
+  }
+
+  const landlordId = isExistProperty.landlord?.toString();
+  if (landlordId !== userId.toString()) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      "You are not authorized to update this property",
+    );
+  }
+
+  const updatedProperty = await Property.findByIdAndUpdate(
+    id,
+    { $set: { houseRules: payload.houseRules } },
+    { new: true, runValidators: true },
+  )
+    .populate("propertyType")
+    .populate({
+      path: "landlord",
+      select: "firstName lastName email role profileImage",
+    });
+
+  if (!updatedProperty) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Failed to update house rules");
+  }
+
+  return updatedProperty;
+};
+
 export const PropertyService = {
   createPropertyToDB,
   getAllPropertiesFromDB,
@@ -419,5 +460,6 @@ export const PropertyService = {
   updateParkingToDB,
   updateComplianceToDB,
   updateFloorPlansToDB,
+  updateHouseRulesToDB,
   deletePropertyFromDB,
 };

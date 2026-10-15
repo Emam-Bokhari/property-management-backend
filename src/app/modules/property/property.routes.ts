@@ -94,4 +94,14 @@ router
     PropertyController.updateFloorPlans,
   );
 
+router
+  .route("/:id/house-rules")
+  .patch(
+    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    fileUploadHandler(),
+    parseFileData(),
+    validateRequest(PropertyValidation.updateHouseRulesZodSchema),
+    PropertyController.updateHouseRules,
+  );
+
 export const PropertyRoutes = router;

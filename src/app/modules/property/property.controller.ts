@@ -168,6 +168,27 @@ const updateFloorPlans = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateHouseRules = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+  if (!userId) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const { houseRules } = req.body;
+
+  const result = await PropertyService.updateHouseRulesToDB(userId, id, {
+    houseRules,
+  });
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Property house rules updated successfully",
+    data: result,
+  });
+});
+
 export const PropertyController = {
   createProperty,
   getAllProperties,
@@ -177,5 +198,6 @@ export const PropertyController = {
   updateParking,
   updateCompliance,
   updateFloorPlans,
+  updateHouseRules,
   deleteProperty,
 };
