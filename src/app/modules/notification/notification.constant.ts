@@ -11,4 +11,3 @@ export enum NOTIFICATION_TYPE {
   BROADCAST = "broadcast",
   ANNOUNCEMENT = "announcement",
 }
-

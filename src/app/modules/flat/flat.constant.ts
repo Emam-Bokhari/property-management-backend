@@ -6,8 +6,4 @@ export enum FURNISHED_TYPE {
   NOT_SET = "not_set",
 }
 
-export const flatSearchableFields = [
-  "unitName",
-  "unitType",
-  "floorNote",
-];
+export const flatSearchableFields = ["unitName", "unitType", "floorNote"];

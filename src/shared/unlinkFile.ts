@@ -15,4 +15,3 @@ const unlinkFile = (file?: string | null) => {
 };
 
 export default unlinkFile;
-

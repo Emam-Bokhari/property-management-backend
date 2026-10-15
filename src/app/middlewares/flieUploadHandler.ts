@@ -279,35 +279,19 @@ export const FILE_CONFIG = {
   routerPhoto: {
     dir: "routerPhoto",
     maxCount: 5,
-    mimeTypes: new Set([
-      "image/png",
-      "image/jpeg",
-      "image/jpg",
-      "image/webp",
-    ]),
+    mimeTypes: new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]),
   },
   alarmPhoto: {
     dir: "alarmPhoto",
     maxCount: 5,
-    mimeTypes: new Set([
-      "image/png",
-      "image/jpeg",
-      "image/jpg",
-      "image/webp",
-    ]),
+    mimeTypes: new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]),
   },
   appliancePhoto: {
     dir: "appliancePhoto",
     maxCount: 5,
-    mimeTypes: new Set([
-      "image/png",
-      "image/jpeg",
-      "image/jpg",
-      "image/webp",
-    ]),
+    mimeTypes: new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]),
   },
   floorPlanPhotos: {
-
     dir: "floorPlanPhotos",
     maxCount: 10,
     mimeTypes: new Set([

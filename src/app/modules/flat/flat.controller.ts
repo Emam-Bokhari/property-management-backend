@@ -337,11 +337,7 @@ const deleteAppliance = catchAsync(async (req: Request, res: Response) => {
     throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
   }
 
-  const result = await FlatService.deleteApplianceFromDB(
-    user,
-    id,
-    applianceId,
-  );
+  const result = await FlatService.deleteApplianceFromDB(user, id, applianceId);
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,

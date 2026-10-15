@@ -15,7 +15,6 @@ import { FlatRoutes } from "../modules/flat/flat.routes";
 import { AnnouncementRoutes } from "../modules/announcement/announcement.routes";
 import { AppOptionRoutes } from "../modules/appOption/appOption.routes";
 
-
 const router = express.Router();
 
 const apiRoutes = [

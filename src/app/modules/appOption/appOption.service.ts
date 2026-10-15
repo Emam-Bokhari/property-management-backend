@@ -38,10 +38,7 @@ const getAllAppOptionsFromDB = async (query: Record<string, unknown>) => {
   if (queryObj.isActive !== undefined) {
     if (queryObj.isActive === "true" || queryObj.isActive === true) {
       queryObj.isActive = true;
-    } else if (
-      queryObj.isActive === "false" ||
-      queryObj.isActive === false
-    ) {
+    } else if (queryObj.isActive === "false" || queryObj.isActive === false) {
       queryObj.isActive = false;
     }
   }

@@ -23,7 +23,8 @@ import unlinkFile from "../../../shared/unlinkFile";
 const flatPopulateOptions = [
   {
     path: "property",
-    select: "propertyName streetAddress postCode propertyPhotos landlord propertyType",
+    select:
+      "propertyName streetAddress postCode propertyPhotos landlord propertyType",
   },
   {
     path: "landlord",
@@ -166,8 +167,8 @@ const getSingleFlatFromDB = async (user: JwtPayload, id: string) => {
     const isTenant =
       (flat.tenant && flat.tenant.toString() === user.id) ||
       (Array.isArray(flat.tenants) &&
-        flat.tenants.some((t: any) =>
-          (t._id ? t._id.toString() : t.toString()) === user.id,
+        flat.tenants.some(
+          (t: any) => (t._id ? t._id.toString() : t.toString()) === user.id,
         ));
 
     if (!isTenant) {

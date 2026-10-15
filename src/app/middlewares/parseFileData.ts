@@ -202,7 +202,10 @@ export const parseFileData = (...fields: FieldInput[]) => {
           fileData.documents;
       }
 
-      if (!req.body?.certificateUrl && (req.body?.otherDocuments || req.body?.documents)) {
+      if (
+        !req.body?.certificateUrl &&
+        (req.body?.otherDocuments || req.body?.documents)
+      ) {
         req.body.certificateUrl = req.body.otherDocuments || req.body.documents;
       }
 
