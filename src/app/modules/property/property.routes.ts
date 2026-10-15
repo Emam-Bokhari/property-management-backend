@@ -87,4 +87,14 @@ router
     PropertyController.updateCompliance,
   );
 
+router
+  .route("/:id/floor-plans")
+  .patch(
+    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    fileUploadHandler(),
+    parseFileData({ fieldName: "floorPlanPhotos", mode: "multiple" }),
+    validateRequest(PropertyValidation.updateFloorPlansZodSchema),
+    PropertyController.updateFloorPlans,
+  );
+
 export const PropertyRoutes = router;

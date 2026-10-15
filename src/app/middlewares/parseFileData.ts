@@ -71,7 +71,12 @@ export const parseFileData = (...fields: FieldInput[]) => {
       }
 
       // Parse JSON string fields in req.body or parsedBody if sent as form-data
-      const jsonFieldsToParse = ["council", "parking", "compliance"];
+      const jsonFieldsToParse = [
+        "council",
+        "parking",
+        "compliance",
+        "floorPlanPhotos",
+      ];
       for (const f of jsonFieldsToParse) {
         if (typeof req.body?.[f] === "string") {
           try {

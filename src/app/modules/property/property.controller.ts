@@ -147,6 +147,27 @@ const deleteProperty = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateFloorPlans = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+  if (!userId) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const { floorPlanPhotos } = req.body;
+
+  const result = await PropertyService.updateFloorPlansToDB(userId, id, {
+    floorPlanPhotos,
+  });
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Property floor plans updated successfully",
+    data: result,
+  });
+});
+
 export const PropertyController = {
   createProperty,
   getAllProperties,
@@ -155,5 +176,6 @@ export const PropertyController = {
   updateCouncil,
   updateParking,
   updateCompliance,
+  updateFloorPlans,
   deleteProperty,
 };

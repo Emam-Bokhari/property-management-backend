@@ -216,10 +216,19 @@ const updateComplianceZodSchema = z.object({
   }),
 });
 
+const updateFloorPlansZodSchema = z.object({
+  body: z.object({
+    floorPlanPhotos: z
+      .array(z.string({ required_error: "Floor plan photo is required" }))
+      .min(1, "At least one floor plan photo is required"),
+  }),
+});
+
 export const PropertyValidation = {
   createPropertyZodSchema,
   updatePropertyZodSchema,
   updateCouncilZodSchema,
   updateParkingZodSchema,
   updateComplianceZodSchema,
+  updateFloorPlansZodSchema,
 };

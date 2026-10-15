@@ -369,6 +369,47 @@ const deletePropertyFromDB = async (userId: string, id: string) => {
   return result;
 };
 
+// Update Floor Plans by Property ID
+const updateFloorPlansToDB = async (
+  userId: string,
+  id: string,
+  payload: { floorPlanPhotos: string[] },
+) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid property ID");
+  }
+
+  const isExistProperty = await Property.findById(id);
+  if (!isExistProperty) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Property not found");
+  }
+
+  const landlordId = isExistProperty.landlord?.toString();
+  if (landlordId !== userId.toString()) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      "You are not authorized to update this property",
+    );
+  }
+
+  const updatedProperty = await Property.findByIdAndUpdate(
+    id,
+    { $set: { floorPlanPhotos: payload.floorPlanPhotos } },
+    { new: true, runValidators: true },
+  )
+    .populate("propertyType")
+    .populate({
+      path: "landlord",
+      select: "firstName lastName email role profileImage",
+    });
+
+  if (!updatedProperty) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Failed to update floor plans");
+  }
+
+  return updatedProperty;
+};
+
 export const PropertyService = {
   createPropertyToDB,
   getAllPropertiesFromDB,
@@ -377,5 +418,6 @@ export const PropertyService = {
   updateCouncilToDB,
   updateParkingToDB,
   updateComplianceToDB,
+  updateFloorPlansToDB,
   deletePropertyFromDB,
 };
