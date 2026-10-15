@@ -3,4 +3,4 @@ export enum VISIBILITY_SCOPE {
   SELECTED_FLATS = "selected_flats",
 }
 
-export const announcementSearchableFields = ["title", "message", "category"];
+export const announcementSearchableFields = ["title", "message"];

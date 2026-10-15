@@ -33,7 +33,6 @@ const createAnnouncementZodSchema = z.object({
       .string({ required_error: "Message is required" })
       .min(1, "Message cannot be empty"),
     image: z.string().optional().nullable(),
-    category: z.string().optional(),
   }),
 });
 
@@ -45,7 +44,6 @@ const updateAnnouncementZodSchema = z.object({
     title: z.string().min(1, "Title cannot be empty").optional(),
     message: z.string().min(1, "Message cannot be empty").optional(),
     image: z.string().optional().nullable(),
-    category: z.string().optional(),
   }),
 });
 

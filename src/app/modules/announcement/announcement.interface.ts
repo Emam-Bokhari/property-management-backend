@@ -10,7 +10,6 @@ export type TAnnouncement = {
   message: string;
   image?: string;
   landlord: Types.ObjectId;
-  category?: string;
   recipients?: Types.ObjectId[];
 };
 

@@ -41,11 +41,6 @@ const announcementSchema = new Schema<TAnnouncement, AnnouncementModel>(
       ref: "User",
       required: true,
     },
-    category: {
-      type: String,
-      trim: true,
-      default: "Building Notice",
-    },
     recipients: [
       {
         type: Schema.Types.ObjectId,
