@@ -332,10 +332,7 @@ const deleteInspectionFromDB = async (user: JwtPayload, id: string) => {
   const propertyDoc = inspection.property as any;
   verifyLandlordOrAdmin(user, propertyDoc?.landlord);
 
-  if (
-    inspection.inspectionPhotos &&
-    inspection.inspectionPhotos.length > 0
-  ) {
+  if (inspection.inspectionPhotos && inspection.inspectionPhotos.length > 0) {
     for (const photo of inspection.inspectionPhotos) {
       unlinkFile(photo);
     }

@@ -1,4 +1,3 @@
-
 export const REMINDER_STATUS = {
   PENDING: "pending",
   COMPLETED: "completed",
@@ -6,5 +5,3 @@ export const REMINDER_STATUS = {
 } as const;
 
 export const smartReminderSearchableFields = ["title", "note"];
-
-

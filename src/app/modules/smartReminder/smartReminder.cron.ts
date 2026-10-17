@@ -21,7 +21,9 @@ export const initSmartReminderCron = () => {
   });
 
   logger.info(
-    colors.green("⏰ Smart Reminder Cron job initialized (running every minute)"),
+    colors.green(
+      "⏰ Smart Reminder Cron job initialized (running every minute)",
+    ),
   );
 
   // Run immediate startup check

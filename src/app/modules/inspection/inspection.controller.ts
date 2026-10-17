@@ -33,7 +33,10 @@ const getAllInspections = catchAsync(async (req: Request, res: Response) => {
 
 const getSingleInspection = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await InspectionService.getSingleInspectionFromDB(req.user, id);
+  const result = await InspectionService.getSingleInspectionFromDB(
+    req.user,
+    id,
+  );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,

@@ -27,7 +27,9 @@ const createInspectionZodSchema = z.object({
     roomChecklist: z.array(roomChecklistItemZodSchema).default([]),
     notes: z.string().optional(),
     inspectionPhotos: z.array(z.string()).optional(),
-    status: z.nativeEnum(INSPECTION_STATUS).default(INSPECTION_STATUS.COMPLETED),
+    status: z
+      .nativeEnum(INSPECTION_STATUS)
+      .default(INSPECTION_STATUS.COMPLETED),
   }),
 });
 

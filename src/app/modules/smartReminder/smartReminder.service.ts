@@ -20,7 +20,7 @@ const enhanceReminderData = (item: any) => {
   const reminderObj = item.toObject ? item.toObject() : { ...item };
   const now = new Date();
   const dueDate = new Date(reminderObj.dueDate);
-  
+
   // Difference in whole days
   const diffTime = now.getTime() - dueDate.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -68,8 +68,14 @@ const createSmartReminderToDB = async (
     );
   }
 
-  if (!payload.property || !mongoose.Types.ObjectId.isValid(String(payload.property))) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "Valid Property ID is required");
+  if (
+    !payload.property ||
+    !mongoose.Types.ObjectId.isValid(String(payload.property))
+  ) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Valid Property ID is required",
+    );
   }
 
   // Validate property exists
@@ -154,7 +160,10 @@ const getAllSmartRemindersFromDB = async (
   }
 
   // Filter by property dropdown (e.g. from "All Properties")
-  if (query.property && mongoose.Types.ObjectId.isValid(String(query.property))) {
+  if (
+    query.property &&
+    mongoose.Types.ObjectId.isValid(String(query.property))
+  ) {
     filter.property = new Types.ObjectId(String(query.property));
   }
 
@@ -248,7 +257,10 @@ const getSmartReminderSummaryFromDB = async (
   if (userRole === USER_ROLES.LANDLORD) {
     filter.landlord = new Types.ObjectId(userId);
   }
-  if (query.property && mongoose.Types.ObjectId.isValid(String(query.property))) {
+  if (
+    query.property &&
+    mongoose.Types.ObjectId.isValid(String(query.property))
+  ) {
     filter.property = new Types.ObjectId(String(query.property));
   }
 

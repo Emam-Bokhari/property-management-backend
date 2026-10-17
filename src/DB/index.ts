@@ -33,7 +33,7 @@ const seedSuperAdmin = async () => {
     }
     if (!existingUser.countryCode) {
       existingUser.countryCode = "+1";
-    } 
+    }
 
     await existingUser.save();
 

@@ -18,7 +18,9 @@ const inviteTenantZodSchema = z.object({
       .number()
       .positive("Rent amount must be greater than 0")
       .optional(),
-    leaseStartDate: z.string({ required_error: "Lease start date is required" }),
+    leaseStartDate: z.string({
+      required_error: "Lease start date is required",
+    }),
     leaseEndDate: z.string({ required_error: "Lease end date is required" }),
     securityDeposit: z.coerce.number().nonnegative().optional().default(0),
     advanceRent: z.coerce.number().nonnegative().optional().default(0),
@@ -36,9 +38,7 @@ const updateTenancyZodSchema = z.object({
     leaseEndDate: z.string().optional(),
     securityDeposit: z.coerce.number().nonnegative().optional(),
     advanceRent: z.coerce.number().nonnegative().optional(),
-    depositProtectionScheme: z
-      .nativeEnum(DEPOSIT_PROTECTION_SCHEME)
-      .optional(),
+    depositProtectionScheme: z.nativeEnum(DEPOSIT_PROTECTION_SCHEME).optional(),
     personalMessage: z.string().optional(),
     status: z.nativeEnum(TENANCY_STATUS).optional(),
   }),

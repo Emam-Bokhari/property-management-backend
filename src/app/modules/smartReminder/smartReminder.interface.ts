@@ -16,4 +16,3 @@ export type TSmartReminder = {
 };
 
 export type SmartReminderModel = ISoftDeleteModel<TSmartReminder>;
-

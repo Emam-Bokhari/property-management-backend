@@ -84,9 +84,7 @@ const getAllPropertiesFromDB = async (
     for (const f of assignedFlats) {
       if (
         f.property &&
-        !tenantPropertyIds.some(
-          (p) => p.toString() === f.property.toString(),
-        )
+        !tenantPropertyIds.some((p) => p.toString() === f.property.toString())
       ) {
         tenantPropertyIds.push(f.property);
       }
@@ -94,12 +92,10 @@ const getAllPropertiesFromDB = async (
     filter._id = { $in: tenantPropertyIds };
   }
 
-  const baseQuery = Property.find(filter)
-    .populate("propertyType")
-    .populate({
-      path: "landlord",
-      select: "firstName lastName email role profileImage",
-    });
+  const baseQuery = Property.find(filter).populate("propertyType").populate({
+    path: "landlord",
+    select: "firstName lastName email role profileImage",
+  });
 
   const queryBuilder = new QueryBuilder(baseQuery, query)
     .search(propertySearchableFields)
@@ -152,8 +148,7 @@ const getSinglePropertyFromDB = async (user: any, id: string) => {
     }
   } else if (userRole === USER_ROLES.TENANT) {
     const tenantUser = await User.findById(userId);
-    const isDirectProperty =
-      tenantUser?.property?.toString() === id.toString();
+    const isDirectProperty = tenantUser?.property?.toString() === id.toString();
     const hasFlatInProperty = await Flat.exists({
       property: new Types.ObjectId(id),
       $or: [

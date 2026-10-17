@@ -23,7 +23,9 @@ async function seedSmartReminders() {
       console.error("No landlord user found!");
       process.exit(1);
     }
-    console.log(`Using Landlord: ${landlord.name} (${landlord.email}) [ID: ${landlord._id}]`);
+    console.log(
+      `Using Landlord: ${landlord.name} (${landlord.email}) [ID: ${landlord._id}]`,
+    );
 
     // Find properties owned by this landlord or any properties
     let properties = await Property.find({ landlord: landlord._id }).limit(3);
@@ -89,7 +91,9 @@ async function seedSmartReminders() {
     console.log("\nInserting 3 smart reminders...");
     const createdReminders = await SmartReminder.create(reminderData);
 
-    console.log(`\nSuccessfully created ${createdReminders.length} Smart Reminders:`);
+    console.log(
+      `\nSuccessfully created ${createdReminders.length} Smart Reminders:`,
+    );
     createdReminders.forEach((r, idx) => {
       console.log(`\n--- Reminder #${idx + 1} ---`);
       console.log(`ID: ${r._id}`);

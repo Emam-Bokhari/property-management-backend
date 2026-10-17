@@ -30,7 +30,10 @@ const createItemZodSchema = z.object({
       .string({ required_error: "Item name is required" })
       .min(1, "Item name cannot be empty"),
     itemPhotos: z.array(z.string()).optional(),
-    quantity: z.coerce.number().min(1, "Quantity must be at least 1").default(1),
+    quantity: z.coerce
+      .number()
+      .min(1, "Quantity must be at least 1")
+      .default(1),
     warrantyExpiry: z.union([z.string(), z.date()]).optional(),
     purchasedDate: z.union([z.string(), z.date()]).optional(),
     condition: z
