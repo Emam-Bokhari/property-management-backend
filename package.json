@@ -8,6 +8,7 @@
     "build": "tsc",
     "permission:seed": "ts-node src/app/modules/permission/permission.seed.ts",
     "seed:categories": "ts-node scripts/seed_categories.ts",
+    "seed:flats-inventory": "ts-node scripts/seed_flats_inventory_inspections.ts",
     "db:reset-seed": "ts-node scripts/reset_and_seed_data.ts",
     "format": "prettier . --write"
   },
