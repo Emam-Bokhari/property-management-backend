@@ -10,6 +10,9 @@ import {
   TCompliance,
 } from "./property.interface";
 import { propertySearchableFields, COMPLIANCE_TYPE } from "./property.constant";
+import { User } from "../user/user.model";
+import { Flat } from "../flat/flat.model";
+import { USER_ROLES } from "../../../enums/user";
 
 const complianceKeyMap: Record<string, keyof TCompliance> = {
   [COMPLIANCE_TYPE.GAS_SAFETY]: "gasSafety",
@@ -49,18 +52,49 @@ const createPropertyToDB = async (
   ]);
 };
 
-// Get all properties (SaaS: strictly for the authenticated landlord/user)
+// Get all properties (SaaS: strictly for the authenticated landlord/tenant/admin)
 const getAllPropertiesFromDB = async (
-  userId: string,
+  user: any,
   query: Record<string, unknown>,
 ) => {
+  const userId = typeof user === "string" ? user : user.id;
+  const userRole = typeof user === "string" ? USER_ROLES.LANDLORD : user.role;
+
   if (!mongoose.Types.ObjectId.isValid(userId)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid user ID");
   }
 
-  const baseQuery = Property.find({
-    landlord: new Types.ObjectId(userId),
-  })
+  const filter: Record<string, any> = {};
+
+  if (userRole === USER_ROLES.LANDLORD) {
+    filter.landlord = new Types.ObjectId(userId);
+  } else if (userRole === USER_ROLES.TENANT) {
+    const tenantUser = await User.findById(userId);
+    const tenantPropertyIds: Types.ObjectId[] = [];
+    if (tenantUser?.property) {
+      tenantPropertyIds.push(new Types.ObjectId(tenantUser.property));
+    }
+    const assignedFlats = await Flat.find({
+      $or: [
+        { tenant: new Types.ObjectId(userId) },
+        { tenants: new Types.ObjectId(userId) },
+      ],
+      isDeleted: { $ne: true },
+    }).select("property");
+    for (const f of assignedFlats) {
+      if (
+        f.property &&
+        !tenantPropertyIds.some(
+          (p) => p.toString() === f.property.toString(),
+        )
+      ) {
+        tenantPropertyIds.push(f.property);
+      }
+    }
+    filter._id = { $in: tenantPropertyIds };
+  }
+
+  const baseQuery = Property.find(filter)
     .populate("propertyType")
     .populate({
       path: "landlord",
@@ -85,8 +119,11 @@ const getAllPropertiesFromDB = async (
   };
 };
 
-// Get single property by ID (SaaS: owner only)
-const getSinglePropertyFromDB = async (userId: string, id: string) => {
+// Get single property by ID (SaaS: landlord or assigned tenant only)
+const getSinglePropertyFromDB = async (user: any, id: string) => {
+  const userId = typeof user === "string" ? user : user.id;
+  const userRole = typeof user === "string" ? USER_ROLES.LANDLORD : user.role;
+
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid property ID");
   }
@@ -98,19 +135,40 @@ const getSinglePropertyFromDB = async (userId: string, id: string) => {
       select: "firstName lastName email role profileImage",
     });
 
-  if (!property) {
+  if (!property || (property as any).isDeleted) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Property not found");
   }
 
-  const landlordId = (property.landlord as any)?._id
-    ? (property.landlord as any)._id.toString()
-    : property.landlord?.toString();
+  if (userRole === USER_ROLES.LANDLORD) {
+    const landlordId = (property.landlord as any)?._id
+      ? (property.landlord as any)._id.toString()
+      : property.landlord?.toString();
 
-  if (landlordId !== userId.toString()) {
-    throw new ApiError(
-      StatusCodes.FORBIDDEN,
-      "You do not have permission to access this property",
-    );
+    if (landlordId !== userId.toString()) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        "You do not have permission to access this property",
+      );
+    }
+  } else if (userRole === USER_ROLES.TENANT) {
+    const tenantUser = await User.findById(userId);
+    const isDirectProperty =
+      tenantUser?.property?.toString() === id.toString();
+    const hasFlatInProperty = await Flat.exists({
+      property: new Types.ObjectId(id),
+      $or: [
+        { tenant: new Types.ObjectId(userId) },
+        { tenants: new Types.ObjectId(userId) },
+      ],
+      isDeleted: { $ne: true },
+    });
+
+    if (!isDirectProperty && !hasFlatInProperty) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        "You do not have access to this property",
+      );
+    }
   }
 
   return property;

@@ -22,13 +22,12 @@ const createProperty = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getAllProperties = catchAsync(async (req: Request, res: Response) => {
-  const userId = req.user?.id;
-  if (!userId) {
+  if (!req.user) {
     throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
   }
 
   const result = await PropertyService.getAllPropertiesFromDB(
-    userId,
+    req.user,
     req.query,
   );
 
@@ -42,13 +41,12 @@ const getAllProperties = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getSingleProperty = catchAsync(async (req: Request, res: Response) => {
-  const userId = req.user?.id;
   const { id } = req.params;
-  if (!userId) {
+  if (!req.user) {
     throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
   }
 
-  const result = await PropertyService.getSinglePropertyFromDB(userId, id);
+  const result = await PropertyService.getSinglePropertyFromDB(req.user, id);
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,

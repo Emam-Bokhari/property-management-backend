@@ -1,4 +1,8 @@
-import { ICreateAccount, IResetPassword } from "../types/emailTemplate";
+import {
+  ICreateAccount,
+  IResetPassword,
+  ITenantInvitationEmail,
+} from "../types/emailTemplate";
 
 const COLORS = {
   background: "#FAFAF7",
@@ -10,7 +14,7 @@ const COLORS = {
 };
 
 const LOGO =
-  "https://res.cloudinary.com/dphkhbunv/image/upload/v1790221907/logo_z98k6d.png";
+  "https://res.cloudinary.com/dphkhbunv/image/upload/v1792228916/Frame_2147231741_bwbf8a.png";
 
 const baseLayout = (title: string, content: string) => `
 <!DOCTYPE html>
@@ -72,7 +76,7 @@ style="padding:40px 36px 28px;"
 <img
 src="${LOGO}"
 width="180"
-alt="JAGANA"
+alt="Landlord HQ"
 style="
 display:block;
 max-width:180px;
@@ -138,7 +142,7 @@ color:${COLORS.secondary};
 "
 >
 
-This is an automated email from JAGANA.
+This is an automated email from Landlord HQ.
 
 </p>
 
@@ -150,7 +154,7 @@ color:#6B7280;
 "
 >
 
-© ${new Date().getFullYear()} JAGANA.
+© ${new Date().getFullYear()} Landlord HQ.
 All rights reserved.
 
 </p>
@@ -250,7 +254,7 @@ Security Tips
 
 <br>
 
-• JAGANA will never ask for your OTP.
+• Landlord HQ will never ask for your OTP.
 
 </td>
 
@@ -280,7 +284,7 @@ line-height:1.8;
 color:${COLORS.secondary};
 "
 >
-Welcome to <b style="color:${COLORS.text};">JAGANA</b>.
+Welcome to <b style="color:${COLORS.text};">Landlord HQ</b>.
 
 Thank you for creating your account.
 
@@ -300,15 +304,15 @@ line-height:1.8;
 color:${COLORS.secondary};
 "
 >
-If you didn't create a JAGANA account, you can safely ignore this email.
+If you didn't create a Landlord HQ account, you can safely ignore this email.
 No further action is required.
 </p>
 `;
 
   return {
     to: values.email,
-    subject: "Verify your JAGANA account",
-    html: baseLayout("Verify your JAGANA account", content),
+    subject: "Verify your Landlord HQ account",
+    html: baseLayout("Verify your Landlord HQ account", content),
   };
 };
 
@@ -334,7 +338,7 @@ color:${COLORS.secondary};
 "
 >
 We received a request to reset the password for your
-<b style="color:${COLORS.text};">JAGANA</b> account.
+<b style="color:${COLORS.text};">Landlord HQ</b> account.
 
 Use the verification code below to continue.
 </p>
@@ -359,8 +363,8 @@ Your account remains secure.
 
   return {
     to: values.email,
-    subject: "Reset your JAGANA password",
-    html: baseLayout("Reset your JAGANA password", content),
+    subject: "Reset your Landlord HQ password",
+    html: baseLayout("Reset your Landlord HQ password", content),
   };
 };
 
@@ -394,7 +398,7 @@ color:${COLORS.secondary};
 "
 >
 A new support request has been submitted through the
-<b style="color:${COLORS.text};">JAGANA</b> platform.
+<b style="color:${COLORS.text};">Landlord HQ</b> platform.
 
 The request details are shown below.
 </p>
@@ -589,7 +593,7 @@ Internal Notification
 
 <br><br>
 
-This email was automatically generated after a user submitted a support request through JAGANA.
+This email was automatically generated after a user submitted a support request through Landlord HQ.
 
 <br><br>
 
@@ -604,7 +608,7 @@ Please review the request and respond as soon as possible.
 
   return {
     to: values.to,
-    subject: `JAGANA Support Request: ${values.subject}`,
+    subject: `Landlord HQ Support Request: ${values.subject}`,
     html: baseLayout("Support Request", content),
   };
 };
@@ -645,9 +649,160 @@ ${values.text}
   };
 };
 
+const tenantInvitation = (values: ITenantInvitationEmail) => {
+  const passwordDisplay = values.password || "12345678";
+
+  const content = `
+<tr>
+  <td style="padding: 24px 28px; background-color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    
+    <!-- Header Banner -->
+    <div style="text-align: center; margin-bottom: 24px;">
+      <span style="display: inline-block; padding: 6px 14px; background-color: #EFF6FF; color: #2563EB; font-size: 12px; font-weight: 700; border-radius: 9999px; letter-spacing: 0.05em; text-transform: uppercase;">
+        Tenant Invitation
+      </span>
+      <h1 style="margin: 12px 0 6px; font-size: 22px; font-weight: 700; color: #0F172A;">
+        Welcome to Your New Home!
+      </h1>
+      <p style="margin: 0; font-size: 14px; color: #64748B; line-height: 1.5;">
+        ${values.landlordName ? `<strong>${values.landlordName}</strong> has invited you` : "You have been invited"} to access your tenant portal for <strong>${values.flatUnitName}</strong>.
+      </p>
+    </div>
+
+    <!-- Property Card (Matching App Screen 1) -->
+    <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px; padding: 16px 18px; margin-bottom: 24px;">
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #2563EB; letter-spacing: 0.05em; margin-bottom: 4px;">
+        Property & Flat Assignment
+      </div>
+      <div style="font-size: 17px; font-weight: 700; color: #0F172A; margin-bottom: 2px;">
+        ${values.flatUnitName} - ${values.propertyName}
+      </div>
+      <div style="font-size: 13px; color: #64748B;">
+        ${values.propertyAddress || "Assigned Property Access"}
+      </div>
+    </div>
+
+    <!-- Credentials Section -->
+    <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 14px; padding: 20px 22px; margin-bottom: 24px;">
+      <div style="display: flex; align-items: center; margin-bottom: 12px;">
+        <span style="font-size: 14px; font-weight: 700; color: #1E40AF;">
+          🔐 Your Account Credentials
+        </span>
+      </div>
+      <p style="margin: 0 0 14px; font-size: 13px; color: #1E3A8A; line-height: 1.5;">
+        Your tenant account has been automatically provisioned. Use the details below to log in:
+      </p>
+      
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 8px;">
+        <tr>
+          <td style="padding: 6px 0; font-size: 13px; color: #475569; width: 110px;">
+            Email Address:
+          </td>
+          <td style="padding: 6px 0;">
+            <code style="background-color: #DBEAFE; color: #1E40AF; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; font-family: monospace;">
+              ${values.email}
+            </code>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-size: 13px; color: #475569;">
+            Password:
+          </td>
+          <td style="padding: 6px 0;">
+            <code style="background-color: #DBEAFE; color: #1E40AF; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; font-family: monospace;">
+              ${passwordDisplay}
+            </code>
+          </td>
+        </tr>
+      </table>
+      
+      <p style="margin: 8px 0 0; font-size: 11px; color: #3B82F6;">
+        💡 Tip: For security reasons, we strongly recommend changing your password after your first login.
+      </p>
+    </div>
+
+    <!-- Tenancy Summary (Matching App Step 3 Summary) -->
+    <div style="border: 1px solid #E2E8F0; border-radius: 14px; padding: 18px 20px; margin-bottom: 24px; background-color: #FFFFFF;">
+      <div style="font-size: 13px; font-weight: 700; color: #0F172A; margin-bottom: 14px; border-bottom: 1px solid #F1F5F9; padding-bottom: 8px;">
+        Tenancy & Lease Details
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 13px;">
+        <tr>
+          <td style="padding: 7px 0; color: #64748B;">Flat:</td>
+          <td align="right" style="padding: 7px 0; font-weight: 600; color: #0F172A;">${values.flatUnitName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 7px 0; color: #64748B;">Monthly Rent:</td>
+          <td align="right" style="padding: 7px 0; font-weight: 600; color: #0F172A;">£${values.rentAmount.toLocaleString()}</td>
+        </tr>
+        <tr>
+          <td style="padding: 7px 0; color: #64748B;">Lease Period:</td>
+          <td align="right" style="padding: 7px 0; font-weight: 600; color: #0F172A;">${values.leaseStartDate} → ${values.leaseEndDate}</td>
+        </tr>
+        ${
+          values.securityDeposit !== undefined && values.securityDeposit > 0
+            ? `
+        <tr>
+          <td style="padding: 7px 0; color: #64748B;">Security Deposit:</td>
+          <td align="right" style="padding: 7px 0; font-weight: 600; color: #0F172A;">£${values.securityDeposit.toLocaleString()}</td>
+        </tr>`
+            : ""
+        }
+        ${
+          values.advanceRent !== undefined && values.advanceRent > 0
+            ? `
+        <tr>
+          <td style="padding: 7px 0; color: #64748B;">Advance Rent:</td>
+          <td align="right" style="padding: 7px 0; font-weight: 600; color: #0F172A;">£${values.advanceRent.toLocaleString()}</td>
+        </tr>`
+            : ""
+        }
+        ${
+          values.depositProtectionScheme
+            ? `
+        <tr>
+          <td style="padding: 7px 0; color: #64748B;">Deposit Scheme:</td>
+          <td align="right" style="padding: 7px 0; font-weight: 600; color: #0F172A;">${values.depositProtectionScheme}</td>
+        </tr>`
+            : ""
+        }
+        ${
+          values.personalMessage
+            ? `
+        <tr>
+          <td colspan="2" style="padding-top: 12px; border-top: 1px dashed #E2E8F0;">
+            <div style="font-size: 11px; text-transform: uppercase; color: #64748B; font-weight: 700; margin-bottom: 4px;">Personal Message:</div>
+            <div style="font-style: italic; color: #334155; background-color: #F8FAFC; padding: 10px 14px; border-radius: 8px; border-left: 3px solid #2563EB;">
+              "${values.personalMessage}"
+            </div>
+          </td>
+        </tr>`
+            : ""
+        }
+      </table>
+    </div>
+
+    <!-- Security & Multitenant SaaS Note -->
+    <p style="margin: 0; font-size: 12px; color: #94A3B8; text-align: center; line-height: 1.5;">
+      🔒 As part of our secure tenant portal, your access is strictly scoped to <strong>${values.flatUnitName}</strong> and its associated property utilities.
+    </p>
+
+  </td>
+</tr>
+`;
+
+  return {
+    to: values.email,
+    subject: `You've been invited to ${values.flatUnitName} - Tenant Portal Access`,
+    html: baseLayout("Tenant Invitation", content),
+  };
+};
+
 export const emailTemplate = {
   createAccount,
   resetPassword,
   supportNotification,
   genericNotification,
+  tenantInvitation,
 };

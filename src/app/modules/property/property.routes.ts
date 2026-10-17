@@ -24,14 +24,24 @@ router
     PropertyController.createProperty,
   )
   .get(
-    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+      USER_ROLES.TENANT,
+    ),
     PropertyController.getAllProperties,
   );
 
 router
   .route("/:id")
   .get(
-    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+      USER_ROLES.TENANT,
+    ),
     PropertyController.getSingleProperty,
   )
   .patch(

@@ -16,6 +16,7 @@ import { AnnouncementRoutes } from "../modules/announcement/announcement.routes"
 import { AppOptionRoutes } from "../modules/appOption/appOption.routes";
 import { InventoryRoutes } from "../modules/inventory/inventory.routes";
 import { InspectionRoutes } from "../modules/inspection/inspection.routes";
+import { TenantRoutes } from "../modules/tenant/tenant.routes";
 
 const router = express.Router();
 
@@ -88,6 +89,10 @@ const apiRoutes = [
   {
     path: "/inspections",
     route: InspectionRoutes,
+  },
+  {
+    path: "/tenants",
+    route: TenantRoutes,
   },
 ];
 
