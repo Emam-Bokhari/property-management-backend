@@ -47,14 +47,14 @@ const notificationPreferenceSchema = new Schema<
     versionKey: false,
     toJSON: {
       virtuals: true,
-      transform: (_doc, ret) => {
+      transform: (_doc, ret: any) => {
         delete ret.id;
         return ret;
       },
     },
     toObject: {
       virtuals: true,
-      transform: (_doc, ret) => {
+      transform: (_doc, ret: any) => {
         delete ret.id;
         return ret;
       },

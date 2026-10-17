@@ -14,6 +14,8 @@ import { PropertyRoutes } from "../modules/property/property.routes";
 import { FlatRoutes } from "../modules/flat/flat.routes";
 import { AnnouncementRoutes } from "../modules/announcement/announcement.routes";
 import { AppOptionRoutes } from "../modules/appOption/appOption.routes";
+import { InventoryRoutes } from "../modules/inventory/inventory.routes";
+import { InspectionRoutes } from "../modules/inspection/inspection.routes";
 
 const router = express.Router();
 
@@ -78,6 +80,14 @@ const apiRoutes = [
   {
     path: "/app-options",
     route: AppOptionRoutes,
+  },
+  {
+    path: "/inventory",
+    route: InventoryRoutes,
+  },
+  {
+    path: "/inspections",
+    route: InspectionRoutes,
   },
 ];
 

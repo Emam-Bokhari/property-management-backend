@@ -409,6 +409,21 @@ export const FILE_CONFIG = {
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ]),
   },
+  itemPhoto: {
+    dir: "itemPhotos",
+    maxCount: 1,
+    mimeTypes: new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]),
+  },
+  itemPhotos: {
+    dir: "itemPhotos",
+    maxCount: 10,
+    mimeTypes: new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]),
+  },
+  inspectionPhotos: {
+    dir: "inspectionPhotos",
+    maxCount: 20,
+    mimeTypes: new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]),
+  },
 } satisfies Record<string, FileConfig>;
 
 export type IFolderName = keyof typeof FILE_CONFIG;

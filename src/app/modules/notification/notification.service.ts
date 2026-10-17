@@ -111,7 +111,6 @@ const adminReadNotificationToDB = async (): Promise<INotification | null> => {
   const result: any = await Notification.updateMany(
     { type: NOTIFICATION_TYPE.ADMIN, read: false },
     { $set: { read: true } },
-    { new: true },
   );
   return result;
 };

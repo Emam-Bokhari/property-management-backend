@@ -3,3 +3,6 @@ export enum INVENTORY_CONDITION {
   FAIR = "fair",
   DEFECT = "defect",
 }
+
+export const inventoryRoomSearchableFields = ["roomName"];
+export const inventoryItemSearchableFields = ["itemName"];

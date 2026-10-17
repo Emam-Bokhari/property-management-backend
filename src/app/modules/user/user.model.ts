@@ -153,7 +153,7 @@ const userSchema = new Schema<IUser, IUserModel>(
     versionKey: false,
     toJSON: {
       virtuals: true,
-      transform: (_doc, ret) => {
+      transform: (_doc, ret: any) => {
         delete ret.id;
         delete ret.password;
         delete ret.authentication;
@@ -162,7 +162,7 @@ const userSchema = new Schema<IUser, IUserModel>(
     },
     toObject: {
       virtuals: true,
-      transform: (_doc, ret) => {
+      transform: (_doc, ret: any) => {
         delete ret.id;
         delete ret.password;
         delete ret.authentication;
