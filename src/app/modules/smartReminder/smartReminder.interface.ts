@@ -1,18 +1,19 @@
 import { Types } from "mongoose";
 import { ISoftDeleteModel } from "../../../types/softDelete";
-import { REMINDER_STATUS, REMINDER_TYPE } from "./smartReminder.constant";
+import { REMINDER_STATUS } from "./smartReminder.constant";
 
-export type TReminderType = (typeof REMINDER_TYPE)[keyof typeof REMINDER_TYPE];
 export type TReminderStatus =
   (typeof REMINDER_STATUS)[keyof typeof REMINDER_STATUS];
 
 export type TSmartReminder = {
   title: string;
-  reminderType: TReminderType;
   property: Types.ObjectId;
+  landlord: Types.ObjectId;
   dueDate: Date;
   status: TReminderStatus;
   note?: string;
+  isNotified?: boolean;
 };
 
 export type SmartReminderModel = ISoftDeleteModel<TSmartReminder>;
+

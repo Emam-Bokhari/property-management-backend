@@ -1,13 +1,10 @@
-export const REMINDER_TYPE = {
-  RENT: "RENT",
-  MAINTENANCE: "MAINTENANCE",
-  LEASE: "LEASE",
-  INSPECTION: "INSPECTION",
-  CUSTOM: "CUSTOM",
-} as const;
 
 export const REMINDER_STATUS = {
-  PENDING: "PENDING",
-  COMPLETED: "COMPLETED",
-  OVERDUE: "OVERDUE",
+  PENDING: "pending",
+  COMPLETED: "completed",
+  OVERDUE: "overdue",
 } as const;
+
+export const smartReminderSearchableFields = ["title", "note"];
+
+

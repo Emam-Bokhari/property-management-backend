@@ -1,7 +1,7 @@
 import { softDeletePlugin } from "../../../DB/plugins/softDeletePlugin";
 import { model, Schema } from "mongoose";
 import { SmartReminderModel, TSmartReminder } from "./smartReminder.interface";
-import { REMINDER_STATUS, REMINDER_TYPE } from "./smartReminder.constant";
+import { REMINDER_STATUS } from "./smartReminder.constant";
 
 const smartReminderSchema = new Schema<TSmartReminder, SmartReminderModel>(
   {
@@ -10,19 +10,22 @@ const smartReminderSchema = new Schema<TSmartReminder, SmartReminderModel>(
       required: true,
       trim: true,
     },
-    reminderType: {
-      type: String,
-      enum: Object.values(REMINDER_TYPE),
-      required: true,
-    },
     property: {
       type: Schema.Types.ObjectId,
       ref: "Property",
       required: true,
+      index: true,
+    },
+    landlord: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
     },
     dueDate: {
       type: Date,
       required: true,
+      index: true,
     },
     status: {
       type: String,
@@ -33,6 +36,11 @@ const smartReminderSchema = new Schema<TSmartReminder, SmartReminderModel>(
     note: {
       type: String,
       trim: true,
+    },
+    isNotified: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
   },
   {

@@ -17,6 +17,7 @@ import { AppOptionRoutes } from "../modules/appOption/appOption.routes";
 import { InventoryRoutes } from "../modules/inventory/inventory.routes";
 import { InspectionRoutes } from "../modules/inspection/inspection.routes";
 import { TenantRoutes } from "../modules/tenant/tenant.routes";
+import { SmartReminderRoutes } from "../modules/smartReminder/smartReminder.routes";
 
 const router = express.Router();
 
@@ -93,6 +94,10 @@ const apiRoutes = [
   {
     path: "/tenants",
     route: TenantRoutes,
+  },
+  {
+    path: "/smart-reminders",
+    route: SmartReminderRoutes,
   },
 ];
 
