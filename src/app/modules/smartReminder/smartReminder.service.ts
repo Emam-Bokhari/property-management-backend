@@ -20,7 +20,7 @@ const enhanceReminderData = (item: any) => {
   const reminderObj = item.toObject ? item.toObject() : { ...item };
   const now = new Date();
   const dueDate = new Date(reminderObj.dueDate);
-
+  
   // Difference in whole days
   const diffTime = now.getTime() - dueDate.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
