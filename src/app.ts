@@ -7,6 +7,7 @@ import path from "path";
 import swaggerUi from "swagger-ui-express";
 import yaml from "yamljs";
 import router from "./app/routes";
+import { WebhookRoutes } from "./app/modules/webhook/webhook.routes";
 import { requestContextMiddleware } from "./app/middlewares/requestContextMiddleware";
 
 const app: Application = express();
@@ -60,6 +61,9 @@ try {
     "Swagger documentation file not found. Skipping swagger UI setup.",
   );
 }
+
+// webhooks
+app.use("/webhook", WebhookRoutes);
 
 //router
 app.use("/api/v1", router);

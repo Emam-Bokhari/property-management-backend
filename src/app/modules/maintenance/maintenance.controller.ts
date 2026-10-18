@@ -298,19 +298,6 @@ const rejectInvoice = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// 15. Handle Stripe Webhook (No Auth)
-const handleStripeWebhook = catchAsync(async (req: Request, res: Response) => {
-  const signature = req.headers["stripe-signature"] as string | undefined;
-  const rawBody = (req as any).rawBody ?? req.body;
-
-  const result = await MaintenanceService.handleStripeWebhookIntoDB(
-    rawBody,
-    signature,
-  );
-
-  res.status(StatusCodes.OK).json(result);
-});
-
 export const MaintenanceController = {
   createMaintenance,
   getAllMaintenance,
@@ -326,5 +313,4 @@ export const MaintenanceController = {
   deleteMaintenance,
   createPaymentSession,
   rejectInvoice,
-  handleStripeWebhook,
 };

@@ -133,10 +133,7 @@ router.patch(
   MaintenanceController.rejectInvoice,
 );
 
-// 13. Stripe Webhook (No Auth - Signature Verification)
-router.post("/webhook", MaintenanceController.handleStripeWebhook);
-
-// 14. Single Maintenance Details (GET, PATCH, DELETE)
+// 13. Single Maintenance Details (GET, PATCH, DELETE)
 router
   .route("/:id")
   .get(

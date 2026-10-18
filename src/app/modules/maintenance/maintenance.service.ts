@@ -1068,6 +1068,7 @@ const createPaymentSessionIntoDB = async (
     cancel_url: cancelUrl,
     client_reference_id: issue._id.toString(),
     metadata: {
+      paymentType: "maintenance",
       maintenanceId: issue._id.toString(),
       payerId: authUser.userId,
       payerRole: authUser.role,
@@ -1146,70 +1147,35 @@ const rejectInvoiceIntoDB = async (
   return enhanceMaintenanceData(updatedIssue);
 };
 
-// 15. Handle Stripe Webhook
-const handleStripeWebhookIntoDB = async (
-  rawBody: Buffer | string,
-  signature?: string,
+// 15. Handle Maintenance Payment Success (Called by Root Stripe Webhook)
+const handleMaintenancePaymentSuccess = async (
+  session: Stripe.Checkout.Session,
 ) => {
-  const secretKey = config.stripe?.secretKey || process.env.STRIPE_SECRET_KEY;
-  const webhookSecret =
-    config.stripe?.webhookSecret || process.env.STRIPE_WEBHOOK_SECRET;
+  const maintenanceId =
+    session.metadata?.maintenanceId || session.client_reference_id;
 
-  if (!secretKey) {
-    throw new ApiError(
-      StatusCodes.INTERNAL_SERVER_ERROR,
-      "Stripe secret key missing on server",
-    );
+  if (!maintenanceId || !mongoose.Types.ObjectId.isValid(maintenanceId)) {
+    return false;
   }
 
-  const stripe = new Stripe(secretKey);
-  let event: Stripe.Event;
-
-  if (webhookSecret && signature) {
-    try {
-      event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
-    } catch (err: any) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        `Webhook signature verification failed: ${err.message}`,
-      );
-    }
-  } else {
-    try {
-      event =
-        typeof rawBody === "string"
-          ? JSON.parse(rawBody)
-          : JSON.parse(rawBody.toString("utf-8"));
-    } catch (err: any) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid webhook payload");
-    }
+  const issue = await Maintenance.findById(maintenanceId);
+  if (!issue || issue.isDeleted) {
+    return false;
   }
 
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const maintenanceId =
-      session.metadata?.maintenanceId || session.client_reference_id;
+  issue.paymentStatus = PAYMENT_STATUS.PAID;
+  issue.paidAt = new Date();
+  issue.status = MAINTENANCE_STATUS.COMPLETED;
+  issue.contractorStatus = CONTRACTOR_STATUS.COMPLETED;
+  issue.completedAt = issue.completedAt || new Date();
+  issue.invoiceStatus = "approved";
+  issue.transactionId =
+    (typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.id) || session.id;
 
-    if (maintenanceId && mongoose.Types.ObjectId.isValid(maintenanceId)) {
-      const issue = await Maintenance.findById(maintenanceId);
-      if (issue && !issue.isDeleted) {
-        issue.paymentStatus = PAYMENT_STATUS.PAID;
-        issue.paidAt = new Date();
-        issue.status = MAINTENANCE_STATUS.COMPLETED;
-        issue.contractorStatus = CONTRACTOR_STATUS.COMPLETED;
-        issue.completedAt = issue.completedAt || new Date();
-        issue.invoiceStatus = "approved";
-        issue.transactionId =
-          (typeof session.payment_intent === "string"
-            ? session.payment_intent
-            : session.id) || session.id;
-
-        await issue.save();
-      }
-    }
-  }
-
-  return { received: true };
+  await issue.save();
+  return true;
 };
 
 export const MaintenanceService = {
@@ -1227,5 +1193,5 @@ export const MaintenanceService = {
   deleteMaintenanceFromDB,
   createPaymentSessionIntoDB,
   rejectInvoiceIntoDB,
-  handleStripeWebhookIntoDB,
+  handleMaintenancePaymentSuccess,
 };

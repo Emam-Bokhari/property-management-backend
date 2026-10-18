@@ -21,6 +21,7 @@ import { SmartReminderRoutes } from "../modules/smartReminder/smartReminder.rout
 import { ContractorRoutes } from "../modules/contractor/contractor.routes";
 import { BroadcastRoutes } from "../modules/broadcast/broadcast.routes";
 import { MaintenanceRoutes } from "../modules/maintenance/maintenance.routes";
+import { WebhookRoutes } from "../modules/webhook/webhook.routes";
 
 const router = express.Router();
 
@@ -113,6 +114,10 @@ const apiRoutes = [
   {
     path: "/maintenance",
     route: MaintenanceRoutes,
+  },
+  {
+    path: "/webhook",
+    route: WebhookRoutes,
   },
 ];
 
