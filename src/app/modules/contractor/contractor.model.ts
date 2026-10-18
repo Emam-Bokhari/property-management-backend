@@ -41,15 +41,10 @@ const contractorSchema = new Schema<IContractor, ContractorModel>(
     },
     trades: [
       {
-        type: String,
-        trim: true,
+        type: Schema.Types.ObjectId,
+        ref: "AppOption",
       },
     ],
-    primaryTrade: {
-      type: String,
-      trim: true,
-      default: "",
-    },
     personalMessage: {
       type: String,
       trim: true,

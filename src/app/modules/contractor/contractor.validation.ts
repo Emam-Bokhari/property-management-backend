@@ -13,8 +13,13 @@ const inviteContractorZodSchema = z.object({
       .optional()
       .default("12345678"),
     phone: z.string().optional(),
-    trade: z.string().optional(),
-    trades: z.union([z.array(z.string()), z.string()]).optional(),
+    trades: z
+      .array(
+        z
+          .string()
+          .regex(/^[0-9a-fA-F]{24}$/, "Each trade ID must be a valid ObjectId"),
+      )
+      .optional(),
     companyName: z.string().optional(),
     personalMessage: z.string().optional(),
   }),
@@ -25,8 +30,13 @@ const updateContractorZodSchema = z.object({
     name: z.string().optional(),
     phone: z.string().optional(),
     companyName: z.string().optional(),
-    trade: z.string().optional(),
-    trades: z.union([z.array(z.string()), z.string()]).optional(),
+    trades: z
+      .array(
+        z
+          .string()
+          .regex(/^[0-9a-fA-F]{24}$/, "Each trade ID must be a valid ObjectId"),
+      )
+      .optional(),
     personalMessage: z.string().optional(),
     status: z.nativeEnum(CONTRACTOR_RELATION_STATUS).optional(),
   }),

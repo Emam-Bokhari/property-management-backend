@@ -16,6 +16,8 @@ import {
   IInviteContractorPayload,
   IUpdateContractorPayload,
 } from "./contractor.interface";
+import { AppOption } from "../appOption/appOption.model";
+import { AppOptionType } from "../appOption/appOption.constant";
 import { emailTemplate } from "../../../shared/emailTemplate";
 import { emailHelper } from "../../../helpers/emailHelper";
 import { sendNotifications } from "../../../helpers/notificationsHelper";
@@ -26,13 +28,39 @@ const contractorPopulateOptions = [
   {
     path: "contractor",
     select:
-      "name email phone profileImage verified status companyName primaryTrade deviceToken address",
+      "name email phone profileImage verified status companyName deviceToken address",
   },
   {
     path: "landlord",
     select: "name email phone profileImage companyName",
   },
+  {
+    path: "trades",
+    select: "name type isActive",
+  },
 ];
+
+// Helper: Resolve trade inputs (ObjectIds) to Types.ObjectId[]
+const resolveTradeIds = (
+  rawTrades?: Types.ObjectId[] | string[],
+): Types.ObjectId[] => {
+  if (!rawTrades || !Array.isArray(rawTrades)) {
+    return [];
+  }
+
+  const validObjectIds: Types.ObjectId[] = [];
+  for (const item of rawTrades) {
+    const str = item.toString().trim();
+    if (mongoose.Types.ObjectId.isValid(str)) {
+      const objId = new Types.ObjectId(str);
+      if (!validObjectIds.some((id) => id.equals(objId))) {
+        validObjectIds.push(objId);
+      }
+    }
+  }
+
+  return validObjectIds;
+};
 
 // 1. Invite Contractor (Landlord / Admin)
 const inviteContractorToDB = async (
@@ -42,22 +70,7 @@ const inviteContractorToDB = async (
   const landlordId =
     authUser.role === USER_ROLES.LANDLORD ? authUser.id : authUser.id;
 
-  // Parse and normalize trades
-  let tradesList: string[] = [];
-  if (Array.isArray(payload.trades)) {
-    tradesList = payload.trades.map((t) => t.trim()).filter(Boolean);
-  } else if (typeof payload.trades === "string") {
-    tradesList = payload.trades
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
-  }
-  if (payload.trade && payload.trade.trim()) {
-    const trimmed = payload.trade.trim();
-    if (!tradesList.includes(trimmed)) {
-      tradesList.push(trimmed);
-    }
-  }
+  const tradeIds = resolveTradeIds(payload.trades);
 
   // Password selection: default to '12345678' if not provided
   const rawPassword =
@@ -131,9 +144,8 @@ const inviteContractorToDB = async (
       contractorUser.companyName ||
       contractorRelation.companyName ||
       "";
-    if (tradesList.length > 0) {
-      contractorRelation.trades = tradesList;
-      contractorRelation.primaryTrade = tradesList[0];
+    if (tradeIds.length > 0) {
+      contractorRelation.trades = tradeIds;
     }
     contractorRelation.personalMessage =
       payload.personalMessage || contractorRelation.personalMessage || "";
@@ -152,8 +164,7 @@ const inviteContractorToDB = async (
         contractorUser.companyName ||
         contractorName ||
         "",
-      trades: tradesList,
-      primaryTrade: tradesList[0] || "",
+      trades: tradeIds,
       personalMessage: payload.personalMessage || "",
       status: CONTRACTOR_RELATION_STATUS.ACTIVE,
       invitedAt: new Date(),
@@ -167,6 +178,15 @@ const inviteContractorToDB = async (
 
   const propertiesScopeText = `All Properties of ${landlordName}`;
 
+  // Fetch trade names from AppOption for email display
+  let tradesDisplayNameList: string[] = [];
+  if (tradeIds.length > 0) {
+    const tradeDocs = await AppOption.find({ _id: { $in: tradeIds } }).select(
+      "name",
+    );
+    tradesDisplayNameList = tradeDocs.map((t) => t.name);
+  }
+
   // Prepare and dispatch HTML Email
   const emailPayload = emailTemplate.contractorInvitation({
     email: normalizedEmail,
@@ -174,7 +194,7 @@ const inviteContractorToDB = async (
     contractorName: contractorName,
     landlordName: landlordName,
     companyName: payload.companyName || contractorUser.companyName,
-    trades: tradesList,
+    trades: tradesDisplayNameList,
     propertiesScope: propertiesScopeText,
     personalMessage: payload.personalMessage,
     loginUrl: config.client_url,
@@ -241,16 +261,16 @@ const getAllContractorsFromDB = async (
   if (query.trade) {
     const tradeStr = String(query.trade).trim();
     if (tradeStr !== "all" && tradeStr !== "ALL" && tradeStr !== "") {
-      filter.$or = filter.$or
-        ? [
-            ...filter.$or,
-            { trades: { $regex: tradeStr, $options: "i" } },
-            { primaryTrade: { $regex: tradeStr, $options: "i" } },
-          ]
-        : [
-            { trades: { $regex: tradeStr, $options: "i" } },
-            { primaryTrade: { $regex: tradeStr, $options: "i" } },
-          ];
+      if (mongoose.Types.ObjectId.isValid(tradeStr)) {
+        filter.trades = new Types.ObjectId(tradeStr);
+      } else {
+        const matchedOptions = await AppOption.find({
+          type: AppOptionType.TRADE,
+          name: { $regex: tradeStr, $options: "i" },
+        }).select("_id");
+        const matchedIds = matchedOptions.map((o) => o._id);
+        filter.trades = { $in: matchedIds };
+      }
     }
     delete query.trade;
   }
@@ -443,24 +463,8 @@ const updateContractorToDB = async (
   }
 
   // Update trades if provided
-  let tradesList: string[] = [];
-  if (Array.isArray(payload.trades)) {
-    tradesList = payload.trades.map((t) => t.trim()).filter(Boolean);
-  } else if (typeof payload.trades === "string") {
-    tradesList = payload.trades
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
-  }
-  if (payload.trade && payload.trade.trim()) {
-    const trimmed = payload.trade.trim();
-    if (!tradesList.includes(trimmed)) {
-      tradesList.push(trimmed);
-    }
-  }
-  if (tradesList.length > 0) {
-    contractor.trades = tradesList;
-    contractor.primaryTrade = tradesList[0];
+  if (payload.trades !== undefined) {
+    contractor.trades = resolveTradeIds(payload.trades);
   }
 
   if (payload.personalMessage !== undefined) {
@@ -530,13 +534,21 @@ const resendInvitationEmail = async (
 
   const propertiesScopeText = `All Properties of ${landlordName}`;
 
+  let tradesDisplayNameList: string[] = [];
+  if (Array.isArray(contractor.trades) && contractor.trades.length > 0) {
+    const tradeDocs = await AppOption.find({
+      _id: { $in: contractor.trades },
+    }).select("name");
+    tradesDisplayNameList = tradeDocs.map((t) => t.name);
+  }
+
   const emailPayload = emailTemplate.contractorInvitation({
     email: contractor.email,
     password: passwordToUse,
     contractorName: contractor.name,
     landlordName: landlordName,
     companyName: contractor.companyName,
-    trades: contractor.trades,
+    trades: tradesDisplayNameList,
     propertiesScope: propertiesScopeText,
     personalMessage: contractor.personalMessage,
     loginUrl: config.client_url,

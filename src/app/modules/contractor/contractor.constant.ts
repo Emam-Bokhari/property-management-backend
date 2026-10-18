@@ -10,6 +10,4 @@ export const contractorSearchableFields = [
   "email",
   "phone",
   "companyName",
-  "trades",
-  "primaryTrade",
 ];

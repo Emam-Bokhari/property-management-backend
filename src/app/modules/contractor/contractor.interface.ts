@@ -10,8 +10,7 @@ export type IContractor = {
   email: string;
   phone?: string;
   companyName?: string;
-  trades?: string[];
-  primaryTrade?: string;
+  trades?: Types.ObjectId[];
   personalMessage?: string;
   status: CONTRACTOR_RELATION_STATUS;
   invitedAt: Date;
@@ -30,8 +29,7 @@ export type IInviteContractorPayload = {
   email: string;
   password?: string;
   phone?: string;
-  trade?: string;
-  trades?: string[] | string;
+  trades?: Types.ObjectId[] | string[];
   companyName?: string;
   personalMessage?: string;
 };
@@ -40,8 +38,7 @@ export type IUpdateContractorPayload = {
   name?: string;
   phone?: string;
   companyName?: string;
-  trade?: string;
-  trades?: string[] | string;
+  trades?: Types.ObjectId[] | string[];
   personalMessage?: string;
   status?: CONTRACTOR_RELATION_STATUS;
 };

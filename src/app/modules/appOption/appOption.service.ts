@@ -4,7 +4,10 @@ import ApiError from "../../../errors/ApiErrors";
 import QueryBuilder from "../../builder/queryBuilder";
 import { AppOption } from "./appOption.model";
 import { TAppOption } from "./appOption.interface";
-import { appOptionSearchableFields } from "./appOption.constant";
+import {
+  AppOptionType,
+  appOptionSearchableFields,
+} from "./appOption.constant";
 
 // Create App Option
 const createAppOptionToDB = async (
