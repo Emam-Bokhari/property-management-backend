@@ -444,7 +444,11 @@ const updateContractorToDB = async (
   }
 
   if (authUser.role === USER_ROLES.LANDLORD) {
-    if (contractor.landlord.toString() !== authUser.id) {
+    const landlordId = (contractor.landlord as any)?._id
+      ? (contractor.landlord as any)._id.toString()
+      : contractor.landlord?.toString();
+
+    if (landlordId !== authUser.id) {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
         "You do not have permission to update this contractor",
@@ -510,8 +514,12 @@ const resendInvitationEmail = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Contractor not found");
   }
 
+  const landlordId = (contractor.landlord as any)?._id
+    ? (contractor.landlord as any)._id.toString()
+    : contractor.landlord?.toString();
+
   if (authUser.role === USER_ROLES.LANDLORD) {
-    if (contractor.landlord.toString() !== authUser.id) {
+    if (landlordId !== authUser.id) {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
         "You do not have permission to manage this contractor",
@@ -522,13 +530,17 @@ const resendInvitationEmail = async (
   const passwordToUse = customPassword?.trim() || "12345678";
 
   // Update password on contractor user
-  const contractorUser = await User.findById(contractor.contractor);
+  const contractorUserId =
+    (contractor.contractor as any)?._id || contractor.contractor;
+  const contractorUser = await User.findById(contractorUserId);
   if (contractorUser) {
     contractorUser.password = passwordToUse;
     await contractorUser.save();
   }
 
-  const landlordDoc = await User.findById(authUser.id);
+  const landlordDoc: any = (contractor.landlord as any)?._id
+    ? contractor.landlord
+    : await User.findById(landlordId);
   const landlordName =
     landlordDoc?.companyName || landlordDoc?.name || "Your Landlord";
 
@@ -573,7 +585,11 @@ const removeContractorFromDB = async (authUser: JwtPayload, id: string) => {
   }
 
   if (authUser.role === USER_ROLES.LANDLORD) {
-    if (contractor.landlord.toString() !== authUser.id) {
+    const landlordId = (contractor.landlord as any)?._id
+      ? (contractor.landlord as any)._id.toString()
+      : contractor.landlord?.toString();
+
+    if (landlordId !== authUser.id) {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
         "You do not have permission to remove this contractor",

@@ -907,17 +907,6 @@ const contractorInvitation = (values: IContractorInvitationEmail) => {
       </table>
     </div>
 
-    <!-- Login CTA Button -->
-    ${
-      values.loginUrl
-        ? `<div style="text-align: center; margin: 28px 0 16px;">
-      <a href="${values.loginUrl}" style="display: inline-block; background-color: #2563EB; color: #FFFFFF; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 28px; border-radius: 8px;">
-        Log In to Contractor Portal
-      </a>
-    </div>`
-        : ""
-    }
-
     <!-- Security & Multitenant SaaS Note -->
     <p style="margin: 0; font-size: 12px; color: #94A3B8; text-align: center; line-height: 1.5;">
       🔧 You will receive notifications whenever maintenance requests or work orders are assigned to you.
