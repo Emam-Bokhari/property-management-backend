@@ -8,9 +8,6 @@
 
 <!-- 
 # Review
-# Rule
-# FAQ
 # Chat
 # Broadcast
-
  -->

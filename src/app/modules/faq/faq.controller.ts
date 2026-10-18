@@ -4,13 +4,41 @@ import sendResponse from "../../../shared/sendResponse";
 import { FaqService } from "./faq.service";
 
 const createFaq = catchAsync(async (req: Request, res: Response) => {
-  const payload = req.body;
+  const role = req.body.role || req.query.role;
+  const payload = {
+    ...req.body,
+    ...(role ? { role } : {}),
+  };
   const result = await FaqService.createFaqToDB(payload);
 
   sendResponse(res, {
     statusCode: 200,
     success: true,
     message: "Faq Created Successfully",
+    data: result,
+  });
+});
+
+const getFaqs = catchAsync(async (req: Request, res: Response) => {
+  const result = await FaqService.faqsFromDB(req.query);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Faq retrieved Successfully",
+    meta: result.meta,
+    data: result.data,
+  });
+});
+
+const getFaqById = catchAsync(async (req: Request, res: Response) => {
+  const id = req.params.id;
+  const result = await FaqService.getFaqByIdFromDB(id);
+
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: "Faq retrieved Successfully",
     data: result,
   });
 });
@@ -40,20 +68,10 @@ const deleteFaq = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const getFaqs = catchAsync(async (req: Request, res: Response) => {
-  const result = await FaqService.faqsFromDB();
-
-  sendResponse(res, {
-    statusCode: 200,
-    success: true,
-    message: "Faq retrieved Successfully",
-    data: result,
-  });
-});
-
 export const FaqController = {
   createFaq,
-  updateFaq,
   getFaqs,
+  getFaqById,
+  updateFaq,
   deleteFaq,
 };
