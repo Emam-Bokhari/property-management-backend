@@ -69,23 +69,25 @@ const getSingleMaintenance = catchAsync(async (req: Request, res: Response) => {
 });
 
 // 4. Get Suggested Contractors for an Issue
-const getSuggestedContractors = catchAsync(async (req: Request, res: Response) => {
-  if (!req.user) {
-    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
-  }
+const getSuggestedContractors = catchAsync(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+    }
 
-  const result = await MaintenanceService.getSuggestedContractorsFromDB(
-    req.user,
-    req.params.id,
-  );
+    const result = await MaintenanceService.getSuggestedContractorsFromDB(
+      req.user,
+      req.params.id,
+    );
 
-  sendResponse(res, {
-    statusCode: StatusCodes.OK,
-    success: true,
-    message: "Suggested contractors fetched successfully",
-    data: result,
-  });
-});
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      message: "Suggested contractors fetched successfully",
+      data: result,
+    });
+  },
+);
 
 // 5. Landlord: Assign Contractor
 const assignContractor = catchAsync(async (req: Request, res: Response) => {
@@ -256,6 +258,59 @@ const deleteMaintenance = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// 13. Create Stripe Payment Session (Landlord / Tenant)
+const createPaymentSession = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await MaintenanceService.createPaymentSessionIntoDB(
+    req.user,
+    req.params.id,
+    req.body,
+  );
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Payment checkout session created successfully",
+    data: result,
+  });
+});
+
+// 14. Reject Invoice (Landlord / Tenant)
+const rejectInvoice = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await MaintenanceService.rejectInvoiceIntoDB(
+    req.user,
+    req.params.id,
+    req.body,
+  );
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Invoice rejected successfully",
+    data: result,
+  });
+});
+
+// 15. Handle Stripe Webhook (No Auth)
+const handleStripeWebhook = catchAsync(async (req: Request, res: Response) => {
+  const signature = req.headers["stripe-signature"] as string | undefined;
+  const rawBody = (req as any).rawBody ?? req.body;
+
+  const result = await MaintenanceService.handleStripeWebhookIntoDB(
+    rawBody,
+    signature,
+  );
+
+  res.status(StatusCodes.OK).json(result);
+});
+
 export const MaintenanceController = {
   createMaintenance,
   getAllMaintenance,
@@ -269,4 +324,7 @@ export const MaintenanceController = {
   cancelMaintenance,
   updateMaintenance,
   deleteMaintenance,
+  createPaymentSession,
+  rejectInvoice,
+  handleStripeWebhook,
 };

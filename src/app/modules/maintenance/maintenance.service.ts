@@ -1,6 +1,8 @@
 import mongoose, { Types } from "mongoose";
 import { JwtPayload } from "jsonwebtoken";
 import { StatusCodes } from "http-status-codes";
+import Stripe from "stripe";
+import config from "../../../config";
 import ApiError from "../../../errors/ApiErrors";
 import QueryBuilder from "../../builder/queryBuilder";
 import { Maintenance } from "./maintenance.model";
@@ -11,12 +13,15 @@ import {
   TScheduleVisitPayload,
   TSubmitInvoicePayload,
   TCancelMaintenancePayload,
+  TPayMaintenancePayload,
+  TRejectInvoicePayload,
 } from "./maintenance.interface";
 import {
   CONTRACTOR_STATUS,
   MAINTENANCE_LOCATION_TYPE,
   MAINTENANCE_REQUESTER,
   MAINTENANCE_STATUS,
+  PAYMENT_STATUS,
   maintenanceSearchableFields,
 } from "./maintenance.constant";
 import { USER_ROLES } from "../../../enums/user";
@@ -77,7 +82,9 @@ const calculateProgressStep = (status: MAINTENANCE_STATUS): number => {
     case MAINTENANCE_STATUS.ACCEPTED:
       return 1; // Assigned / Scheduled
     case MAINTENANCE_STATUS.IN_PROGRESS:
-      return 2; // In Progress
+    case MAINTENANCE_STATUS.WAITING_APPROVAL:
+    case MAINTENANCE_STATUS.INVOICE_REJECTED:
+      return 2; // In Progress / Awaiting approval
     case MAINTENANCE_STATUS.COMPLETED:
       return 3; // Done
     case MAINTENANCE_STATUS.CANCELLED:
@@ -172,7 +179,10 @@ const createMaintenanceIssueIntoDB = async (
         flatId = tenantUser.flat as Types.ObjectId;
         const prop = await Property.findById(propertyId);
         if (!prop) {
-          throw new ApiError(StatusCodes.NOT_FOUND, "Associated property not found");
+          throw new ApiError(
+            StatusCodes.NOT_FOUND,
+            "Associated property not found",
+          );
         }
         landlordId = prop.landlord as Types.ObjectId;
       } else if (payload.property) {
@@ -200,8 +210,14 @@ const createMaintenanceIssueIntoDB = async (
     requesterRole = MAINTENANCE_REQUESTER.LANDLORD;
     landlordId = new Types.ObjectId(authUser.userId);
 
-    if (!payload.property || !mongoose.Types.ObjectId.isValid(payload.property)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, "Valid property ID is required");
+    if (
+      !payload.property ||
+      !mongoose.Types.ObjectId.isValid(payload.property)
+    ) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        "Valid property ID is required",
+      );
     }
 
     propertyId = new Types.ObjectId(payload.property);
@@ -223,8 +239,7 @@ const createMaintenanceIssueIntoDB = async (
     }
 
     // If location is Unit, flat is required
-    const locationType =
-      payload.locationType || MAINTENANCE_LOCATION_TYPE.UNIT;
+    const locationType = payload.locationType || MAINTENANCE_LOCATION_TYPE.UNIT;
 
     if (locationType === MAINTENANCE_LOCATION_TYPE.UNIT) {
       if (!payload.flat || !mongoose.Types.ObjectId.isValid(payload.flat)) {
@@ -263,7 +278,10 @@ const createMaintenanceIssueIntoDB = async (
       ) {
         const communalOpt = await AppOption.findById(payload.communalArea);
         if (!communalOpt) {
-          throw new ApiError(StatusCodes.NOT_FOUND, "Communal area option not found");
+          throw new ApiError(
+            StatusCodes.NOT_FOUND,
+            "Communal area option not found",
+          );
         }
       }
     }
@@ -340,7 +358,13 @@ const getAllMaintenanceFromDB = async (
     } else if (queryCopy.tab === "scheduled") {
       filter.status = MAINTENANCE_STATUS.SCHEDULED;
     } else if (queryCopy.tab === "in_progress") {
-      filter.status = MAINTENANCE_STATUS.IN_PROGRESS;
+      filter.status = {
+        $in: [
+          MAINTENANCE_STATUS.IN_PROGRESS,
+          MAINTENANCE_STATUS.WAITING_APPROVAL,
+          MAINTENANCE_STATUS.INVOICE_REJECTED,
+        ],
+      };
     } else if (queryCopy.tab === "completed") {
       filter.status = MAINTENANCE_STATUS.COMPLETED;
     }
@@ -423,30 +447,46 @@ const getAllMaintenanceFromDB = async (
     };
   } else if (authUser.role === USER_ROLES.CONTRACTOR) {
     const contractorId = new Types.ObjectId(authUser.userId);
-    const [allCount, pendingCount, scheduledCount, inProgressCount, completedCount] =
-      await Promise.all([
-        Maintenance.countDocuments({ contractor: contractorId, isDeleted: false }),
-        Maintenance.countDocuments({
-          contractor: contractorId,
-          status: { $in: [MAINTENANCE_STATUS.ASSIGNED, MAINTENANCE_STATUS.PENDING] },
-          isDeleted: false,
-        }),
-        Maintenance.countDocuments({
-          contractor: contractorId,
-          status: MAINTENANCE_STATUS.SCHEDULED,
-          isDeleted: false,
-        }),
-        Maintenance.countDocuments({
-          contractor: contractorId,
-          status: MAINTENANCE_STATUS.IN_PROGRESS,
-          isDeleted: false,
-        }),
-        Maintenance.countDocuments({
-          contractor: contractorId,
-          status: MAINTENANCE_STATUS.COMPLETED,
-          isDeleted: false,
-        }),
-      ]);
+    const [
+      allCount,
+      pendingCount,
+      scheduledCount,
+      inProgressCount,
+      completedCount,
+    ] = await Promise.all([
+      Maintenance.countDocuments({
+        contractor: contractorId,
+        isDeleted: false,
+      }),
+      Maintenance.countDocuments({
+        contractor: contractorId,
+        status: {
+          $in: [MAINTENANCE_STATUS.ASSIGNED, MAINTENANCE_STATUS.PENDING],
+        },
+        isDeleted: false,
+      }),
+      Maintenance.countDocuments({
+        contractor: contractorId,
+        status: MAINTENANCE_STATUS.SCHEDULED,
+        isDeleted: false,
+      }),
+      Maintenance.countDocuments({
+        contractor: contractorId,
+        status: {
+          $in: [
+            MAINTENANCE_STATUS.IN_PROGRESS,
+            MAINTENANCE_STATUS.WAITING_APPROVAL,
+            MAINTENANCE_STATUS.INVOICE_REJECTED,
+          ],
+        },
+        isDeleted: false,
+      }),
+      Maintenance.countDocuments({
+        contractor: contractorId,
+        status: MAINTENANCE_STATUS.COMPLETED,
+        isDeleted: false,
+      }),
+    ]);
     summary = {
       all: allCount,
       pending: pendingCount,
@@ -468,10 +508,7 @@ const getAllMaintenanceFromDB = async (
 };
 
 // 3. Get Single Maintenance Issue
-const getSingleMaintenanceFromDB = async (
-  authUser: JwtPayload,
-  id: string,
-) => {
+const getSingleMaintenanceFromDB = async (authUser: JwtPayload, id: string) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid maintenance issue ID");
   }
@@ -587,7 +624,10 @@ const getSuggestedContractorsFromDB = async (
     // Name keyword match
     if (!isMatch && issueWords.length > 0) {
       isMatch = tradeNames.some((tradeName: string) =>
-        issueWords.some((word: string) => tradeName.includes(word) || word.includes(tradeName)),
+        issueWords.some(
+          (word: string) =>
+            tradeName.includes(word) || word.includes(tradeName),
+        ),
       );
     }
 
@@ -668,9 +708,8 @@ const assignContractorIntoDB = async (
 
   await issue.save();
 
-  const updatedIssue = await Maintenance.findById(id).populate(
-    maintenancePopulate,
-  );
+  const updatedIssue =
+    await Maintenance.findById(id).populate(maintenancePopulate);
   return enhanceMaintenanceData(updatedIssue);
 };
 
@@ -706,17 +745,13 @@ const contractorScheduleVisitIntoDB = async (
 
   await issue.save();
 
-  const updatedIssue = await Maintenance.findById(id).populate(
-    maintenancePopulate,
-  );
+  const updatedIssue =
+    await Maintenance.findById(id).populate(maintenancePopulate);
   return enhanceMaintenanceData(updatedIssue);
 };
 
 // 7. Contractor: Reject Job
-const contractorRejectJobIntoDB = async (
-  authUser: JwtPayload,
-  id: string,
-) => {
+const contractorRejectJobIntoDB = async (authUser: JwtPayload, id: string) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid maintenance issue ID");
   }
@@ -739,17 +774,13 @@ const contractorRejectJobIntoDB = async (
 
   await issue.save();
 
-  const updatedIssue = await Maintenance.findById(id).populate(
-    maintenancePopulate,
-  );
+  const updatedIssue =
+    await Maintenance.findById(id).populate(maintenancePopulate);
   return enhanceMaintenanceData(updatedIssue);
 };
 
 // 8. Contractor: Start Job (On-Site Execution)
-const contractorStartJobIntoDB = async (
-  authUser: JwtPayload,
-  id: string,
-) => {
+const contractorStartJobIntoDB = async (authUser: JwtPayload, id: string) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid maintenance issue ID");
   }
@@ -772,9 +803,8 @@ const contractorStartJobIntoDB = async (
 
   await issue.save();
 
-  const updatedIssue = await Maintenance.findById(id).populate(
-    maintenancePopulate,
-  );
+  const updatedIssue =
+    await Maintenance.findById(id).populate(maintenancePopulate);
   return enhanceMaintenanceData(updatedIssue);
 };
 
@@ -824,14 +854,17 @@ const contractorSubmitInvoiceIntoDB = async (
   }
 
   issue.completedAt = new Date();
-  issue.contractorStatus = CONTRACTOR_STATUS.COMPLETED;
-  issue.status = MAINTENANCE_STATUS.COMPLETED;
+  issue.contractorStatus = CONTRACTOR_STATUS.INVOICE_SUBMITTED;
+  issue.status = MAINTENANCE_STATUS.WAITING_APPROVAL;
+  issue.invoiceStatus = "submitted";
+  issue.paymentStatus = PAYMENT_STATUS.UNPAID;
+  issue.rejectionReason = undefined;
+  issue.rejectedAt = undefined;
 
   await issue.save();
 
-  const updatedIssue = await Maintenance.findById(id).populate(
-    maintenancePopulate,
-  );
+  const updatedIssue =
+    await Maintenance.findById(id).populate(maintenancePopulate);
   return enhanceMaintenanceData(updatedIssue);
 };
 
@@ -880,9 +913,8 @@ const cancelMaintenanceIntoDB = async (
 
   await issue.save();
 
-  const updatedIssue = await Maintenance.findById(id).populate(
-    maintenancePopulate,
-  );
+  const updatedIssue =
+    await Maintenance.findById(id).populate(maintenancePopulate);
   return enhanceMaintenanceData(updatedIssue);
 };
 
@@ -920,10 +952,7 @@ const updateMaintenanceIntoDB = async (
 };
 
 // 12. Delete Maintenance Issue (Soft Delete)
-const deleteMaintenanceFromDB = async (
-  authUser: JwtPayload,
-  id: string,
-) => {
+const deleteMaintenanceFromDB = async (authUser: JwtPayload, id: string) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid maintenance issue ID");
   }
@@ -947,6 +976,242 @@ const deleteMaintenanceFromDB = async (
   return result;
 };
 
+// 13. Create Stripe Payment Checkout Session (Landlord / Tenant)
+const createPaymentSessionIntoDB = async (
+  authUser: JwtPayload,
+  id: string,
+  payload: TPayMaintenancePayload,
+) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid maintenance issue ID");
+  }
+
+  const issue = await Maintenance.findById(id).populate([
+    { path: "property", select: "propertyName" },
+    { path: "flat", select: "unitName" },
+    { path: "contractor", select: "name email" },
+  ]);
+
+  if (!issue || issue.isDeleted) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Maintenance issue not found");
+  }
+
+  const isLandlord =
+    authUser.role === USER_ROLES.LANDLORD &&
+    issue.landlord.toString() === authUser.userId;
+  const isTenant =
+    authUser.role === USER_ROLES.TENANT &&
+    (issue.tenant?.toString() === authUser.userId ||
+      issue.requestedBy.toString() === authUser.userId);
+  const isAdmin =
+    authUser.role === USER_ROLES.ADMIN ||
+    authUser.role === USER_ROLES.SUPER_ADMIN;
+
+  if (!isLandlord && !isTenant && !isAdmin) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      "You do not have permission to pay for this maintenance issue",
+    );
+  }
+
+  if (issue.paymentStatus === PAYMENT_STATUS.PAID) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "This maintenance issue has already been paid",
+    );
+  }
+
+  const amount = issue.invoiceAmount || issue.invoiceAmounts;
+  if (!amount || amount <= 0) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "No valid invoice amount submitted by the contractor yet",
+    );
+  }
+
+  const secretKey = config.stripe?.secretKey || process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new ApiError(
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      "Stripe secret key is not configured on the server",
+    );
+  }
+
+  const stripe = new Stripe(secretKey);
+
+  const clientBaseUrl = config.client_url || "http://localhost:3000";
+  const successUrl =
+    payload.successUrl ||
+    `${clientBaseUrl}/maintenance/payment-success?session_id={CHECKOUT_SESSION_ID}&issue_id=${issue._id}`;
+  const cancelUrl =
+    payload.cancelUrl ||
+    `${clientBaseUrl}/maintenance/payment-cancel?issue_id=${issue._id}`;
+
+  const currency = (process.env.CURRENCY || "usd").toLowerCase();
+
+  const session = await stripe.checkout.sessions.create({
+    line_items: [
+      {
+        price_data: {
+          currency,
+          product_data: {
+            name: `Maintenance: ${issue.issueTitle}`,
+            description: `Job ID: ${issue.jobId || issue._id} | Flat: ${(issue.flat as any)?.unitName || "N/A"}`,
+          },
+          unit_amount: Math.round(amount * 100),
+        },
+        quantity: 1,
+      },
+    ],
+    mode: "payment",
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    client_reference_id: issue._id.toString(),
+    metadata: {
+      maintenanceId: issue._id.toString(),
+      payerId: authUser.userId,
+      payerRole: authUser.role,
+      contractorId:
+        (issue.contractor as any)?._id?.toString() ||
+        issue.contractor?.toString() ||
+        "",
+      invoiceAmount: amount.toString(),
+      jobId: issue.jobId || "",
+    },
+  });
+
+  issue.stripeSessionId = session.id;
+  await issue.save();
+
+  return {
+    paymentUrl: session.url,
+    sessionId: session.id,
+    amount,
+    currency,
+    jobId: issue.jobId,
+    issueTitle: issue.issueTitle,
+  };
+};
+
+// 14. Reject Contractor Invoice (Landlord / Tenant)
+const rejectInvoiceIntoDB = async (
+  authUser: JwtPayload,
+  id: string,
+  payload: TRejectInvoicePayload,
+) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid maintenance issue ID");
+  }
+
+  const issue = await Maintenance.findById(id);
+  if (!issue || issue.isDeleted) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Maintenance issue not found");
+  }
+
+  const isLandlord =
+    authUser.role === USER_ROLES.LANDLORD &&
+    issue.landlord.toString() === authUser.userId;
+  const isTenant =
+    authUser.role === USER_ROLES.TENANT &&
+    (issue.tenant?.toString() === authUser.userId ||
+      issue.requestedBy.toString() === authUser.userId);
+  const isAdmin =
+    authUser.role === USER_ROLES.ADMIN ||
+    authUser.role === USER_ROLES.SUPER_ADMIN;
+
+  if (!isLandlord && !isTenant && !isAdmin) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      "You do not have permission to reject this invoice",
+    );
+  }
+
+  if (issue.paymentStatus === PAYMENT_STATUS.PAID) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Paid maintenance issues cannot have invoice rejected",
+    );
+  }
+
+  issue.status = MAINTENANCE_STATUS.INVOICE_REJECTED;
+  issue.contractorStatus = CONTRACTOR_STATUS.INVOICE_REJECTED;
+  issue.invoiceStatus = "rejected";
+  issue.rejectionReason = payload.rejectionReason;
+  issue.rejectedAt = new Date();
+
+  await issue.save();
+
+  const updatedIssue =
+    await Maintenance.findById(id).populate(maintenancePopulate);
+  return enhanceMaintenanceData(updatedIssue);
+};
+
+// 15. Handle Stripe Webhook
+const handleStripeWebhookIntoDB = async (
+  rawBody: Buffer | string,
+  signature?: string,
+) => {
+  const secretKey = config.stripe?.secretKey || process.env.STRIPE_SECRET_KEY;
+  const webhookSecret =
+    config.stripe?.webhookSecret || process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!secretKey) {
+    throw new ApiError(
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      "Stripe secret key missing on server",
+    );
+  }
+
+  const stripe = new Stripe(secretKey);
+  let event: Stripe.Event;
+
+  if (webhookSecret && signature) {
+    try {
+      event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    } catch (err: any) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        `Webhook signature verification failed: ${err.message}`,
+      );
+    }
+  } else {
+    try {
+      event =
+        typeof rawBody === "string"
+          ? JSON.parse(rawBody)
+          : JSON.parse(rawBody.toString("utf-8"));
+    } catch (err: any) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid webhook payload");
+    }
+  }
+
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const maintenanceId =
+      session.metadata?.maintenanceId || session.client_reference_id;
+
+    if (maintenanceId && mongoose.Types.ObjectId.isValid(maintenanceId)) {
+      const issue = await Maintenance.findById(maintenanceId);
+      if (issue && !issue.isDeleted) {
+        issue.paymentStatus = PAYMENT_STATUS.PAID;
+        issue.paidAt = new Date();
+        issue.status = MAINTENANCE_STATUS.COMPLETED;
+        issue.contractorStatus = CONTRACTOR_STATUS.COMPLETED;
+        issue.completedAt = issue.completedAt || new Date();
+        issue.invoiceStatus = "approved";
+        issue.transactionId =
+          (typeof session.payment_intent === "string"
+            ? session.payment_intent
+            : session.id) || session.id;
+
+        await issue.save();
+      }
+    }
+  }
+
+  return { received: true };
+};
+
 export const MaintenanceService = {
   createMaintenanceIssueIntoDB,
   getAllMaintenanceFromDB,
@@ -960,4 +1225,7 @@ export const MaintenanceService = {
   cancelMaintenanceIntoDB,
   updateMaintenanceIntoDB,
   deleteMaintenanceFromDB,
+  createPaymentSessionIntoDB,
+  rejectInvoiceIntoDB,
+  handleStripeWebhookIntoDB,
 };

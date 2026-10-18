@@ -107,7 +107,36 @@ router.post(
   MaintenanceController.cancelMaintenance,
 );
 
-// 11. Single Maintenance Details (GET, PATCH, DELETE)
+// 11. Pay Maintenance Issue - Stripe Checkout (Landlord / Tenant)
+router.post(
+  "/:id/pay",
+  auth(
+    USER_ROLES.LANDLORD,
+    USER_ROLES.TENANT,
+    USER_ROLES.ADMIN,
+    USER_ROLES.SUPER_ADMIN,
+  ),
+  validateRequest(MaintenanceValidation.payMaintenanceZodSchema),
+  MaintenanceController.createPaymentSession,
+);
+
+// 12. Reject Contractor Invoice (Landlord / Tenant)
+router.patch(
+  "/:id/reject-invoice",
+  auth(
+    USER_ROLES.LANDLORD,
+    USER_ROLES.TENANT,
+    USER_ROLES.ADMIN,
+    USER_ROLES.SUPER_ADMIN,
+  ),
+  validateRequest(MaintenanceValidation.rejectInvoiceZodSchema),
+  MaintenanceController.rejectInvoice,
+);
+
+// 13. Stripe Webhook (No Auth - Signature Verification)
+router.post("/webhook", MaintenanceController.handleStripeWebhook);
+
+// 14. Single Maintenance Details (GET, PATCH, DELETE)
 router
   .route("/:id")
   .get(

@@ -7,6 +7,7 @@ import {
   MAINTENANCE_PRIORITY,
   MAINTENANCE_REQUESTER,
   MAINTENANCE_STATUS,
+  PAYMENT_STATUS,
 } from "./maintenance.constant";
 import { MaintenanceModel, TMaintenance } from "./maintenance.interface";
 import "../appOption/appOption.model";
@@ -143,6 +144,31 @@ const maintenanceSchema = new Schema<TMaintenance, MaintenanceModel>(
         type: String,
       },
     ],
+    // Payment & Invoice Tracking
+    paymentStatus: {
+      type: String,
+      enum: Object.values(PAYMENT_STATUS),
+      default: PAYMENT_STATUS.UNPAID,
+    },
+    paidAt: {
+      type: Date,
+    },
+    stripeSessionId: {
+      type: String,
+    },
+    transactionId: {
+      type: String,
+    },
+    invoiceStatus: {
+      type: String,
+      enum: ["submitted", "approved", "rejected"],
+    },
+    rejectionReason: {
+      type: String,
+    },
+    rejectedAt: {
+      type: Date,
+    },
     completionPhotos: [
       {
         type: String,

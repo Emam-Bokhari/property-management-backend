@@ -931,4 +931,3 @@ export const emailTemplate = {
   tenantInvitation,
   contractorInvitation,
 };
-

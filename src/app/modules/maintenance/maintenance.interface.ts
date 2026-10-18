@@ -7,6 +7,7 @@ import {
   MAINTENANCE_PRIORITY,
   MAINTENANCE_REQUESTER,
   MAINTENANCE_STATUS,
+  PAYMENT_STATUS,
 } from "./maintenance.constant";
 
 export type TMaintenanceSchedule = {
@@ -62,6 +63,15 @@ export type TMaintenance = {
   notes?: string;
   certificates?: string[];
 
+  // Payment Tracking
+  paymentStatus?: PAYMENT_STATUS;
+  paidAt?: Date | string;
+  stripeSessionId?: string;
+  transactionId?: string;
+  invoiceStatus?: "submitted" | "approved" | "rejected";
+  rejectionReason?: string;
+  rejectedAt?: Date | string;
+
   // Resolution & Completion
   completionPhotos?: string[];
   completionNotes?: string;
@@ -114,6 +124,16 @@ export type TSubmitInvoicePayload = {
   certificates?: string[];
   completionPhotos?: string[];
   completionNotes?: string;
+};
+
+export type TPayMaintenancePayload = {
+  successUrl?: string;
+  cancelUrl?: string;
+  notes?: string;
+};
+
+export type TRejectInvoicePayload = {
+  rejectionReason: string;
 };
 
 export type TCancelMaintenancePayload = {

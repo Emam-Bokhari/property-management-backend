@@ -38,4 +38,3 @@ export type IContractorInvitationEmail = {
   personalMessage?: string;
   loginUrl?: string;
 };
-

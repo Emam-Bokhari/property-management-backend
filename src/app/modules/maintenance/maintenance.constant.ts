@@ -7,6 +7,8 @@ export enum MAINTENANCE_STATUS {
   COMPLETED = "completed",
   CANCELLED = "cancelled",
   REJECTED = "rejected",
+  WAITING_APPROVAL = "waiting_approval",
+  INVOICE_REJECTED = "invoice_rejected",
 }
 
 export enum MAINTENANCE_PRIORITY {
@@ -38,7 +40,15 @@ export enum CONTRACTOR_STATUS {
   SCHEDULED = "scheduled",
   DECLINED = "declined",
   IN_PROGRESS = "in_progress",
+  INVOICE_SUBMITTED = "invoice_submitted",
+  INVOICE_REJECTED = "invoice_rejected",
   COMPLETED = "completed",
+}
+
+export enum PAYMENT_STATUS {
+  UNPAID = "unpaid",
+  PAID = "paid",
+  FAILED = "failed",
 }
 
 export const maintenanceSearchableFields = [
@@ -64,4 +74,5 @@ export const maintenanceFilterableFields = [
   "tab",
   "locationType",
   "issueType",
+  "paymentStatus",
 ];

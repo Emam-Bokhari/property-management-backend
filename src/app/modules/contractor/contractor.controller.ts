@@ -66,7 +66,9 @@ const getMyAssignedLandlords = catchAsync(
       throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
     }
 
-    const result = await ContractorService.getMyAssignedLandlordsFromDB(req.user);
+    const result = await ContractorService.getMyAssignedLandlordsFromDB(
+      req.user,
+    );
 
     sendResponse(res, {
       statusCode: StatusCodes.OK,

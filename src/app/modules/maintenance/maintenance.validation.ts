@@ -131,6 +131,22 @@ const updateMaintenanceStatusZodSchema = z.object({
   }),
 });
 
+const payMaintenanceZodSchema = z.object({
+  body: z.object({
+    successUrl: z.string().optional(),
+    cancelUrl: z.string().optional(),
+    notes: z.string().optional(),
+  }),
+});
+
+const rejectInvoiceZodSchema = z.object({
+  body: z.object({
+    rejectionReason: z
+      .string({ required_error: "Rejection reason is required" })
+      .min(1, "Rejection reason cannot be empty"),
+  }),
+});
+
 export const MaintenanceValidation = {
   createMaintenanceZodSchema,
   updateMaintenanceZodSchema,
@@ -139,4 +155,6 @@ export const MaintenanceValidation = {
   submitInvoiceZodSchema,
   cancelMaintenanceZodSchema,
   updateMaintenanceStatusZodSchema,
+  payMaintenanceZodSchema,
+  rejectInvoiceZodSchema,
 };

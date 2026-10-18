@@ -2,17 +2,19 @@ import { z } from "zod";
 import { USER_ROLES } from "../../../enums/user";
 import { normalizeFaqRole } from "./faq.constant";
 
-const roleSchema = z
-  .preprocess((val) => {
+const roleSchema = z.preprocess(
+  (val) => {
     if (typeof val === "string") {
       return normalizeFaqRole(val);
     }
     return val;
-  }, z.nativeEnum(USER_ROLES, {
+  },
+  z.nativeEnum(USER_ROLES, {
     errorMap: () => ({
       message: `Invalid role. Role must be one of: ${Object.values(USER_ROLES).join(", ")}`,
     }),
-  }));
+  }),
+);
 
 const createFaqZodSchema = z.object({
   body: z.object({

@@ -62,4 +62,8 @@ export default {
     authToken: process.env.TWILIO_AUTH_TOKEN,
     serviceSid: process.env.TWILIO_SERVICE_SID,
   },
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY,
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+  },
 };

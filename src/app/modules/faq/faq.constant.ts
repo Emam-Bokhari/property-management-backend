@@ -9,12 +9,10 @@ export const normalizeFaqRole = (
   const cleaned = role.toLowerCase().trim();
   if (cleaned === "landlord" || cleaned === "landlords")
     return USER_ROLES.LANDLORD;
-  if (cleaned === "tenant" || cleaned === "tenants")
-    return USER_ROLES.TENANT;
+  if (cleaned === "tenant" || cleaned === "tenants") return USER_ROLES.TENANT;
   if (cleaned === "contractor" || cleaned === "contractors")
     return USER_ROLES.CONTRACTOR;
-  if (cleaned === "admin" || cleaned === "admins")
-    return USER_ROLES.ADMIN;
+  if (cleaned === "admin" || cleaned === "admins") return USER_ROLES.ADMIN;
   if (
     cleaned === "super_admin" ||
     cleaned === "super_admins" ||
