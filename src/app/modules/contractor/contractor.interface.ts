@@ -12,8 +12,6 @@ export type IContractor = {
   companyName?: string;
   trades?: string[];
   primaryTrade?: string;
-  properties?: Types.ObjectId[];
-  allProperties: boolean;
   personalMessage?: string;
   status: CONTRACTOR_RELATION_STATUS;
   invitedAt: Date;
@@ -35,8 +33,6 @@ export type IInviteContractorPayload = {
   trade?: string;
   trades?: string[] | string;
   companyName?: string;
-  properties?: string[];
-  allProperties?: boolean;
   personalMessage?: string;
 };
 
@@ -46,8 +42,6 @@ export type IUpdateContractorPayload = {
   companyName?: string;
   trade?: string;
   trades?: string[] | string;
-  properties?: string[];
-  allProperties?: boolean;
   personalMessage?: string;
   status?: CONTRACTOR_RELATION_STATUS;
 };

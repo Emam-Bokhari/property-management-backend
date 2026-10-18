@@ -50,16 +50,6 @@ const contractorSchema = new Schema<IContractor, ContractorModel>(
       trim: true,
       default: "",
     },
-    properties: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: "Property",
-      },
-    ],
-    allProperties: {
-      type: Boolean,
-      default: true,
-    },
     personalMessage: {
       type: String,
       trim: true,

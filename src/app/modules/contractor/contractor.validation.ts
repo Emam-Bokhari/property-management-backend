@@ -16,8 +16,6 @@ const inviteContractorZodSchema = z.object({
     trade: z.string().optional(),
     trades: z.union([z.array(z.string()), z.string()]).optional(),
     companyName: z.string().optional(),
-    properties: z.array(z.string()).optional(),
-    allProperties: z.boolean().optional().default(true),
     personalMessage: z.string().optional(),
   }),
 });
@@ -29,8 +27,6 @@ const updateContractorZodSchema = z.object({
     companyName: z.string().optional(),
     trade: z.string().optional(),
     trades: z.union([z.array(z.string()), z.string()]).optional(),
-    properties: z.array(z.string()).optional(),
-    allProperties: z.boolean().optional(),
     personalMessage: z.string().optional(),
     status: z.nativeEnum(CONTRACTOR_RELATION_STATUS).optional(),
   }),

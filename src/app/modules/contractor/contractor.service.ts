@@ -32,10 +32,6 @@ const contractorPopulateOptions = [
     path: "landlord",
     select: "name email phone profileImage companyName",
   },
-  {
-    path: "properties",
-    select: "propertyName streetAddress postCode propertyPhotos",
-  },
 ];
 
 // 1. Invite Contractor (Landlord / Admin)
@@ -45,41 +41,6 @@ const inviteContractorToDB = async (
 ) => {
   const landlordId =
     authUser.role === USER_ROLES.LANDLORD ? authUser.id : authUser.id;
-
-  // Process properties: by default all properties of the landlord
-  let propertyObjectIds: Types.ObjectId[] = [];
-  const allProperties =
-    payload.allProperties !== undefined ? Boolean(payload.allProperties) : true;
-
-  if (payload.properties && Array.isArray(payload.properties)) {
-    for (const propId of payload.properties) {
-      if (!mongoose.Types.ObjectId.isValid(propId)) {
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          `Invalid property ID: ${propId}`,
-        );
-      }
-      const propDoc = await Property.findById(propId);
-      if (!propDoc || (propDoc as any).isDeleted) {
-        throw new ApiError(
-          StatusCodes.NOT_FOUND,
-          `Property with ID ${propId} not found`,
-        );
-      }
-      if (authUser.role === USER_ROLES.LANDLORD) {
-        const propLandlord = propDoc.landlord?._id
-          ? propDoc.landlord._id.toString()
-          : propDoc.landlord?.toString();
-        if (propLandlord !== authUser.id) {
-          throw new ApiError(
-            StatusCodes.FORBIDDEN,
-            `You do not have permission to manage property ${propDoc.propertyName}`,
-          );
-        }
-      }
-      propertyObjectIds.push(new Types.ObjectId(propId));
-    }
-  }
 
   // Parse and normalize trades
   let tradesList: string[] = [];
@@ -174,10 +135,6 @@ const inviteContractorToDB = async (
       contractorRelation.trades = tradesList;
       contractorRelation.primaryTrade = tradesList[0];
     }
-    contractorRelation.allProperties = allProperties;
-    if (propertyObjectIds.length > 0) {
-      contractorRelation.properties = propertyObjectIds;
-    }
     contractorRelation.personalMessage =
       payload.personalMessage || contractorRelation.personalMessage || "";
     contractorRelation.status = CONTRACTOR_RELATION_STATUS.ACTIVE;
@@ -197,8 +154,6 @@ const inviteContractorToDB = async (
         "",
       trades: tradesList,
       primaryTrade: tradesList[0] || "",
-      properties: propertyObjectIds,
-      allProperties: allProperties,
       personalMessage: payload.personalMessage || "",
       status: CONTRACTOR_RELATION_STATUS.ACTIVE,
       invitedAt: new Date(),
@@ -210,16 +165,7 @@ const inviteContractorToDB = async (
   const landlordName =
     landlordDoc?.companyName || landlordDoc?.name || "Your Landlord";
 
-  // Build property scope description for email
-  let propertiesScopeText = `All Properties of ${landlordName}`;
-  if (!allProperties && propertyObjectIds.length > 0) {
-    const assignedProps = await Property.find({
-      _id: { $in: propertyObjectIds },
-    }).select("propertyName");
-    propertiesScopeText = assignedProps
-      .map((p) => p.propertyName)
-      .join(", ");
-  }
+  const propertiesScopeText = `All Properties of ${landlordName}`;
 
   // Prepare and dispatch HTML Email
   const emailPayload = emailTemplate.contractorInvitation({
@@ -267,16 +213,25 @@ const getAllContractorsFromDB = async (
     filter.contractor = new Types.ObjectId(authUser.id);
   }
 
-  // Filter by property if requested
+  // Filter by property if requested:
+  // Since contractors are under the landlord and cover all of the landlord's properties,
+  // verify property belongs to landlord (if landlord role)
   if (query.property) {
     const propStr = String(query.property).trim();
     if (propStr !== "all" && propStr !== "ALL" && propStr !== "") {
       if (mongoose.Types.ObjectId.isValid(propStr)) {
-        const propId = new Types.ObjectId(propStr);
-        filter.$or = [
-          { allProperties: true },
-          { properties: propId },
-        ];
+        if (authUser.role === USER_ROLES.LANDLORD) {
+          const propertyDoc = await Property.findOne({
+            _id: new Types.ObjectId(propStr),
+            landlord: new Types.ObjectId(authUser.id),
+          });
+          if (!propertyDoc) {
+            return {
+              meta: { page: 1, limit: 10, total: 0, totalPage: 0 },
+              data: [],
+            };
+          }
+        }
       }
     }
     delete query.property;
@@ -428,9 +383,29 @@ const getMyAssignedLandlordsFromDB = async (authUser: JwtPayload) => {
     isDeleted: { $ne: true },
   })
     .sort({ createdAt: -1 })
-    .populate(contractorPopulateOptions);
+    .populate(contractorPopulateOptions)
+    .lean();
 
-  return assignments;
+  // Attach properties list of each landlord so the contractor knows all properties they cover
+  const enrichedAssignments = await Promise.all(
+    assignments.map(async (item: any) => {
+      const landlordUserId = item.landlord?._id || item.landlord;
+      if (landlordUserId) {
+        const properties = await Property.find({
+          landlord: landlordUserId,
+        }).select(
+          "propertyName streetAddress postCode propertyPhotos propertyType",
+        );
+        return {
+          ...item,
+          properties,
+        };
+      }
+      return item;
+    }),
+  );
+
+  return enrichedAssignments;
 };
 
 // 5. Update Contractor (Landlord / Admin)
@@ -488,24 +463,6 @@ const updateContractorToDB = async (
     contractor.primaryTrade = tradesList[0];
   }
 
-  if (payload.allProperties !== undefined) {
-    contractor.allProperties = Boolean(payload.allProperties);
-  }
-
-  if (payload.properties && Array.isArray(payload.properties)) {
-    const propIds: Types.ObjectId[] = [];
-    for (const propId of payload.properties) {
-      if (!mongoose.Types.ObjectId.isValid(propId)) {
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          `Invalid property ID: ${propId}`,
-        );
-      }
-      propIds.push(new Types.ObjectId(propId));
-    }
-    contractor.properties = propIds;
-  }
-
   if (payload.personalMessage !== undefined) {
     contractor.personalMessage = payload.personalMessage;
   }
@@ -543,8 +500,7 @@ const resendInvitationEmail = async (
 
   const contractor = await Contractor.findById(id)
     .populate("contractor")
-    .populate("landlord")
-    .populate("properties");
+    .populate("landlord");
 
   if (!contractor || (contractor as any).isDeleted) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Contractor not found");
@@ -572,13 +528,7 @@ const resendInvitationEmail = async (
   const landlordName =
     landlordDoc?.companyName || landlordDoc?.name || "Your Landlord";
 
-  let propertiesScopeText = `All Properties of ${landlordName}`;
-  if (!contractor.allProperties && contractor.properties?.length) {
-    propertiesScopeText = (contractor.properties as any[])
-      .map((p) => p.propertyName)
-      .filter(Boolean)
-      .join(", ");
-  }
+  const propertiesScopeText = `All Properties of ${landlordName}`;
 
   const emailPayload = emailTemplate.contractorInvitation({
     email: contractor.email,
