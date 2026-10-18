@@ -2,6 +2,7 @@ import { model, Schema } from "mongoose";
 import { softDeletePlugin } from "../../../DB/plugins/softDeletePlugin";
 import {
   CONTRACTOR_STATUS,
+  MAINTENANCE_LOCATION_TYPE,
   MAINTENANCE_PAID_BY,
   MAINTENANCE_PRIORITY,
   MAINTENANCE_REQUESTER,
@@ -9,6 +10,9 @@ import {
 } from "./maintenance.constant";
 import { MaintenanceModel, TMaintenance } from "./maintenance.interface";
 import "../appOption/appOption.model";
+import "../property/property.model";
+import "../flat/flat.model";
+import "../user/user.model";
 
 const maintenanceSchema = new Schema<TMaintenance, MaintenanceModel>(
   {
@@ -38,8 +42,19 @@ const maintenanceSchema = new Schema<TMaintenance, MaintenanceModel>(
       required: true,
       trim: true,
     },
-    attachments: {
+    attachments: [
+      {
+        type: String,
+      },
+    ],
+    locationType: {
       type: String,
+      enum: Object.values(MAINTENANCE_LOCATION_TYPE),
+      default: MAINTENANCE_LOCATION_TYPE.UNIT,
+    },
+    communalArea: {
+      type: Schema.Types.ObjectId,
+      ref: "AppOption",
     },
     locationInProperty: {
       type: String,
@@ -87,6 +102,10 @@ const maintenanceSchema = new Schema<TMaintenance, MaintenanceModel>(
       type: String,
       enum: Object.values(CONTRACTOR_STATUS),
     },
+    reportedAt: {
+      type: Date,
+      default: Date.now,
+    },
     assignedDate: {
       type: Date,
     },
@@ -99,12 +118,22 @@ const maintenanceSchema = new Schema<TMaintenance, MaintenanceModel>(
     scheduleNotes: {
       type: String,
     },
+    startedAt: {
+      type: Date,
+    },
     paidBy: {
       type: String,
       enum: Object.values(MAINTENANCE_PAID_BY),
+      default: MAINTENANCE_PAID_BY.LANDLORD,
+    },
+    invoiceAmount: {
+      type: Number,
     },
     invoiceAmounts: {
       type: Number,
+    },
+    invoiceNotes: {
+      type: String,
     },
     notes: {
       type: String,
@@ -144,8 +173,11 @@ const maintenanceSchema = new Schema<TMaintenance, MaintenanceModel>(
 
 maintenanceSchema.pre("save", async function (next) {
   if (!this.jobId) {
-    const randomSuffix = Math.floor(100000 + Math.random() * 900000);
-    this.jobId = `JOB-${randomSuffix}`;
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    this.jobId = `#JOB-${randomSuffix}`;
+  }
+  if (!this.reportedAt) {
+    this.reportedAt = this.createdAt || new Date();
   }
   next();
 });

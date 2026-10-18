@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   CONTRACTOR_STATUS,
+  MAINTENANCE_LOCATION_TYPE,
   MAINTENANCE_PAID_BY,
   MAINTENANCE_PRIORITY,
   MAINTENANCE_REQUESTER,
@@ -21,19 +22,22 @@ const createMaintenanceZodSchema = z.object({
     description: z
       .string({ required_error: "Description is required" })
       .min(1, "Description cannot be empty"),
-    attachments: z.string().optional(),
-    locationInProperty: z.string().optional(),
-    property: z.string({ required_error: "Property ID is required" }),
-    flat: z.string().optional(),
-    requestedBy: z.string().optional(),
-    requesterRole: z
-      .nativeEnum(MAINTENANCE_REQUESTER, {
-        required_error: "Requester role is required",
-      })
+    attachments: z.union([z.string(), z.array(z.string())]).optional(),
+    locationType: z
+      .nativeEnum(MAINTENANCE_LOCATION_TYPE)
       .optional()
-      .default(MAINTENANCE_REQUESTER.TENANT),
-    landlord: z.string({ required_error: "Landlord ID is required" }),
+      .default(MAINTENANCE_LOCATION_TYPE.UNIT),
+    communalArea: z.string().optional(),
+    locationInProperty: z.string().optional(),
+    property: z.string().optional(), // Required for Landlord, auto-attached for Tenant
+    flat: z.string().optional(),
+    landlord: z.string().optional(),
     tenant: z.string().optional(),
+    paidBy: z
+      .nativeEnum(MAINTENANCE_PAID_BY)
+      .optional()
+      .default(MAINTENANCE_PAID_BY.LANDLORD),
+    requesterRole: z.nativeEnum(MAINTENANCE_REQUESTER).optional(),
     status: z
       .nativeEnum(MAINTENANCE_STATUS)
       .optional()
@@ -48,14 +52,12 @@ const updateMaintenanceZodSchema = z.object({
     issueType: z.string().optional(),
     priority: z.nativeEnum(MAINTENANCE_PRIORITY).optional(),
     description: z.string().min(1, "Description cannot be empty").optional(),
-    attachments: z.string().optional(),
+    attachments: z.union([z.string(), z.array(z.string())]).optional(),
+    locationType: z.nativeEnum(MAINTENANCE_LOCATION_TYPE).optional(),
+    communalArea: z.string().optional(),
     locationInProperty: z.string().optional(),
     property: z.string().optional(),
     flat: z.string().optional(),
-    requestedBy: z.string().optional(),
-    requesterRole: z.nativeEnum(MAINTENANCE_REQUESTER).optional(),
-    landlord: z.string().optional(),
-    tenant: z.string().optional(),
     status: z.nativeEnum(MAINTENANCE_STATUS).optional(),
     contractor: z.string().optional(),
     contractorStatus: z.nativeEnum(CONTRACTOR_STATUS).optional(),
@@ -63,16 +65,17 @@ const updateMaintenanceZodSchema = z.object({
     scheduledDate: z.union([z.string(), z.date()]).optional(),
     scheduledTime: z.string().optional(),
     scheduleNotes: z.string().optional(),
+    startedAt: z.union([z.string(), z.date()]).optional(),
     paidBy: z.nativeEnum(MAINTENANCE_PAID_BY).optional(),
-    invoiceAmounts: z.number().optional(),
+    invoiceAmount: z.coerce.number().optional(),
+    invoiceAmounts: z.coerce.number().optional(),
+    invoiceNotes: z.string().optional(),
     notes: z.string().optional(),
-    certificates: z.array(z.string()).optional(),
-    completionPhotos: z.array(z.string()).optional(),
+    certificates: z.union([z.string(), z.array(z.string())]).optional(),
+    completionPhotos: z.union([z.string(), z.array(z.string())]).optional(),
     completionNotes: z.string().optional(),
     completedAt: z.union([z.string(), z.date()]).optional(),
     cancellationReason: z.string().optional(),
-    cancelledBy: z.string().optional(),
-    cancelledAt: z.union([z.string(), z.date()]).optional(),
   }),
 });
 
@@ -83,10 +86,36 @@ const assignContractorZodSchema = z.object({
       .nativeEnum(CONTRACTOR_STATUS)
       .optional()
       .default(CONTRACTOR_STATUS.PENDING),
-    assignedDate: z.union([z.string(), z.date()]).optional(),
-    scheduledDate: z.union([z.string(), z.date()]).optional(),
-    scheduledTime: z.string().optional(),
-    scheduleNotes: z.string().optional(),
+    notes: z.string().optional(),
+  }),
+});
+
+const scheduleVisitZodSchema = z.object({
+  body: z.object({
+    visitDate: z.union([z.string(), z.date()], {
+      required_error: "Visit date is required",
+    }),
+    visitTime: z.string({ required_error: "Visit time is required" }),
+    notes: z.string().optional(),
+  }),
+});
+
+const submitInvoiceZodSchema = z.object({
+  body: z.object({
+    invoiceAmount: z.coerce
+      .number({ required_error: "Invoice amount is required" })
+      .min(0, "Invoice amount cannot be negative"),
+    invoiceNotes: z.string().optional(),
+    notes: z.string().optional(),
+    certificates: z.union([z.string(), z.array(z.string())]).optional(),
+    completionPhotos: z.union([z.string(), z.array(z.string())]).optional(),
+    completionNotes: z.string().optional(),
+  }),
+});
+
+const cancelMaintenanceZodSchema = z.object({
+  body: z.object({
+    cancellationReason: z.string().optional(),
   }),
 });
 
@@ -96,7 +125,7 @@ const updateMaintenanceStatusZodSchema = z.object({
       required_error: "Status is required",
     }),
     notes: z.string().optional(),
-    completionPhotos: z.array(z.string()).optional(),
+    completionPhotos: z.union([z.string(), z.array(z.string())]).optional(),
     completionNotes: z.string().optional(),
     cancellationReason: z.string().optional(),
   }),
@@ -106,5 +135,8 @@ export const MaintenanceValidation = {
   createMaintenanceZodSchema,
   updateMaintenanceZodSchema,
   assignContractorZodSchema,
+  scheduleVisitZodSchema,
+  submitInvoiceZodSchema,
+  cancelMaintenanceZodSchema,
   updateMaintenanceStatusZodSchema,
 };

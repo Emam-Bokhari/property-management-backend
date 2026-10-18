@@ -424,6 +424,34 @@ export const FILE_CONFIG = {
     maxCount: 20,
     mimeTypes: new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]),
   },
+  attachments: {
+    dir: "attachments",
+    maxCount: 15,
+    mimeTypes: new Set([
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/webp",
+      "video/mp4",
+      "video/webm",
+      "video/quicktime",
+      "application/pdf",
+    ]),
+  },
+  certificates: {
+    dir: "certificate",
+    maxCount: 10,
+    mimeTypes: new Set([
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/webp",
+      "application/pdf",
+      "text/plain",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ]),
+  },
 } satisfies Record<string, FileConfig>;
 
 export type IFolderName = keyof typeof FILE_CONFIG;
