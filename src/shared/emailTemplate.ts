@@ -1,4 +1,5 @@
 import {
+  IContractorInvitationEmail,
   ICreateAccount,
   IResetPassword,
   ITenantInvitationEmail,
@@ -799,10 +800,146 @@ const tenantInvitation = (values: ITenantInvitationEmail) => {
   };
 };
 
+const contractorInvitation = (values: IContractorInvitationEmail) => {
+  const passwordDisplay = values.password || "12345678";
+  const tradesDisplay =
+    values.trades && values.trades.length > 0
+      ? values.trades.join(", ")
+      : "General Contractor / Maintenance";
+  const propertiesDisplay =
+    values.propertiesScope || "All Properties of Landlord";
+
+  const content = `
+<tr>
+  <td style="padding: 24px 28px; background-color: #FFFFFF; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    
+    <!-- Header Banner -->
+    <div style="text-align: center; margin-bottom: 24px;">
+      <span style="display: inline-block; padding: 6px 14px; background-color: #EFF6FF; color: #2563EB; font-size: 12px; font-weight: 700; border-radius: 9999px; letter-spacing: 0.05em; text-transform: uppercase;">
+        Contractor Invitation
+      </span>
+      <h1 style="margin: 12px 0 6px; font-size: 22px; font-weight: 700; color: #0F172A;">
+        Welcome to Landlord HQ!
+      </h1>
+      <p style="margin: 0; font-size: 14px; color: #64748B; line-height: 1.5;">
+        ${values.landlordName ? `<strong>${values.landlordName}</strong>` : "A property landlord"} has invited you to join as a trusted contractor.
+      </p>
+    </div>
+
+    <!-- Credentials Section -->
+    <div style="background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 14px; padding: 20px 22px; margin-bottom: 24px;">
+      <div style="display: flex; align-items: center; margin-bottom: 12px;">
+        <span style="font-size: 14px; font-weight: 700; color: #1E40AF;">
+          🔐 Your Account Credentials
+        </span>
+      </div>
+      <p style="margin: 0 0 14px; font-size: 13px; color: #1E3A8A; line-height: 1.5;">
+        Your contractor account has been provisioned. Use the credentials below to log in:
+      </p>
+      
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 8px;">
+        <tr>
+          <td style="padding: 6px 0; font-size: 13px; color: #475569; width: 120px;">
+            Email Address:
+          </td>
+          <td style="padding: 6px 0;">
+            <code style="background-color: #DBEAFE; color: #1E40AF; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; font-family: monospace;">
+              ${values.email}
+            </code>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-size: 13px; color: #475569;">
+            Password:
+          </td>
+          <td style="padding: 6px 0;">
+            <code style="background-color: #DBEAFE; color: #1E40AF; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 600; font-family: monospace;">
+              ${passwordDisplay}
+            </code>
+          </td>
+        </tr>
+      </table>
+      
+      <p style="margin: 8px 0 0; font-size: 11px; color: #3B82F6;">
+        💡 Tip: For security reasons, you can update your password at any time from your account settings.
+      </p>
+    </div>
+
+    <!-- Assignment Summary -->
+    <div style="border: 1px solid #E2E8F0; border-radius: 14px; padding: 18px 20px; margin-bottom: 24px; background-color: #FFFFFF;">
+      <div style="font-size: 13px; font-weight: 700; color: #0F172A; margin-bottom: 14px; border-bottom: 1px solid #F1F5F9; padding-bottom: 8px;">
+        Assignment & Scope Details
+      </div>
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 13px;">
+        <tr>
+          <td style="padding: 7px 0; color: #64748B;">Contractor:</td>
+          <td align="right" style="padding: 7px 0; font-weight: 600; color: #0F172A;">${values.contractorName || values.email}</td>
+        </tr>
+        ${
+          values.landlordName
+            ? `<tr>
+          <td style="padding: 7px 0; color: #64748B;">Invited By:</td>
+          <td align="right" style="padding: 7px 0; font-weight: 600; color: #0F172A;">${values.landlordName}</td>
+        </tr>`
+            : ""
+        }
+        <tr>
+          <td style="padding: 7px 0; color: #64748B;">Trade / Specialty:</td>
+          <td align="right" style="padding: 7px 0; font-weight: 600; color: #2563EB;">${tradesDisplay}</td>
+        </tr>
+        <tr>
+          <td style="padding: 7px 0; color: #64748B;">Property Scope:</td>
+          <td align="right" style="padding: 7px 0; font-weight: 600; color: #0F172A;">${propertiesDisplay}</td>
+        </tr>
+        ${
+          values.personalMessage
+            ? `<tr>
+          <td colspan="2" style="padding-top: 12px; border-top: 1px dashed #E2E8F0;">
+            <div style="font-size: 11px; text-transform: uppercase; color: #64748B; font-weight: 700; margin-bottom: 4px;">Personal Note:</div>
+            <div style="font-style: italic; color: #334155; background-color: #F8FAFC; padding: 10px 14px; border-radius: 8px; border-left: 3px solid #2563EB;">
+              "${values.personalMessage}"
+            </div>
+          </td>
+        </tr>`
+            : ""
+        }
+      </table>
+    </div>
+
+    <!-- Login CTA Button -->
+    ${
+      values.loginUrl
+        ? `<div style="text-align: center; margin: 28px 0 16px;">
+      <a href="${values.loginUrl}" style="display: inline-block; background-color: #2563EB; color: #FFFFFF; font-size: 14px; font-weight: 600; text-decoration: none; padding: 12px 28px; border-radius: 8px;">
+        Log In to Contractor Portal
+      </a>
+    </div>`
+        : ""
+    }
+
+    <!-- Security & Multitenant SaaS Note -->
+    <p style="margin: 0; font-size: 12px; color: #94A3B8; text-align: center; line-height: 1.5;">
+      🔧 You will receive notifications whenever maintenance requests or work orders are assigned to you.
+    </p>
+
+  </td>
+</tr>
+`;
+
+  return {
+    to: values.email,
+    subject: `Contractor Invitation - ${values.landlordName ? `${values.landlordName} on ` : ""}Landlord HQ`,
+    html: baseLayout("Contractor Invitation", content),
+  };
+};
+
 export const emailTemplate = {
   createAccount,
   resetPassword,
   supportNotification,
   genericNotification,
   tenantInvitation,
+  contractorInvitation,
 };
+

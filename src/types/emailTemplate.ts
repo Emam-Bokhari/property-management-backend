@@ -26,3 +26,16 @@ export type ITenantInvitationEmail = {
   personalMessage?: string;
   loginUrl?: string;
 };
+
+export type IContractorInvitationEmail = {
+  email: string;
+  password?: string;
+  contractorName?: string;
+  landlordName?: string;
+  companyName?: string;
+  trades?: string[];
+  propertiesScope?: string;
+  personalMessage?: string;
+  loginUrl?: string;
+};
+
