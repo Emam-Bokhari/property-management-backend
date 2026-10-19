@@ -74,11 +74,8 @@ export const checkChatPermission = async (
     case CHAT_COMMUNICATION_TYPE.CONTRACTOR:
     case CHAT_COMMUNICATION_TYPE.TENANT:
     case CHAT_COMMUNICATION_TYPE.MAINTENANCE:
-    case CHAT_COMMUNICATION_TYPE.PROPERTY:
     case CHAT_COMMUNICATION_TYPE.OTHER:
-    case CHAT_COMMUNICATION_TYPE.PRODUCT:
-    case CHAT_COMMUNICATION_TYPE.SERVICE:
-    case CHAT_COMMUNICATION_TYPE.STORE:
+
       // Regular messaging between active users (Admin, Landlord, Contractor, Tenant)
       break;
 

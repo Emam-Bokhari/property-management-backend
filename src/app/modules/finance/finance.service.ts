@@ -1117,91 +1117,7 @@ const createStripeCheckoutSessionIntoDB = async (
 };
 
 // -------------------------------------------------------------
-// 13. VERIFY STRIPE PAYMENT (Client Callback or direct verification)
-// -------------------------------------------------------------
-const verifyStripePaymentIntoDB = async (
-  authUser: JwtPayload,
-  billId: string,
-  sessionId?: string,
-) => {
-  if (!Types.ObjectId.isValid(billId)) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid bill ID");
-  }
-
-  const bill = await FinanceBill.findById(billId);
-  if (!bill || bill.isDeleted) {
-    throw new ApiError(StatusCodes.NOT_FOUND, "Bill record not found");
-  }
-
-  if (bill.status === BILL_STATUS.PAID) {
-    return await FinanceBill.findById(bill._id).populate(billPopulateOptions);
-  }
-
-  const secretKey =
-    config.stripe?.secretKey || process.env.STRIPE_SECRET_KEY;
-  if (!secretKey) {
-    throw new ApiError(
-      StatusCodes.INTERNAL_SERVER_ERROR,
-      "Stripe secret key is not configured on the server",
-    );
-  }
-
-  const stripe = new Stripe(secretKey);
-  const targetSessionId = sessionId || bill.stripeSessionId;
-
-  if (!targetSessionId) {
-    throw new ApiError(
-      StatusCodes.BAD_REQUEST,
-      "No stripe session ID available to verify",
-    );
-  }
-
-  const session = await stripe.checkout.sessions.retrieve(targetSessionId);
-  if (session.payment_status === "paid") {
-    bill.status = BILL_STATUS.PAID;
-    bill.paidAmount = bill.amount;
-    bill.paidAt = new Date();
-    bill.paymentMethod = PAYMENT_METHOD.STRIPE;
-    bill.referenceNumber =
-      (typeof session.payment_intent === "string"
-        ? session.payment_intent
-        : session.id) || session.id;
-    bill.stripePaymentIntentId =
-      typeof session.payment_intent === "string"
-        ? session.payment_intent
-        : null;
-    bill.receiptSent = true;
-    bill.recordedBy = new Types.ObjectId(authUser.userId || authUser.id);
-
-    await bill.save();
-
-    // Notify Landlord & Tenant
-    notificationHelper.sendToUser(bill.landlord, {
-      title: "Rent / Charge Paid via Stripe",
-      body: `Payment of £${bill.amount} for invoice ${bill.invoiceNumber} has been successfully paid online.`,
-      type: NOTIFICATION_TYPE.LANDLORD,
-      data: {
-        billId: bill._id.toString(),
-        invoiceNumber: bill.invoiceNumber,
-      },
-    });
-
-    notificationHelper.sendToUser(bill.tenant, {
-      title: "Payment Successful",
-      body: `Your payment of £${bill.amount} for invoice ${bill.invoiceNumber} has been received. Thank you!`,
-      type: NOTIFICATION_TYPE.TENANT,
-      data: {
-        billId: bill._id.toString(),
-        invoiceNumber: bill.invoiceNumber,
-      },
-    });
-  }
-
-  return await FinanceBill.findById(bill._id).populate(billPopulateOptions);
-};
-
-// -------------------------------------------------------------
-// 14. HANDLE ROOT STRIPE WEBHOOK (Called by WebhookService)
+// 13. HANDLE ROOT STRIPE WEBHOOK (Called by WebhookService)
 // -------------------------------------------------------------
 const handleStripePaymentSuccess = async (session: Stripe.Checkout.Session) => {
   const billId = session.metadata?.billId || session.client_reference_id;
@@ -1231,6 +1147,13 @@ const handleStripePaymentSuccess = async (session: Stripe.Checkout.Session) => {
       ? session.payment_intent
       : null;
   bill.receiptSent = true;
+
+  if (
+    session.metadata?.payerId &&
+    Types.ObjectId.isValid(session.metadata.payerId)
+  ) {
+    bill.recordedBy = new Types.ObjectId(session.metadata.payerId);
+  }
 
   await bill.save();
 

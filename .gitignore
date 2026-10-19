@@ -9,3 +9,4 @@ practice
 docs/erd/**/*.pdf
 docs/erd/**/*.svg
 README.md
+.gitignore

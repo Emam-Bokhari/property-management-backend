@@ -246,27 +246,7 @@ const createStripeCheckoutSession = catchAsync(
   },
 );
 
-// 14. Verify Stripe Payment (Client Callback)
-const verifyStripePayment = catchAsync(async (req: Request, res: Response) => {
-  if (!req.user) {
-    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
-  }
-
-  const result = await FinanceService.verifyStripePaymentIntoDB(
-    req.user,
-    req.params.id,
-    req.query.session_id as string,
-  );
-
-  sendResponse(res, {
-    statusCode: StatusCodes.OK,
-    success: true,
-    message: "Stripe payment verified successfully",
-    data: result,
-  });
-});
-
-// 15. Get Form Cascaded Options (Landlord)
+// 14. Get Form Cascaded Options (Landlord)
 const getLandlordFormOptions = catchAsync(
   async (req: Request, res: Response) => {
     if (!req.user) {
@@ -298,6 +278,5 @@ export const FinanceController = {
   getTenantOverview,
   getTenantTransactions,
   createStripeCheckoutSession,
-  verifyStripePayment,
   getLandlordFormOptions,
 };

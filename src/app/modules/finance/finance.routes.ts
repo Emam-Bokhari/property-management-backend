@@ -99,33 +99,21 @@ router.post(
   FinanceController.createStripeCheckoutSession,
 );
 
-// 11. Verify Stripe Payment (Client callback after successful redirect)
-router.get(
-  "/bills/:id/verify-stripe-payment",
-  auth(
-    USER_ROLES.TENANT,
-    USER_ROLES.LANDLORD,
-    USER_ROLES.ADMIN,
-    USER_ROLES.SUPER_ADMIN,
-  ),
-  FinanceController.verifyStripePayment,
-);
-
-// 12. Undo Recorded Payment (Landlord)
+// 11. Undo Recorded Payment (Landlord)
 router.post(
   "/bills/:id/undo-payment",
   auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
   FinanceController.undoPayment,
 );
 
-// 13. Cancel Unpaid Bill (Landlord)
+// 12. Cancel Unpaid Bill (Landlord)
 router.post(
   "/bills/:id/cancel",
   auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
   FinanceController.cancelBill,
 );
 
-// 14. Get All Bills / Transaction History (Scoped by Role)
+// 13. Get All Bills / Transaction History (Scoped by Role)
 router.get(
   "/bills",
   auth(
@@ -137,7 +125,7 @@ router.get(
   FinanceController.getBills,
 );
 
-// 15. Get Single Bill Detail
+// 14. Get Single Bill Detail
 router.get(
   "/bills/:id",
   auth(
