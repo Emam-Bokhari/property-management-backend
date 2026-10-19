@@ -10,16 +10,12 @@ const createChat = catchAsync(async (req, res) => {
   const { id: userId }: any = req.user;
   const participants = participant ? [userId, participant] : [userId];
 
-  // Validate contextual permission if participant is specified and a specific type is provided
-  if (
-    participant &&
-    communicationType &&
-    communicationType !== CHAT_COMMUNICATION_TYPE.OTHER
-  ) {
+  // Validate contextual permission and user status whenever participant is specified
+  if (participant) {
     const permission = await chatPermissionHelper.checkChatPermission(
       userId,
       participant,
-      communicationType,
+      communicationType || CHAT_COMMUNICATION_TYPE.OTHER,
       referenceId,
     );
     if (!permission.allowed) {
