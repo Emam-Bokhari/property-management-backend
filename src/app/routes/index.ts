@@ -22,6 +22,7 @@ import { ContractorRoutes } from "../modules/contractor/contractor.routes";
 import { BroadcastRoutes } from "../modules/broadcast/broadcast.routes";
 import { MaintenanceRoutes } from "../modules/maintenance/maintenance.routes";
 import { WebhookRoutes } from "../modules/webhook/webhook.routes";
+import { FinanceRoutes } from "../modules/finance/finance.routes";
 
 const router = express.Router();
 
@@ -118,6 +119,10 @@ const apiRoutes = [
   {
     path: "/webhook",
     route: WebhookRoutes,
+  },
+  {
+    path: "/finance",
+    route: FinanceRoutes,
   },
 ];
 

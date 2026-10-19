@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import config from "../../../config";
 import ApiError from "../../../errors/ApiErrors";
 import { MaintenanceService } from "../maintenance/maintenance.service";
+import { FinanceService } from "../finance/finance.service";
 
 const handleStripeWebhookIntoDB = async (
   rawBody: Buffer | string,
@@ -50,10 +51,13 @@ const handleStripeWebhookIntoDB = async (
 
       if (paymentType === "maintenance" || session.metadata?.maintenanceId) {
         await MaintenanceService.handleMaintenancePaymentSuccess(session);
+      } else if (
+        paymentType === "finance" ||
+        paymentType === "rent" ||
+        session.metadata?.billId
+      ) {
+        await FinanceService.handleStripePaymentSuccess(session);
       }
-      // Scalable: future payment types can be added here
-      // else if (paymentType === "rent") { ... }
-      // else if (paymentType === "subscription") { ... }
       break;
     }
 

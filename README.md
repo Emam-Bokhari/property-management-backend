@@ -1,12 +1,11 @@
 <!-- 
-1. tenant abong maintenance screen gula complete kore felte hobe landlord role ar
-2. subscription abong finance related kaj gula complete kora
-3. dashboard complete kora
-4. api gula milano
+1. subscription abong finance related kaj gula complete kora
+2. dashboard complete kora
+3. api gula milano
 -->
 
 <!-- 
-# Review
 # Finance
+# Review
 # Subscription Package
 -->

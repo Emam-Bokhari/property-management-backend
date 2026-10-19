@@ -5,6 +5,5 @@ const router = express.Router();
 
 // Root Stripe Webhook Endpoint (No Auth - Protected via Stripe signature)
 router.post("/", WebhookController.handleStripeWebhook);
-router.post("/stripe", WebhookController.handleStripeWebhook);
 
 export const WebhookRoutes = router;
