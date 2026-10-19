@@ -1262,7 +1262,6 @@ export const FinanceService = {
   getTenantOverviewFromDB,
   getTenantTransactionsFromDB,
   createStripeCheckoutSessionIntoDB,
-  verifyStripePaymentIntoDB,
   handleStripePaymentSuccess,
   getLandlordFormOptionsFromDB,
 };
