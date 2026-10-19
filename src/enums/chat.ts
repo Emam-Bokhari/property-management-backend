@@ -4,9 +4,11 @@ export enum CHAT_STATUS {
 }
 
 export enum CHAT_COMMUNICATION_TYPE {
-  PRODUCT = "product",
-  SERVICE = "service",
-  STORE = "store",
+  LANDLORD = "landlord",
+  CONTRACTOR = "contractor",
+  TENANT = "tenant",
+  MAINTENANCE = "maintenance",
   SUPPORT = "support",
-  OTHER = "other",
+  OTHER = "other"
 }
+  

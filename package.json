@@ -1,5 +1,5 @@
 {
-  "name": "productos-y-servicios",
+  "name": "property-management",
   "version": "1.0.0",
   "main": "app.ts",
   "scripts": {
@@ -44,6 +44,7 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
+    "@dreams-io/postman": "^0.1.3",
     "agora-token": "^2.0.5",
     "axios": "^1.13.2",
     "bcrypt": "^5.1.1",

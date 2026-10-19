@@ -70,12 +70,14 @@ const sendMessageToDB = async (payload: IMessage): Promise<IMessage> => {
   const response = await Message.create(messagePayload);
 
   // update chat - remove ALL participants from readBy except sender
-  // this ensures unread count is calculated correctly
+  // and unhide the chat if any participant had soft-deleted it
   await Chat.findByIdAndUpdate(
     response?.chatId,
     {
       lastMessage: response._id,
       readBy: [payload.sender.toString()], // Only sender has read it
+      $pull: { deletedBy: { $in: chat.participants } },
+      isDeleted: false,
       updatedAt: new Date(),
     },
     { new: true },
@@ -159,6 +161,19 @@ const getMessagesFromDB = async (
   pinnedMessages: IMessage[];
   pagination: { total: number; page: number; limit: number; totalPage: number };
 }> => {
+  // Check chat existence and participant authorization
+  const chat = await Chat.findById(chatId);
+  if (!chat) {
+    throw new ApiError(404, "Chat not found");
+  }
+
+  const isParticipant = chat.participants.some(
+    (p) => p.toString() === userId.toString(),
+  );
+  if (!isParticipant) {
+    throw new ApiError(403, "You are not authorized to view messages in this chat");
+  }
+
   const { page, limit } = query;
 
   const pageInt = Math.max(parseInt(String(page || "1"), 10) || 1, 1);
@@ -174,13 +189,12 @@ const getMessagesFromDB = async (
   const response = await Message.find({ chatId })
     .populate({
       path: "sender",
-      select: "name role activeRole email profileImage",
+      select: "name role activeRole email profileImage companyName primaryTrade",
     })
     .populate({
       path: "pinnedBy",
-      select: "name role activeRole email profileImage",
+      select: "name role activeRole email profileImage companyName primaryTrade",
     })
-
     .skip(skip)
     .limit(limitInt)
     .sort({ createdAt: -1 });
@@ -210,11 +224,11 @@ const getMessagesFromDB = async (
   })
     .populate({
       path: "sender",
-      select: "name role activeRole email profileImage",
+      select: "name role activeRole email profileImage companyName primaryTrade",
     })
     .populate({
       path: "pinnedBy",
-      select: "name role activeRole email profileImage",
+      select: "name role activeRole email profileImage companyName primaryTrade",
     })
     .sort({ pinnedAt: -1 });
 

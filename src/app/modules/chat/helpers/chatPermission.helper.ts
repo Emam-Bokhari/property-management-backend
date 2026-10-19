@@ -21,6 +21,11 @@ export const checkChatPermission = async (
   const sender = await User.findById(senderId);
   const receiver = await User.findById(receiverId);
 
+  // 0. Verify sender is not receiver (prevent self-chat)
+  if (senderId.toString() === receiverId.toString()) {
+    return { allowed: false, reason: "You cannot create a chat with yourself." };
+  }
+
   // 1. Verify user exists
   if (!sender) {
     return { allowed: false, reason: "Sender user account not found." };
@@ -65,11 +70,16 @@ export const checkChatPermission = async (
       break;
     }
 
+    case CHAT_COMMUNICATION_TYPE.LANDLORD:
+    case CHAT_COMMUNICATION_TYPE.CONTRACTOR:
+    case CHAT_COMMUNICATION_TYPE.TENANT:
+    case CHAT_COMMUNICATION_TYPE.MAINTENANCE:
+    case CHAT_COMMUNICATION_TYPE.PROPERTY:
+    case CHAT_COMMUNICATION_TYPE.OTHER:
     case CHAT_COMMUNICATION_TYPE.PRODUCT:
     case CHAT_COMMUNICATION_TYPE.SERVICE:
     case CHAT_COMMUNICATION_TYPE.STORE:
-    case CHAT_COMMUNICATION_TYPE.OTHER:
-      // Regular messaging between active users, sellers, or admins
+      // Regular messaging between active users (Admin, Landlord, Contractor, Tenant)
       break;
 
     default:
