@@ -608,19 +608,6 @@ const formatUIDate = (date?: Date | string | null): string => {
   return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 };
 
-const getGreeting = (now: Date, firstName: string): string => {
-  const hour = now.getHours();
-  let timeGreeting = "Good day";
-  if (hour >= 5 && hour < 12) {
-    timeGreeting = "Good morning";
-  } else if (hour >= 12 && hour < 17) {
-    timeGreeting = "Good afternoon";
-  } else {
-    timeGreeting = "Good evening";
-  }
-  return `${timeGreeting}, ${firstName} 👋`;
-};
-
 const formatChargeTitle = (bill: any): string => {
   if (bill.description && bill.description.trim()) {
     return bill.description.trim();
@@ -798,7 +785,6 @@ const getTenantHomeDashboardFromDB = async (
   // 1. Tenant Profile Summary
   const fullName = tenantUser.name || "Tenant";
   const firstName = fullName.trim().split(" ")[0];
-  const greeting = getGreeting(now, firstName);
 
   const tenantProfile: ITenantProfileSummary = {
     id: tenantUser._id.toString(),
@@ -807,7 +793,6 @@ const getTenantHomeDashboardFromDB = async (
     email: tenantUser.email,
     phone: tenantUser.phone || "",
     profileImage: tenantUser.profileImage || "",
-    greeting,
   };
 
   // 2. Active Tenancy Card
@@ -1020,12 +1005,6 @@ const getTenantHomeDashboardFromDB = async (
     latestAnnouncement,
     meta: {
       serverTime: now.toISOString(),
-      greetingTime:
-        now.getHours() < 12
-          ? "morning"
-          : now.getHours() < 17
-            ? "afternoon"
-            : "evening",
     },
   };
 };

@@ -60,7 +60,6 @@ export interface ITenantProfileSummary {
   email: string;
   phone?: string;
   profileImage?: string;
-  greeting: string; // e.g. "Good evening, Sarah 👋"
 }
 
 export interface IActiveTenancyCard {
@@ -160,7 +159,6 @@ export interface ITenantHomeDashboardData {
   latestAnnouncement: IBuildingAnnouncementBanner | null;
   meta: {
     serverTime: string;
-    greetingTime: string;
   };
 }
 
