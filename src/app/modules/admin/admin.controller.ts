@@ -6,7 +6,7 @@ import { AdminService } from "./admin.service";
 
 const getAdminDashboardData = catchAsync(
   async (req: Request, res: Response) => {
-    const result = await AdminService.getAdminDashboardDataFromDB(req.query);
+    const result = await AdminService.getAdminDashboardDataFromDB();
 
     sendResponse(res, {
       statusCode: StatusCodes.OK,
