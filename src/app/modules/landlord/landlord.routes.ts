@@ -13,4 +13,3 @@ router.get(
 );
 
 export const LandlordRoutes = router;
- 

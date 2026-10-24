@@ -135,6 +135,26 @@ const removeContractor = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getContractorHomeDashboard = catchAsync(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+    }
+
+    const result = await ContractorService.getContractorHomeDashboardFromDB(
+      req.user,
+      req.query,
+    );
+
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      message: "Contractor home dashboard data retrieved successfully",
+      data: result,
+    });
+  },
+);
+
 export const ContractorController = {
   inviteContractor,
   getAllContractors,
@@ -143,4 +163,5 @@ export const ContractorController = {
   updateContractor,
   resendInvitation,
   removeContractor,
+  getContractorHomeDashboard,
 };

@@ -15,7 +15,18 @@ import {
 import {
   IInviteContractorPayload,
   IUpdateContractorPayload,
+  IContractorHomeDashboardData,
+  INextScheduleCard,
+  IContractorMetricCard,
+  IUpcomingJobItem,
+  IContractorProfileSummary,
 } from "./contractor.interface";
+import { Maintenance } from "../maintenance/maintenance.model";
+import {
+  MAINTENANCE_STATUS,
+  CONTRACTOR_STATUS,
+} from "../maintenance/maintenance.constant";
+import { Notification } from "../notification/notification.model";
 import { AppOption } from "../appOption/appOption.model";
 import { AppOptionType } from "../appOption/appOption.constant";
 import { emailTemplate } from "../../../shared/emailTemplate";
@@ -606,6 +617,360 @@ const removeContractorFromDB = async (authUser: JwtPayload, id: string) => {
   };
 };
 
+// Helper: Format next schedule card data
+const formatNextScheduleCard = (job: any, now: Date): INextScheduleCard => {
+  const scheduledDate = new Date(job.scheduledDate);
+  const isToday =
+    scheduledDate.getFullYear() === now.getFullYear() &&
+    scheduledDate.getMonth() === now.getMonth() &&
+    scheduledDate.getDate() === now.getDate();
+
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const isTomorrow =
+    scheduledDate.getFullYear() === tomorrow.getFullYear() &&
+    scheduledDate.getMonth() === tomorrow.getMonth() &&
+    scheduledDate.getDate() === tomorrow.getDate();
+
+  const dayNumber = scheduledDate.getDate();
+  const monthShort = scheduledDate.toLocaleString("en-GB", { month: "short" });
+
+  let badgeDate = `${dayNumber} ${monthShort}`;
+  if (isToday) {
+    badgeDate = `Today · ${dayNumber} ${monthShort}`;
+  } else if (isTomorrow) {
+    badgeDate = `Tomorrow · ${dayNumber} ${monthShort}`;
+  } else {
+    const weekdayShort = scheduledDate.toLocaleString("en-GB", {
+      weekday: "short",
+    });
+    badgeDate = `${weekdayShort} · ${dayNumber} ${monthShort}`;
+  }
+
+  const prop = job.property as any;
+  const flat = job.flat as any;
+  const addressParts: string[] = [];
+  if (prop?.streetAddress || prop?.propertyName) {
+    addressParts.push(prop?.streetAddress || prop?.propertyName);
+  }
+  if (flat?.unitName) {
+    addressParts.push(flat.unitName);
+  }
+  const formattedAddress = addressParts.join(" · ") || "Address not specified";
+
+  return {
+    id: job._id.toString(),
+    jobId: job.jobId || `#JOB-${job._id.toString().slice(-4)}`,
+    title: job.issueTitle,
+    time: job.scheduledTime || "Scheduled",
+    badgeDate,
+    scheduledDate: job.scheduledDate,
+    scheduledTime: job.scheduledTime || "",
+    isToday,
+    location: formattedAddress,
+    streetAddress: prop?.streetAddress || prop?.propertyName || "",
+    flatUnit: flat?.unitName || "",
+    postCode: prop?.postCode || "",
+    status: job.status,
+    contractorStatus: job.contractorStatus,
+  };
+};
+
+// Helper: Format upcoming job item
+const formatUpcomingJobItem = (job: any): IUpcomingJobItem => {
+  const prop = job.property as any;
+  const flat = job.flat as any;
+  const locationParts: string[] = [];
+  if (prop?.streetAddress || prop?.propertyName) {
+    locationParts.push(prop?.streetAddress || prop?.propertyName);
+  }
+  if (flat?.unitName) {
+    locationParts.push(flat.unitName);
+  }
+  const location = locationParts.join(" - ") || "Address not specified";
+
+  let dateFormatted = "";
+  if (job.scheduledDate) {
+    const sDate = new Date(job.scheduledDate);
+    const month = sDate.toLocaleString("en-GB", { month: "short" });
+    const day = sDate.getDate();
+    dateFormatted = `${month} ${day}${
+      job.scheduledTime ? `, ${job.scheduledTime}` : ""
+    }`;
+  } else if (job.reportedAt || job.createdAt) {
+    const rDate = new Date(job.reportedAt || job.createdAt);
+    const month = rDate.toLocaleString("en-GB", { month: "short" });
+    const day = rDate.getDate();
+    dateFormatted = `${month} ${day}`;
+  }
+
+  let statusBadge = "Assigned";
+  if (
+    job.status === MAINTENANCE_STATUS.SCHEDULED ||
+    job.contractorStatus === CONTRACTOR_STATUS.SCHEDULED
+  ) {
+    statusBadge = "Scheduled";
+  } else if (
+    job.status === MAINTENANCE_STATUS.IN_PROGRESS ||
+    job.contractorStatus === CONTRACTOR_STATUS.IN_PROGRESS
+  ) {
+    statusBadge = "In Progress";
+  } else if (
+    job.status === MAINTENANCE_STATUS.WAITING_APPROVAL ||
+    job.contractorStatus === CONTRACTOR_STATUS.INVOICE_SUBMITTED
+  ) {
+    statusBadge = "Pending Review";
+  } else if (
+    job.status === MAINTENANCE_STATUS.INVOICE_REJECTED ||
+    job.contractorStatus === CONTRACTOR_STATUS.INVOICE_REJECTED
+  ) {
+    statusBadge = "Invoice Rejected";
+  } else if (
+    job.status === MAINTENANCE_STATUS.COMPLETED ||
+    job.contractorStatus === CONTRACTOR_STATUS.COMPLETED
+  ) {
+    statusBadge = "Completed";
+  }
+
+  const image =
+    (job.attachments && job.attachments.length > 0
+      ? job.attachments[0]
+      : null) ||
+    (job.completionPhotos && job.completionPhotos.length > 0
+      ? job.completionPhotos[0]
+      : null);
+
+  return {
+    id: job._id.toString(),
+    jobId: job.jobId || `#JOB-${job._id.toString().slice(-4)}`,
+    title: job.issueTitle,
+    location,
+    propertyId: prop?._id?.toString(),
+    propertyName: prop?.propertyName,
+    streetAddress: prop?.streetAddress,
+    flatUnit: flat?.unitName,
+    postCode: prop?.postCode,
+    scheduledDate: job.scheduledDate,
+    scheduledTime: job.scheduledTime,
+    dateFormatted,
+    status: job.status,
+    contractorStatus: job.contractorStatus,
+    statusBadge,
+    priority: job.priority,
+    image,
+  };
+};
+
+// Contractor Home Dashboard Service
+const getContractorHomeDashboardFromDB = async (
+  authUser: JwtPayload,
+  query: Record<string, unknown>,
+): Promise<IContractorHomeDashboardData> => {
+  let targetContractorId = authUser.userId || authUser.id;
+
+  if (
+    (authUser.role === USER_ROLES.ADMIN ||
+      authUser.role === USER_ROLES.SUPER_ADMIN) &&
+    query?.contractorId &&
+    typeof query.contractorId === "string"
+  ) {
+    targetContractorId = query.contractorId;
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(targetContractorId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid contractor ID");
+  }
+
+  const contractorObjectId = new Types.ObjectId(targetContractorId);
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+
+  // Parallel fetch for ultra-fast performance
+  const [
+    contractorUser,
+    unreadNotificationsCount,
+    assignedJobsCount,
+    pendingReviewCount,
+    inProgressCount,
+    completedThisMonthCount,
+    totalCompletedCount,
+    scheduledJobs,
+    upcomingJobs,
+  ] = await Promise.all([
+    User.findById(contractorObjectId)
+      .select(
+        "name email phone profileImage companyName role primaryTrade status",
+      )
+      .lean(),
+    Notification.countDocuments({
+      receiver: contractorObjectId,
+      read: false,
+    }),
+    Maintenance.countDocuments({
+      contractor: contractorObjectId,
+      isDeleted: { $ne: true },
+      status: {
+        $in: [MAINTENANCE_STATUS.ASSIGNED, MAINTENANCE_STATUS.PENDING],
+      },
+    }),
+    Maintenance.countDocuments({
+      contractor: contractorObjectId,
+      isDeleted: { $ne: true },
+      $or: [
+        {
+          status: {
+            $in: [
+              MAINTENANCE_STATUS.WAITING_APPROVAL,
+              MAINTENANCE_STATUS.INVOICE_REJECTED,
+            ],
+          },
+        },
+        {
+          contractorStatus: {
+            $in: [
+              CONTRACTOR_STATUS.INVOICE_SUBMITTED,
+              CONTRACTOR_STATUS.INVOICE_REJECTED,
+            ],
+          },
+        },
+      ],
+    }),
+    Maintenance.countDocuments({
+      contractor: contractorObjectId,
+      isDeleted: { $ne: true },
+      status: MAINTENANCE_STATUS.IN_PROGRESS,
+    }),
+    Maintenance.countDocuments({
+      contractor: contractorObjectId,
+      isDeleted: { $ne: true },
+      status: MAINTENANCE_STATUS.COMPLETED,
+      completedAt: { $gte: startOfMonth },
+    }),
+    Maintenance.countDocuments({
+      contractor: contractorObjectId,
+      isDeleted: { $ne: true },
+      status: MAINTENANCE_STATUS.COMPLETED,
+    }),
+    Maintenance.find({
+      contractor: contractorObjectId,
+      isDeleted: { $ne: true },
+      status: {
+        $in: [MAINTENANCE_STATUS.SCHEDULED, MAINTENANCE_STATUS.IN_PROGRESS],
+      },
+      scheduledDate: { $ne: null },
+    })
+      .populate("property", "propertyName streetAddress city postCode")
+      .populate("flat", "unitName")
+      .sort({ scheduledDate: 1, scheduledTime: 1 })
+      .lean(),
+    Maintenance.find({
+      contractor: contractorObjectId,
+      isDeleted: { $ne: true },
+      status: {
+        $in: [
+          MAINTENANCE_STATUS.SCHEDULED,
+          MAINTENANCE_STATUS.ASSIGNED,
+          MAINTENANCE_STATUS.IN_PROGRESS,
+          MAINTENANCE_STATUS.WAITING_APPROVAL,
+        ],
+      },
+    })
+      .populate("property", "propertyName streetAddress city postCode")
+      .populate("flat", "unitName")
+      .populate("issueType", "name icon type")
+      .populate("landlord", "name email phone profileImage companyName")
+      .sort({ scheduledDate: 1, createdAt: -1 })
+      .limit(Number(query?.limit) || 10)
+      .lean(),
+  ]);
+
+  if (!contractorUser) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Contractor account not found");
+  }
+
+  // 1. Next Schedule Hero Card (Top Blue Banner)
+  let nextScheduleJob = scheduledJobs.find(
+    (j: any) => new Date(j.scheduledDate) >= startOfToday,
+  );
+  if (!nextScheduleJob && scheduledJobs.length > 0) {
+    nextScheduleJob = scheduledJobs[0];
+  }
+
+  const nextSchedule: INextScheduleCard | null = nextScheduleJob
+    ? formatNextScheduleCard(nextScheduleJob, now)
+    : null;
+
+  // 2. Metrics / Stat Cards (2x2 Grid)
+  const statsCards: IContractorMetricCard[] = [
+    {
+      key: "pending_review",
+      title: "Pending review",
+      count: pendingReviewCount,
+      subtitle:
+        pendingReviewCount === 1 ? "Needs action" : `${pendingReviewCount} need action`,
+    },
+    {
+      key: "assigned_jobs",
+      title: "Assigned jobs",
+      count: assignedJobsCount,
+      subtitle: `${assignedJobsCount} new`,
+    },
+    {
+      key: "in_progress",
+      title: "In progress",
+      count: inProgressCount,
+      subtitle: "Active now",
+    },
+    {
+      key: "completed",
+      title: "Completed",
+      count: completedThisMonthCount,
+      subtitle: "This month",
+    },
+  ];
+
+  // 3. Profile
+  const firstName = contractorUser.name
+    ? contractorUser.name.trim().split(" ")[0]
+    : "Contractor";
+
+  const contractorProfile: IContractorProfileSummary = {
+    id: contractorUser._id.toString(),
+    name: contractorUser.name,
+    firstName,
+    email: contractorUser.email,
+    phone: contractorUser.phone || "",
+    profileImage: contractorUser.profileImage || "",
+    companyName: contractorUser.companyName || "",
+    primaryTrade: (contractorUser as any).primaryTrade || "",
+  };
+
+  return {
+    contractor: contractorProfile,
+    unreadNotificationsCount,
+    nextSchedule,
+    statsCards,
+    overview: {
+      pendingReviewCount,
+      assignedJobsCount,
+      inProgressCount,
+      completedThisMonthCount,
+      totalCompletedCount,
+      totalActiveJobs:
+        pendingReviewCount + assignedJobsCount + inProgressCount,
+    },
+    upcomingJobs: {
+      totalCount: upcomingJobs.length,
+      items: upcomingJobs.map(formatUpcomingJobItem),
+    },
+  };
+};
+
 export const ContractorService = {
   inviteContractorToDB,
   getAllContractorsFromDB,
@@ -614,4 +979,5 @@ export const ContractorService = {
   updateContractorToDB,
   resendInvitationEmail,
   removeContractorFromDB,
+  getContractorHomeDashboardFromDB,
 };

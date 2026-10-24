@@ -15,7 +15,18 @@ router.post(
   ContractorController.inviteContractor,
 );
 
-// 2. Contractor's Own Assigned Landlords & Scope (Contractor only)
+// 2. Contractor Home Dashboard
+router.get(
+  "/dashboard",
+  auth(
+    USER_ROLES.CONTRACTOR,
+    USER_ROLES.ADMIN,
+    USER_ROLES.SUPER_ADMIN,
+  ),
+  ContractorController.getContractorHomeDashboard,
+);
+
+// 3. Contractor's Own Assigned Landlords & Scope (Contractor only)
 router.get(
   "/my-assignments",
   auth(USER_ROLES.CONTRACTOR),
