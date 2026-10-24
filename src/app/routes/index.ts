@@ -26,6 +26,7 @@ import { FinanceRoutes } from "../modules/finance/finance.routes";
 import { PackageRoutes } from "../modules/package/package.routes";
 import { SubscriptionRoutes } from "../modules/subscription/subscription.routes";
 import { LandlordRoutes } from "../modules/landlord/landlord.routes";
+import { AdminRoutes } from "../modules/admin/admin.routes";
 
 const router = express.Router();
 
@@ -138,6 +139,10 @@ const apiRoutes = [
   {
     path: "/landlords",
     route: LandlordRoutes,
+  },
+  {
+    path: "/admin",
+    route: AdminRoutes,
   },
 ];
 
