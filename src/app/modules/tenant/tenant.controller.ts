@@ -125,6 +125,26 @@ const removeTenant = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getTenantHomeDashboard = catchAsync(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+    }
+
+    const result = await TenantService.getTenantHomeDashboardFromDB(
+      req.user,
+      req.query,
+    );
+
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      message: "Tenant home dashboard data retrieved successfully",
+      data: result,
+    });
+  },
+);
+
 export const TenantController = {
   inviteTenant,
   getAllTenants,
@@ -133,4 +153,6 @@ export const TenantController = {
   updateTenancy,
   resendInvitation,
   removeTenant,
+  getTenantHomeDashboard,
 };
+

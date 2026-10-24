@@ -15,3 +15,4 @@ export const tenantSearchableFields = [
   "depositProtectionScheme",
   "status",
 ];
+

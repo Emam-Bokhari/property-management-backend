@@ -16,7 +16,24 @@ import {
 import {
   IInviteTenantPayload,
   IUpdateTenancyPayload,
+  ITenantHomeDashboardData,
+  ITenantProfileSummary,
+  IActiveTenancyCard,
+  INextRentDueCard,
+  IPendingChargeItem,
+  IPendingChargesSection,
+  ITenantQuickAction,
+  IBuildingAnnouncementBanner,
 } from "./tenant.interface";
+import { FinanceBill } from "../finance/finance.model";
+import {
+  BILL_CATEGORY,
+  BILL_STATUS,
+  CHARGE_TYPE,
+} from "../finance/finance.constant";
+import { Announcement } from "../announcement/announcement.model";
+import { VISIBILITY_SCOPE } from "../announcement/announcement.constant";
+import { Notification } from "../notification/notification.model";
 import { emailTemplate } from "../../../shared/emailTemplate";
 import { emailHelper } from "../../../helpers/emailHelper";
 import config from "../../../config";
@@ -563,6 +580,456 @@ const removeTenantFromDB = async (authUser: JwtPayload, id: string) => {
   };
 };
 
+// -------------------------------------------------------------
+// Formatters and Helpers for Tenant Home Dashboard
+// -------------------------------------------------------------
+const formatCurrency = (amount: number, symbol = "£"): string => {
+  return `${symbol}${Number(amount || 0).toLocaleString("en-GB")}`;
+};
+
+const formatUIDate = (date?: Date | string | null): string => {
+  if (!date) return "";
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "";
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+};
+
+const getGreeting = (now: Date, firstName: string): string => {
+  const hour = now.getHours();
+  let timeGreeting = "Good day";
+  if (hour >= 5 && hour < 12) {
+    timeGreeting = "Good morning";
+  } else if (hour >= 12 && hour < 17) {
+    timeGreeting = "Good afternoon";
+  } else {
+    timeGreeting = "Good evening";
+  }
+  return `${timeGreeting}, ${firstName} 👋`;
+};
+
+const formatChargeTitle = (bill: any): string => {
+  if (bill.description && bill.description.trim()) {
+    return bill.description.trim();
+  }
+  if (bill.billType) {
+    return bill.billType
+      .split("_")
+      .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  }
+  return "Pending charge";
+};
+
+// -------------------------------------------------------------
+// 8. Tenant Home Dashboard Service (Single aggregated endpoint)
+// -------------------------------------------------------------
+const getTenantHomeDashboardFromDB = async (
+  authUser: JwtPayload,
+  query: Record<string, unknown>,
+): Promise<ITenantHomeDashboardData> => {
+  let targetTenantId = authUser.userId || authUser.id;
+
+  if (
+    (authUser.role === USER_ROLES.ADMIN ||
+      authUser.role === USER_ROLES.SUPER_ADMIN ||
+      authUser.role === USER_ROLES.LANDLORD) &&
+    query?.tenantId &&
+    typeof query.tenantId === "string"
+  ) {
+    targetTenantId = query.tenantId;
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(targetTenantId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid tenant ID");
+  }
+
+  const tenantObjectId = new Types.ObjectId(targetTenantId);
+  const now = new Date();
+
+  // 1. Fetch Tenant user details
+  const tenantUser = await User.findById(tenantObjectId)
+    .select("name email phone profileImage property flat role status")
+    .lean();
+
+  if (!tenantUser) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Tenant account not found");
+  }
+
+  // 2. Fetch Active Tenancy with populated details
+  const activeTenancyDoc = await Tenancy.findOne({
+    tenant: tenantObjectId,
+    status: TENANCY_STATUS.ACTIVE,
+    isDeleted: { $ne: true },
+  })
+    .sort({ createdAt: -1 })
+    .populate([
+      {
+        path: "property",
+        select: "propertyName streetAddress postCode propertyPhotos",
+      },
+      {
+        path: "flat",
+        select: "unitName floor rentPerMonth unitType flatPhotos",
+      },
+      {
+        path: "landlord",
+        select: "name email phone profileImage companyName",
+      },
+    ])
+    .lean();
+
+  // If landlord requested tenant info, ensure landlord owns this tenancy
+  if (
+    authUser.role === USER_ROLES.LANDLORD &&
+    activeTenancyDoc &&
+    activeTenancyDoc.landlord
+  ) {
+    const landlordIdStr =
+      (activeTenancyDoc.landlord as any)?._id?.toString() ||
+      activeTenancyDoc.landlord.toString();
+    if (landlordIdStr !== authUser.id) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        "You do not have permission to view this tenant's dashboard",
+      );
+    }
+  }
+
+  // Resolve property and flat IDs for announcements
+  const propertyId =
+    (activeTenancyDoc?.property as any)?._id ||
+    activeTenancyDoc?.property ||
+    tenantUser?.property;
+  const flatId =
+    (activeTenancyDoc?.flat as any)?._id ||
+    activeTenancyDoc?.flat ||
+    tenantUser?.flat;
+
+  // Build announcement query conditions
+  const announcementOrConditions: Record<string, any>[] = [
+    { recipients: tenantObjectId },
+  ];
+  if (propertyId) {
+    announcementOrConditions.push({
+      property: new Types.ObjectId(propertyId.toString()),
+      visibilityScope: VISIBILITY_SCOPE.ENTIRE_PROPERTY,
+    });
+  }
+  if (flatId) {
+    announcementOrConditions.push({
+      flats: new Types.ObjectId(flatId.toString()),
+      visibilityScope: VISIBILITY_SCOPE.SELECTED_FLATS,
+    });
+  }
+
+  // Parallel fetch: notifications, rent bills, pending charges, announcements
+  const [
+    unreadNotificationsCount,
+    unpaidRentBill,
+    lastPaidRentBill,
+    pendingChargesBills,
+    announcementsCount,
+    latestAnnouncementDoc,
+  ] = await Promise.all([
+    Notification.countDocuments({
+      receiver: tenantObjectId,
+      read: false,
+      isDeleted: { $ne: true },
+    }),
+    FinanceBill.findOne({
+      tenant: tenantObjectId,
+      billType: CHARGE_TYPE.RENT,
+      status: {
+        $in: [BILL_STATUS.PENDING, BILL_STATUS.DUE, BILL_STATUS.OVERDUE],
+      },
+      isDeleted: { $ne: true },
+    })
+      .sort({ dueDate: 1 })
+      .lean(),
+    FinanceBill.findOne({
+      tenant: tenantObjectId,
+      billType: CHARGE_TYPE.RENT,
+      status: BILL_STATUS.PAID,
+      isDeleted: { $ne: true },
+    })
+      .sort({ paidAt: -1, updatedAt: -1 })
+      .lean(),
+    FinanceBill.find({
+      tenant: tenantObjectId,
+      $or: [
+        { billCategory: BILL_CATEGORY.CHARGES },
+        { billType: { $ne: CHARGE_TYPE.RENT } },
+      ],
+      status: {
+        $in: [BILL_STATUS.PENDING, BILL_STATUS.DUE, BILL_STATUS.OVERDUE],
+      },
+      isDeleted: { $ne: true },
+    })
+      .sort({ dueDate: 1 })
+      .limit(10)
+      .lean(),
+    Announcement.countDocuments({
+      $or: announcementOrConditions,
+      isDeleted: { $ne: true },
+    }),
+    Announcement.findOne({
+      $or: announcementOrConditions,
+      isDeleted: { $ne: true },
+    })
+      .sort({ createdAt: -1 })
+      .populate("landlord", "name")
+      .lean(),
+  ]);
+
+  // 1. Tenant Profile Summary
+  const fullName = tenantUser.name || "Tenant";
+  const firstName = fullName.trim().split(" ")[0];
+  const greeting = getGreeting(now, firstName);
+
+  const tenantProfile: ITenantProfileSummary = {
+    id: tenantUser._id.toString(),
+    name: fullName,
+    firstName,
+    email: tenantUser.email,
+    phone: tenantUser.phone || "",
+    profileImage: tenantUser.profileImage || "",
+    greeting,
+  };
+
+  // 2. Active Tenancy Card
+  let activeTenancy: IActiveTenancyCard | null = null;
+  if (activeTenancyDoc) {
+    const flatDoc = activeTenancyDoc.flat as any;
+    const propertyDoc = activeTenancyDoc.property as any;
+    const landlordDoc = activeTenancyDoc.landlord as any;
+
+    const flatName = flatDoc?.unitName || "Flat";
+    const propertyName = propertyDoc?.propertyName || "";
+    const streetAddress = propertyDoc?.streetAddress || "";
+    const postCode = propertyDoc?.postCode || "";
+    const displayAddress = streetAddress || propertyName || "Property Address";
+
+    const fullAddress = [flatName, streetAddress, postCode]
+      .filter(Boolean)
+      .join(", ");
+
+    const rentAmount =
+      activeTenancyDoc.rentAmount || flatDoc?.rentPerMonth || 0;
+
+    activeTenancy = {
+      tenancyId: activeTenancyDoc._id.toString(),
+      propertyId: propertyDoc?._id?.toString() || propertyId?.toString() || "",
+      flatId: flatDoc?._id?.toString() || flatId?.toString() || "",
+      flatName,
+      propertyName,
+      streetAddress,
+      postCode,
+      displayAddress,
+      fullAddress,
+      rentAmount,
+      rentAmountFormatted: formatCurrency(rentAmount),
+      leaseStartDate: activeTenancyDoc.leaseStartDate,
+      leaseEndDate: activeTenancyDoc.leaseEndDate,
+      depositProtectionScheme: activeTenancyDoc.depositProtectionScheme,
+      landlord: landlordDoc
+        ? {
+            id: landlordDoc._id?.toString() || "",
+            name: landlordDoc.name || "",
+            email: landlordDoc.email || "",
+            phone: landlordDoc.phone || "",
+            companyName: landlordDoc.companyName || "",
+            profileImage: landlordDoc.profileImage || "",
+          }
+        : null,
+    };
+  }
+
+  // 3. Next Rent Due Card
+  let nextRentDue: INextRentDueCard | null = null;
+  let lastPaidText: string | null = null;
+  let lastPaidAmount: number | null = null;
+  let lastPaidDate: Date | string | null = null;
+
+  if (lastPaidRentBill) {
+    lastPaidAmount =
+      lastPaidRentBill.paidAmount || lastPaidRentBill.amount || 0;
+    lastPaidDate =
+      lastPaidRentBill.paidAt || (lastPaidRentBill as any).updatedAt || null;
+    lastPaidText = lastPaidDate
+      ? `Last paid: ${formatCurrency(lastPaidAmount)} on ${formatUIDate(lastPaidDate)}`
+      : null;
+  }
+
+  if (unpaidRentBill) {
+    const isOverdue = new Date(unpaidRentBill.dueDate) < now;
+    nextRentDue = {
+      billId: unpaidRentBill._id.toString(),
+      title: "Next rent due",
+      amount: unpaidRentBill.amount,
+      amountFormatted: formatCurrency(unpaidRentBill.amount),
+      currency: "£",
+      dueDate: unpaidRentBill.dueDate,
+      dueDateFormatted: `Due ${formatUIDate(unpaidRentBill.dueDate)}`,
+      status: isOverdue ? "Overdue" : "Payment due",
+      statusBadge: isOverdue ? "overdue" : "payment_due",
+      isOverdue,
+      isPaid: false,
+      lastPaidText,
+      lastPaidAmount,
+      lastPaidDate,
+      actionText: "Pay Rent",
+      canPay: true,
+    };
+  } else if (activeTenancyDoc && activeTenancyDoc.rentAmount) {
+    // If no unpaid rent bill exists, calculate upcoming cycle due date
+    const currentMonthDueDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    const nextMonthDueDate = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      1,
+    );
+    const scheduledDueDate = lastPaidRentBill
+      ? nextMonthDueDate
+      : currentMonthDueDate;
+
+    nextRentDue = {
+      title: "Next rent due",
+      amount: activeTenancyDoc.rentAmount,
+      amountFormatted: formatCurrency(activeTenancyDoc.rentAmount),
+      currency: "£",
+      dueDate: scheduledDueDate,
+      dueDateFormatted: `Due ${formatUIDate(scheduledDueDate)}`,
+      status: lastPaidRentBill ? "Paid" : "Payment due",
+      statusBadge: lastPaidRentBill ? "paid" : "payment_due",
+      isOverdue: false,
+      isPaid: !!lastPaidRentBill,
+      lastPaidText,
+      lastPaidAmount,
+      lastPaidDate,
+      actionText: "Pay Rent",
+      canPay: true,
+    };
+  }
+
+  // 4. Pending Charges Section
+  const pendingItems: IPendingChargeItem[] = pendingChargesBills.map((b) => {
+    const isOverdue = new Date(b.dueDate) < now;
+    let icon = "repair";
+    if (b.billType === CHARGE_TYPE.UTILITY_CHARGE) {
+      icon = "utility";
+    } else if (b.billType === CHARGE_TYPE.SERVICE_CHARGE) {
+      icon = "service";
+    } else if (b.billType === CHARGE_TYPE.PENALTY) {
+      icon = "penalty";
+    }
+
+    return {
+      id: b._id.toString(),
+      billId: b._id.toString(),
+      title: formatChargeTitle(b),
+      chargeType: b.billType,
+      category: b.billCategory,
+      amount: b.amount,
+      amountFormatted: formatCurrency(b.amount),
+      dueDate: b.dueDate,
+      dueDateFormatted: `Due ${formatUIDate(b.dueDate)}`,
+      status: b.status,
+      statusBadge: isOverdue ? "overdue" : "due",
+      invoiceNumber: b.invoiceNumber,
+      icon,
+      actionText: "Pay",
+      canPay: true,
+    };
+  });
+
+  const totalPendingAmount = pendingItems.reduce(
+    (sum, item) => sum + item.amount,
+    0,
+  );
+
+  const pendingCharges: IPendingChargesSection = {
+    totalCount: pendingItems.length,
+    totalAmount: totalPendingAmount,
+    totalAmountFormatted: formatCurrency(totalPendingAmount),
+    items: pendingItems,
+  };
+
+  // 5. Quick Actions
+  const quickActions: ITenantQuickAction[] = [
+    {
+      key: "report_issue",
+      title: "Report issue",
+      badgeCount: null,
+    },
+    {
+      key: "message_landlord",
+      title: "Message landlord",
+      badgeCount: null,
+    },
+    {
+      key: "payments",
+      title: "Payments",
+      badgeCount: null,
+    },
+    {
+      key: "announcements",
+      title: "Announcements",
+      badgeCount: announcementsCount > 0 ? announcementsCount : null,
+    },
+  ];
+
+  // 6. Latest Building Announcement Banner
+  let latestAnnouncement: IBuildingAnnouncementBanner | null = null;
+  if (latestAnnouncementDoc) {
+    const fullContent = `${latestAnnouncementDoc.title} — ${latestAnnouncementDoc.message}`;
+    const createdAt = (latestAnnouncementDoc as any).createdAt || new Date();
+    latestAnnouncement = {
+      id: latestAnnouncementDoc._id.toString(),
+      badgeLabel: "BUILDING ANNOUNCEMENT",
+      title: latestAnnouncementDoc.title,
+      message: latestAnnouncementDoc.message,
+      fullContent,
+      image: latestAnnouncementDoc.image || null,
+      createdAt,
+      dateFormatted: formatUIDate(createdAt),
+      landlordName: (latestAnnouncementDoc.landlord as any)?.name || "",
+    };
+  }
+
+  return {
+    tenant: tenantProfile,
+    unreadNotificationsCount,
+    activeTenancy,
+    nextRentDue,
+    pendingCharges,
+    quickActions,
+    latestAnnouncement,
+    meta: {
+      serverTime: now.toISOString(),
+      greetingTime:
+        now.getHours() < 12
+          ? "morning"
+          : now.getHours() < 17
+            ? "afternoon"
+            : "evening",
+    },
+  };
+};
+
 export const TenantService = {
   inviteTenantToDB,
   getAllTenantsFromDB,
@@ -571,4 +1038,6 @@ export const TenantService = {
   updateTenancyToDB,
   resendInvitationEmail,
   removeTenantFromDB,
+  getTenantHomeDashboardFromDB,
 };
+

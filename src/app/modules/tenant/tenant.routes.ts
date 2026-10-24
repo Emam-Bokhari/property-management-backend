@@ -15,7 +15,19 @@ router.post(
   TenantController.inviteTenant,
 );
 
-// 2. Tenant's Own Active Tenancy Details (Tenant only)
+// 2. Tenant Home Dashboard
+router.get(
+  "/dashboard",
+  auth(
+    USER_ROLES.TENANT,
+    USER_ROLES.LANDLORD,
+    USER_ROLES.ADMIN,
+    USER_ROLES.SUPER_ADMIN,
+  ),
+  TenantController.getTenantHomeDashboard,
+);
+
+// 3. Tenant's Own Active Tenancy Details (Tenant only)
 router.get(
   "/my-tenancy",
   auth(USER_ROLES.TENANT),
