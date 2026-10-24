@@ -23,6 +23,8 @@ import { BroadcastRoutes } from "../modules/broadcast/broadcast.routes";
 import { MaintenanceRoutes } from "../modules/maintenance/maintenance.routes";
 import { WebhookRoutes } from "../modules/webhook/webhook.routes";
 import { FinanceRoutes } from "../modules/finance/finance.routes";
+import { PackageRoutes } from "../modules/package/package.routes";
+import { SubscriptionRoutes } from "../modules/subscription/subscription.routes";
 
 const router = express.Router();
 
@@ -123,6 +125,14 @@ const apiRoutes = [
   {
     path: "/finance",
     route: FinanceRoutes,
+  },
+  {
+    path: "/packages",
+    route: PackageRoutes,
+  },
+  {
+    path: "/subscriptions",
+    route: SubscriptionRoutes,
   },
 ];
 

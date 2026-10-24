@@ -3,6 +3,7 @@ import { User } from "../app/modules/user/user.model";
 import config from "../config";
 import { USER_ROLES } from "../enums/user";
 import { logger } from "../shared/logger";
+import { seedDefaultPackages } from "../app/modules/package/package.seed";
 
 const superUser = {
   name: "Super Admin",
@@ -15,6 +16,10 @@ const superUser = {
 };
 
 const seedSuperAdmin = async () => {
+  // 1. Seed Packages
+  await seedDefaultPackages();
+
+  // 2. Seed Super Admin
   const existingUser = await User.findOne({
     email: config.admin.email,
   });

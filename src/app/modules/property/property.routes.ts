@@ -6,6 +6,7 @@ import { PropertyValidation } from "./property.validation";
 import { PropertyController } from "./property.controller";
 import fileUploadHandler from "../../middlewares/flieUploadHandler";
 import { parseFileData } from "../../middlewares/parseFileData";
+import { checkPropertyLimit } from "../../middlewares/checkSubscriptionLimit";
 
 const router = express.Router();
 
@@ -13,6 +14,7 @@ router
   .route("/")
   .post(
     auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    checkPropertyLimit,
     fileUploadHandler(),
     parseFileData(
       { fieldName: "propertyPhotos", mode: "multiple" },

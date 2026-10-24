@@ -4,6 +4,7 @@ import config from "../../../config";
 import ApiError from "../../../errors/ApiErrors";
 import { MaintenanceService } from "../maintenance/maintenance.service";
 import { FinanceService } from "../finance/finance.service";
+import { SubscriptionService } from "../subscription/subscription.service";
 
 const handleStripeWebhookIntoDB = async (
   rawBody: Buffer | string,
@@ -57,7 +58,42 @@ const handleStripeWebhookIntoDB = async (
         session.metadata?.billId
       ) {
         await FinanceService.handleStripePaymentSuccess(session);
+      } else if (
+        paymentType === "subscription" ||
+        session.mode === "subscription"
+      ) {
+        await SubscriptionService.handleSubscriptionCheckoutCompleted(session);
       }
+      break;
+    }
+
+    case "invoice.payment_succeeded": {
+      const invoice = event.data.object as Stripe.Invoice;
+      await SubscriptionService.handleInvoicePaymentSucceeded(invoice);
+      break;
+    }
+
+    case "invoice.payment_failed": {
+      const invoice = event.data.object as Stripe.Invoice;
+      await SubscriptionService.handleInvoicePaymentFailed(invoice);
+      break;
+    }
+
+    case "customer.subscription.updated": {
+      const subscription = event.data.object as Stripe.Subscription;
+      await SubscriptionService.handleSubscriptionUpdated(subscription);
+      break;
+    }
+
+    case "customer.subscription.deleted": {
+      const subscription = event.data.object as Stripe.Subscription;
+      await SubscriptionService.handleSubscriptionDeleted(subscription);
+      break;
+    }
+
+    case "customer.subscription.trial_will_end": {
+      const subscription = event.data.object as Stripe.Subscription;
+      await SubscriptionService.handleTrialWillEnd(subscription);
       break;
     }
 

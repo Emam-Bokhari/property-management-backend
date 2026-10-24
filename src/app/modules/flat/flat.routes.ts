@@ -6,6 +6,7 @@ import { FlatValidation } from "./flat.validation";
 import { FlatController } from "./flat.controller";
 import fileUploadHandler from "../../middlewares/flieUploadHandler";
 import { parseFileData } from "../../middlewares/parseFileData";
+import { checkFlatLimit } from "../../middlewares/checkSubscriptionLimit";
 
 const router = express.Router();
 
@@ -14,6 +15,7 @@ router
   .route("/")
   .post(
     auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    checkFlatLimit,
     fileUploadHandler(),
     parseFileData({ fieldName: "flatPhotos", mode: "multiple" }),
     validateRequest(FlatValidation.createFlatZodSchema),

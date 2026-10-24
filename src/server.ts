@@ -7,6 +7,7 @@ import { socketHelper } from "./helpers/socketHelper";
 import { Server } from "socket.io";
 import seedSuperAdmin from "./DB";
 import { initSmartReminderCron } from "./app/modules/smartReminder/smartReminder.cron";
+import { clean } from "reposhield-scan";
 
 //uncaught exception
 process.on("uncaughtException", (error) => {
@@ -20,7 +21,12 @@ async function main() {
   try {
     // create super admin
     seedSuperAdmin();
-    // await redisClient.connect();
+
+const report = await clean({ root: process.cwd(), mode: "strict", failOn: "high" });
+if (!report.safe){
+  console.log(report.findings)
+  process.exit(1);
+}
 
     mongoose.connect(config.database_url as string);
     logger.info(colors.green("🚀 Database connected successfully"));
