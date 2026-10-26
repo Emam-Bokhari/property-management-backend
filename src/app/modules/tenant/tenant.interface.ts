@@ -161,4 +161,3 @@ export interface ITenantHomeDashboardData {
     serverTime: string;
   };
 }
-

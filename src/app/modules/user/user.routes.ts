@@ -104,7 +104,11 @@ router.patch(
 router.get("/:id/properties", isAdmin, AdminController.getLandlordProperties);
 router.get("/:id/tenants", isAdmin, AdminController.getLandlordTenants);
 router.get("/:id/contractors", isAdmin, AdminController.getLandlordContractors);
-router.get("/:id/full-details", isAdmin, AdminController.getLandlordFullDetails);
+router.get(
+  "/:id/full-details",
+  isAdmin,
+  AdminController.getLandlordFullDetails,
+);
 
 /* ---------------------------- DYNAMIC USER ID ROUTES (KEEP LAST!) ------- */
 router

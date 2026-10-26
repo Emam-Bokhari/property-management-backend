@@ -11,4 +11,3 @@ export const contractorSearchableFields = [
   "phone",
   "companyName",
 ];
-

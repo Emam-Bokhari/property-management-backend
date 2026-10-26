@@ -24,7 +24,10 @@ import {
 } from "./landlord.interface";
 
 // Helper to format currency numbers like £8,350
-const formatCurrency = (amount: number, symbol = LANDLORD_CURRENCY_SYMBOL): string => {
+const formatCurrency = (
+  amount: number,
+  symbol = LANDLORD_CURRENCY_SYMBOL,
+): string => {
   return `${symbol}${Number(amount || 0).toLocaleString("en-GB")}`;
 };
 
@@ -50,9 +53,9 @@ const getLandlordHomeDashboardFromDB = async (
     dbSmartReminders,
     unreadNotificationsCount,
   ] = await Promise.all([
-    User.findById(landlordId).select(
-      "name email phone profileImage companyName role",
-    ).lean(),
+    User.findById(landlordId)
+      .select("name email phone profileImage companyName role")
+      .lean(),
     Property.countDocuments({
       landlord: landlordObjectId,
       isDeleted: { $ne: true },
@@ -79,7 +82,9 @@ const getLandlordHomeDashboardFromDB = async (
       },
       contractor: { $in: [null, undefined] },
     })
-      .select("issueTitle priority status locationInProperty reportedAt createdAt")
+      .select(
+        "issueTitle priority status locationInProperty reportedAt createdAt",
+      )
       .populate("property", "propertyName streetAddress")
       .populate("flat", "unitName")
       .sort({ createdAt: -1 })
@@ -149,7 +154,9 @@ const getLandlordHomeDashboardFromDB = async (
   const paidAmount = allFinances.thisMonth.collected || 0;
   const pendingAmount = allFinances.dueSoon || 0;
   const overdueAmount = allFinances.overdue || 0;
-  const expectedTotal = allFinances.thisMonth.expected || paidAmount + pendingAmount + overdueAmount;
+  const expectedTotal =
+    allFinances.thisMonth.expected ||
+    paidAmount + pendingAmount + overdueAmount;
   const collectedPercentage = allFinances.thisMonth.percentage || 0;
 
   const financialOverviewResult: ILandlordFinancialOverview = {
@@ -188,8 +195,7 @@ const getLandlordHomeDashboardFromDB = async (
 
   let reportsSubtitle = "All reports currently assigned";
   if (sampleTitles.length > 0) {
-    reportsSubtitle =
-      sampleTitles.join(", ") + (reportsCount > 2 ? "..." : "");
+    reportsSubtitle = sampleTitles.join(", ") + (reportsCount > 2 ? "..." : "");
   }
 
   const tenantReportsItem: INeedsAttentionItem = {
@@ -240,7 +246,8 @@ const getLandlordHomeDashboardFromDB = async (
     }
 
     const prop = r.property;
-    const propertyAddress = prop?.streetAddress || prop?.propertyName || "Property";
+    const propertyAddress =
+      prop?.streetAddress || prop?.propertyName || "Property";
     const displaySubtitle = `${propertyAddress} · ${statusText}`;
 
     reminderItems.push({
@@ -262,7 +269,9 @@ const getLandlordHomeDashboardFromDB = async (
   });
 
   const overdueCount = reminderItems.filter((i) => i.isOverdue).length;
-  const dueSoonCount = reminderItems.filter((i) => i.urgencyLevel === "due_soon").length;
+  const dueSoonCount = reminderItems.filter(
+    (i) => i.urgencyLevel === "due_soon",
+  ).length;
 
   // 5. Quick Actions with dynamic badge counts
   const quickActions = DEFAULT_LANDLORD_QUICK_ACTIONS.map((action) => {

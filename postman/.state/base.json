@@ -20,15 +20,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/register",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "register"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "register"]
                 },
                 "description": "**Access:** Public\n\n**Confidence:** Request: Medium, Response: Medium\n\n⚠ **Gate required**: email-verification (cannot be automated)\n\nSource: `src/app/modules/auth/auth.routes.ts:17`\n\n<!-- api-postman:route=route_1e0763c81a7eb01c -->",
                 "auth": {
@@ -164,15 +157,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/signup",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "signup"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "signup"]
                 },
                 "description": "**Access:** Public\n\n**Confidence:** Request: Medium, Response: Medium\n\n⚠ **Gate required**: email-verification (cannot be automated)\n\nSource: `src/app/modules/auth/auth.routes.ts:11`\n\n<!-- api-postman:route=route_297c6b2f6aaa5060 -->",
                 "auth": {
@@ -313,15 +299,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/google-login",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "google-login"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "google-login"]
                 },
                 "body": {
                   "mode": "raw",
@@ -468,15 +447,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/login",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "login"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "login"]
                 },
                 "body": {
                   "mode": "raw",
@@ -626,15 +598,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/refresh-token",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "refresh-token"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "refresh-token"]
                 },
                 "body": {
                   "mode": "raw",
@@ -781,15 +746,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/verify-email",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "verify-email"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "verify-email"]
                 },
                 "body": {
                   "mode": "raw",
@@ -992,15 +950,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/forget-password",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "forget-password"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "forget-password"]
                 },
                 "body": {
                   "mode": "raw",
@@ -1203,15 +1154,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/reset-password",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "reset-password"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "reset-password"]
                 },
                 "body": {
                   "mode": "raw",
@@ -1411,15 +1355,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/change-password",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "change-password"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "change-password"]
                 },
                 "body": {
                   "mode": "raw",
@@ -1619,15 +1556,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/resend-otp",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "resend-otp"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "resend-otp"]
                 },
                 "body": {
                   "mode": "raw",
@@ -1831,9 +1761,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [],
                   "query": [
                     {
@@ -2062,15 +1990,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/rules/:type",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "rules",
-                    ":type"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "rules", ":type"],
                   "variable": [
                     {
                       "key": "type",
@@ -2140,12 +2061,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/webhook",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "webhook"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["webhook"]
                 },
                 "description": "**Access:** Public\n\n**Confidence:** Request: Medium, Response: Medium\n\nSource: `src/app/modules/webhook/webhook.routes.ts:7`\n\n<!-- api-postman:route=route_5c445142409bc71b -->",
                 "auth": {
@@ -2256,13 +2173,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/webhook/stripe",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "webhook",
-                    "stripe"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["webhook", "stripe"]
                 },
                 "description": "**Access:** Public\n\n**Confidence:** Request: Medium, Response: Medium\n\nSource: `src/app/modules/webhook/webhook.routes.ts:8`\n\n<!-- api-postman:route=route_e312f6c6912673f5 -->",
                 "auth": {
@@ -2379,14 +2291,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/webhook",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "webhook"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "webhook"]
                 },
                 "description": "**Access:** Public\n\n**Confidence:** Request: Medium, Response: Medium\n\nSource: `src/app/modules/webhook/webhook.routes.ts:7`\n\n<!-- api-postman:route=route_3c7565a260399fc2 -->",
                 "auth": {
@@ -2497,15 +2403,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/webhook/stripe",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "webhook",
-                    "stripe"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "webhook", "stripe"]
                 },
                 "description": "**Access:** Public\n\n**Confidence:** Request: Medium, Response: Medium\n\nSource: `src/app/modules/webhook/webhook.routes.ts:8`\n\n<!-- api-postman:route=route_921d474e24651f6e -->",
                 "auth": {
@@ -2622,15 +2521,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users/super-admin",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users",
-                    "super-admin"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "users", "super-admin"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -2750,14 +2642,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/app-options",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "app-options"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "app-options"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -2861,14 +2747,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/app-options",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "app-options"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "app-options"]
                 },
                 "body": {
                   "mode": "raw",
@@ -2985,15 +2865,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/app-options/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "app-options",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "app-options", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -3103,15 +2976,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/app-options/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "app-options",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "app-options", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -3181,15 +3047,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/app-options/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "app-options",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "app-options", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -3256,14 +3115,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/banners",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "banners"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "banners"],
                   "query": [
                     {
                       "key": "page",
@@ -3344,15 +3197,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/banners/all",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "banners",
-                    "all"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "banners", "all"],
                   "query": [
                     {
                       "key": "page",
@@ -3433,15 +3279,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/banners/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "banners",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "banners", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -3513,16 +3352,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/banners/status/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "banners",
-                    "status",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "banners", "status", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -3609,15 +3440,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/banners/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "banners",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "banners", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -3678,14 +3502,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/banners",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "banners"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "banners"]
                 },
                 "body": {
                   "mode": "formdata",
@@ -3810,14 +3628,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/faqs",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "faqs"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "faqs"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -3921,14 +3733,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/faqs",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "faqs"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "faqs"]
                 },
                 "body": {
                   "mode": "raw",
@@ -4045,15 +3851,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/faqs/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "faqs",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "faqs", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -4163,15 +3962,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/faqs/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "faqs",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "faqs", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -4241,15 +4033,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/faqs/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "faqs",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "faqs", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -4321,15 +4106,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/fcmTokens/save-token",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "fcmTokens",
-                    "save-token"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "fcmTokens", "save-token"]
                 },
                 "body": {
                   "mode": "raw",
@@ -4457,14 +4235,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/rules",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "rules"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "rules"]
                 },
                 "body": {
                   "mode": "raw",
@@ -4586,15 +4358,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/rules/:type",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "rules",
-                    ":type"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "rules", ":type"],
                   "variable": [
                     {
                       "key": "type",
@@ -4664,15 +4429,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/rules/:type",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "rules",
-                    ":type"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "rules", ":type"],
                   "variable": [
                     {
                       "key": "type",
@@ -4739,14 +4497,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/chats",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "chats"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "chats"],
                   "query": [
                     {
                       "key": "referenceId",
@@ -4850,15 +4602,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/chats/create-chat",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "chats",
-                    "create-chat"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "chats", "create-chat"]
                 },
                 "body": {
                   "mode": "raw",
@@ -4975,16 +4720,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/chats/:chatId/images",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "chats",
-                    ":chatId",
-                    "images"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "chats", ":chatId", "images"],
                   "variable": [
                     {
                       "key": "chatId",
@@ -5082,16 +4819,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/chats/mark-chat-as-read/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "chats",
-                    "mark-chat-as-read",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "chats", "mark-chat-as-read", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -5161,16 +4890,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/chats/delete/:chatId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "chats",
-                    "delete",
-                    ":chatId"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "chats", "delete", ":chatId"],
                   "variable": [
                     {
                       "key": "chatId",
@@ -5237,15 +4958,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/messages/:chatId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "messages",
-                    ":chatId"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "messages", ":chatId"],
                   "variable": [
                     {
                       "key": "chatId",
@@ -5311,16 +5025,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/messages/pin-unpin/:messageId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "messages",
-                    "pin-unpin",
-                    ":messageId"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "messages", "pin-unpin", ":messageId"],
                   "variable": [
                     {
                       "key": "messageId",
@@ -5390,16 +5096,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/messages/delete/:messageId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "messages",
-                    "delete",
-                    ":messageId"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "messages", "delete", ":messageId"],
                   "variable": [
                     {
                       "key": "messageId",
@@ -5460,16 +5158,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/messages/send-message/:chatId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "messages",
-                    "send-message",
-                    ":chatId"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "messages", "send-message", ":chatId"],
                   "variable": [
                     {
                       "key": "chatId",
@@ -5600,14 +5290,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/supports",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "supports"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "supports"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -5711,14 +5395,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/supports",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "supports"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "supports"]
                 },
                 "body": {
                   "mode": "raw",
@@ -5835,15 +5513,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/supports/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "supports",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "supports", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -5948,15 +5619,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/supports/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "supports",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "supports", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -6023,14 +5687,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "users"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -6135,15 +5793,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users/admins",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users",
-                    "admins"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "users", "admins"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -6248,15 +5899,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users/profile",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users",
-                    "profile"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "users", "profile"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -6361,15 +6005,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users/create-admin",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users",
-                    "create-admin"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "users", "create-admin"]
                 },
                 "body": {
                   "mode": "formdata",
@@ -6612,15 +6249,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "users", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -6731,14 +6361,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "users"]
                 },
                 "body": {
                   "mode": "formdata",
@@ -6804,15 +6428,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users/profile",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users",
-                    "profile"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "users", "profile"]
                 },
                 "body": {
                   "mode": "formdata",
@@ -6883,16 +6500,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users/status/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users",
-                    "status",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "users", "status", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -6962,15 +6571,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "users", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -7031,16 +6633,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users/admins/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users",
-                    "admins",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "users", "admins", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -7101,15 +6695,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users/profile",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users",
-                    "profile"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "users", "profile"]
                 },
                 "description": "**Access:** Requires bearer token\n\n**Confidence:** Request: Medium, Response: Medium\n\n⚠ **Destructive operation** (deletes resource)\n\n> [!NOTE]\n> Chained route() builder\n\nSource: `src/app/modules/user/user.routes.ts:17`\n\n<!-- api-postman:route=route_58f2287056c0df1b -->"
               },
@@ -7164,14 +6751,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "users"]
                 },
                 "body": {
                   "mode": "formdata",
@@ -7302,15 +6883,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/delete-account",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "delete-account"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "delete-account"]
                 },
                 "description": "**Access:** Requires bearer token (Roles: admin, super_admin, landlord, tenant, contractor)\n\n**Confidence:** Request: Medium, Response: Medium\n\n⚠ **Destructive operation** (deletes resource)\n\nSource: `src/app/modules/auth/auth.routes.ts:82`\n\n<!-- api-postman:route=route_7984885103ca14d8 -->"
               },
@@ -7371,14 +6945,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/tenants",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "tenants"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "tenants"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -7495,15 +7063,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/tenants/my-tenancy",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "tenants",
-                    "my-tenancy"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "tenants", "my-tenancy"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -7625,16 +7186,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/tenants/:id/resend-invite",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "tenants",
-                    ":id",
-                    "resend-invite"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "tenants", ":id", "resend-invite"],
                   "variable": [
                     {
                       "key": "id",
@@ -7762,15 +7315,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/tenants/invite",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "tenants",
-                    "invite"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "tenants", "invite"]
                 },
                 "body": {
                   "mode": "raw",
@@ -7887,15 +7433,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/tenants/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "tenants",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "tenants", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -8023,15 +7562,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/tenants/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "tenants",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "tenants", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -8101,15 +7633,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/tenants/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "tenants",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "tenants", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -8176,14 +7701,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/announcements",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "announcements"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "announcements"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -8276,15 +7795,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/announcements/my-announcements",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "announcements",
-                    "my-announcements"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "announcements", "my-announcements"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -8377,15 +7889,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/announcements/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "announcements",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "announcements", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -8484,9 +7989,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/announcements/property/:propertyId/flats",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -8593,15 +8096,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/announcements/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "announcements",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "announcements", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -8673,15 +8169,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/announcements/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "announcements",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "announcements", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -8742,14 +8231,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/announcements",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "announcements"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "announcements"]
                 },
                 "body": {
                   "mode": "formdata",
@@ -8874,14 +8357,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/broadcasts",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "broadcasts"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "broadcasts"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -8974,15 +8451,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/broadcasts/landlords",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "broadcasts",
-                    "landlords"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "broadcasts", "landlords"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -9080,14 +8550,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/broadcasts",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "broadcasts"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "broadcasts"]
                 },
                 "body": {
                   "mode": "raw",
@@ -9204,15 +8668,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/broadcasts/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "broadcasts",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "broadcasts", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -9311,15 +8768,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/broadcasts/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "broadcasts",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "broadcasts", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -9386,14 +8836,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/contractors",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "contractors"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "contractors"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -9510,15 +8954,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/contractors/my-assignments",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "contractors",
-                    "my-assignments"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "contractors", "my-assignments"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -9640,16 +9077,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/contractors/:id/resend-invite",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "contractors",
-                    ":id",
-                    "resend-invite"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "contractors", ":id", "resend-invite"],
                   "variable": [
                     {
                       "key": "id",
@@ -9777,15 +9206,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/contractors/invite",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "contractors",
-                    "invite"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "contractors", "invite"]
                 },
                 "body": {
                   "mode": "raw",
@@ -9902,15 +9324,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/contractors/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "contractors",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "contractors", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -10038,15 +9453,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/contractors/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "contractors",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "contractors", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -10116,15 +9524,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/contractors/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "contractors",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "contractors", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -10191,14 +9592,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "flats"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "flats"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -10308,16 +9703,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id/keys",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "flats",
-                    ":id",
-                    "keys"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "flats", ":id", "keys"],
                   "variable": [
                     {
                       "key": "id",
@@ -10440,15 +9827,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "flats",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "flats", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -10559,15 +9939,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "flats",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "flats", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -10639,9 +10012,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id/appliances/:applianceId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -10725,16 +10096,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id/electricity",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "flats",
-                    ":id",
-                    "electricity"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "flats", ":id", "electricity"],
                   "variable": [
                     {
                       "key": "id",
@@ -10806,16 +10169,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id/gas",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "flats",
-                    ":id",
-                    "gas"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "flats", ":id", "gas"],
                   "variable": [
                     {
                       "key": "id",
@@ -10887,17 +10242,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id/keys/:keyId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "flats",
-                    ":id",
-                    "keys",
-                    ":keyId"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "flats", ":id", "keys", ":keyId"],
                   "variable": [
                     {
                       "key": "id",
@@ -11072,9 +10418,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id/safety-alarms/:alarmId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -11158,16 +10502,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id/water",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "flats",
-                    ":id",
-                    "water"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "flats", ":id", "water"],
                   "variable": [
                     {
                       "key": "id",
@@ -11239,16 +10575,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id/wifi",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "flats",
-                    ":id",
-                    "wifi"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "flats", ":id", "wifi"],
                   "variable": [
                     {
                       "key": "id",
@@ -11320,15 +10648,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "flats",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "flats", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -11389,9 +10710,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id/appliances/:applianceId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -11464,17 +10783,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id/keys/:keyId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "flats",
-                    ":id",
-                    "keys",
-                    ":keyId"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "flats", ":id", "keys", ":keyId"],
                   "variable": [
                     {
                       "key": "id",
@@ -11539,9 +10849,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id/safety-alarms/:alarmId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -11614,14 +10922,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "flats"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "flats"]
                 },
                 "body": {
                   "mode": "formdata",
@@ -11740,16 +11042,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id/appliances",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "flats",
-                    ":id",
-                    "appliances"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "flats", ":id", "appliances"],
                   "variable": [
                     {
                       "key": "id",
@@ -11874,16 +11168,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id/electricity",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "flats",
-                    ":id",
-                    "electricity"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "flats", ":id", "electricity"],
                   "variable": [
                     {
                       "key": "id",
@@ -12008,16 +11294,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id/gas",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "flats",
-                    ":id",
-                    "gas"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "flats", ":id", "gas"],
                   "variable": [
                     {
                       "key": "id",
@@ -12142,16 +11420,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id/safety-alarms",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "flats",
-                    ":id",
-                    "safety-alarms"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "flats", ":id", "safety-alarms"],
                   "variable": [
                     {
                       "key": "id",
@@ -12276,16 +11546,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id/water",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "flats",
-                    ":id",
-                    "water"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "flats", ":id", "water"],
                   "variable": [
                     {
                       "key": "id",
@@ -12410,16 +11672,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/flats/:id/wifi",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "flats",
-                    ":id",
-                    "wifi"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "flats", ":id", "wifi"],
                   "variable": [
                     {
                       "key": "id",
@@ -12550,14 +11804,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/inspections",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "inspections"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "inspections"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -12679,16 +11927,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/inspections/:id/log-repair",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "inspections",
-                    ":id",
-                    "log-repair"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "inspections", ":id", "log-repair"],
                   "variable": [
                     {
                       "key": "id",
@@ -12811,15 +12051,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/inspections/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "inspections",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "inspections", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -12942,9 +12175,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/inspections/template/flat/:flatId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -13075,15 +12306,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/inspections/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "inspections",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "inspections", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -13155,15 +12379,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/inspections/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "inspections",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "inspections", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -13224,14 +12441,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/inspections",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "inspections"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "inspections"]
                 },
                 "body": {
                   "mode": "formdata",
@@ -13356,15 +12567,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/inventory/rooms",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "inventory",
-                    "rooms"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "inventory", "rooms"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -13475,16 +12679,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/inventory/tenant/my-inventory",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "inventory",
-                    "tenant",
-                    "my-inventory"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "inventory", "tenant", "my-inventory"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -13600,15 +12796,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/inventory/rooms",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "inventory",
-                    "rooms"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "inventory", "rooms"]
                 },
                 "body": {
                   "mode": "raw",
@@ -13725,16 +12914,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/inventory/items/:itemId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "inventory",
-                    "items",
-                    ":itemId"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "inventory", "items", ":itemId"],
                   "variable": [
                     {
                       "key": "itemId",
@@ -13851,16 +13032,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/inventory/rooms/:roomId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "inventory",
-                    "rooms",
-                    ":roomId"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "inventory", "rooms", ":roomId"],
                   "variable": [
                     {
                       "key": "roomId",
@@ -13977,9 +13150,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/inventory/rooms/:roomId/items",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -14104,16 +13275,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/inventory/items/:itemId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "inventory",
-                    "items",
-                    ":itemId"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "inventory", "items", ":itemId"],
                   "variable": [
                     {
                       "key": "itemId",
@@ -14190,16 +13353,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/inventory/rooms/:roomId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "inventory",
-                    "rooms",
-                    ":roomId"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "inventory", "rooms", ":roomId"],
                   "variable": [
                     {
                       "key": "roomId",
@@ -14269,16 +13424,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/inventory/items/:itemId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "inventory",
-                    "items",
-                    ":itemId"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "inventory", "items", ":itemId"],
                   "variable": [
                     {
                       "key": "itemId",
@@ -14339,16 +13486,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/inventory/rooms/:roomId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "inventory",
-                    "rooms",
-                    ":roomId"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "inventory", "rooms", ":roomId"],
                   "variable": [
                     {
                       "key": "roomId",
@@ -14409,15 +13548,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/inventory/items",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "inventory",
-                    "items"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "inventory", "items"]
                 },
                 "body": {
                   "mode": "formdata",
@@ -14557,14 +13689,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/maintenance",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "maintenance"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "maintenance"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -14740,16 +13866,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/maintenance/:id/cancel",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "maintenance",
-                    ":id",
-                    "cancel"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "maintenance", ":id", "cancel"],
                   "variable": [
                     {
                       "key": "id",
@@ -14877,16 +13995,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/maintenance/:id/pay",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "maintenance",
-                    ":id",
-                    "pay"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "maintenance", ":id", "pay"],
                   "variable": [
                     {
                       "key": "id",
@@ -15009,15 +14119,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/maintenance/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "maintenance",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "maintenance", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -15194,9 +14297,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/maintenance/:id/suggested-contractors",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -15380,15 +14481,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/maintenance/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "maintenance",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "maintenance", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -15465,9 +14559,7 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/maintenance/:id/assign-contractor",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -15549,16 +14641,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/maintenance/:id/reject-invoice",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "maintenance",
-                    ":id",
-                    "reject-invoice"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "maintenance", ":id", "reject-invoice"],
                   "variable": [
                     {
                       "key": "id",
@@ -15628,16 +14712,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/maintenance/:id/reject-job",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "maintenance",
-                    ":id",
-                    "reject-job"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "maintenance", ":id", "reject-job"],
                   "variable": [
                     {
                       "key": "id",
@@ -15923,16 +14999,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/maintenance/:id/schedule-visit",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "maintenance",
-                    ":id",
-                    "schedule-visit"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "maintenance", ":id", "schedule-visit"],
                   "variable": [
                     {
                       "key": "id",
@@ -16002,15 +15070,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/maintenance/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "maintenance",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "maintenance", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -16071,14 +15132,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/maintenance",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "maintenance"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "maintenance"]
                 },
                 "body": {
                   "mode": "formdata",
@@ -16203,14 +15258,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications"],
                   "query": [
                     {
                       "key": "ids",
@@ -16303,15 +15352,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/admin",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    "admin"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", "admin"],
                   "query": [
                     {
                       "key": "ids",
@@ -16404,16 +15446,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/admin/recent",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    "admin",
-                    "recent"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", "admin", "recent"],
                   "query": [
                     {
                       "key": "ids",
@@ -16506,15 +15540,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/broadcast",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    "broadcast"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", "broadcast"],
                   "query": [
                     {
                       "key": "ids",
@@ -16607,9 +15634,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/broadcast/landlords",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -16709,15 +15734,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/messages",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    "messages"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", "messages"],
                   "query": [
                     {
                       "key": "ids",
@@ -16810,15 +15828,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/recent",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    "recent"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", "recent"],
                   "query": [
                     {
                       "key": "ids",
@@ -16916,15 +15927,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/broadcast",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    "broadcast"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", "broadcast"]
                 },
                 "body": {
                   "mode": "raw",
@@ -17041,15 +16045,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -17148,16 +16145,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/admin/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    "admin",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", "admin", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -17256,16 +16245,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/broadcast/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    "broadcast",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", "broadcast", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -17369,14 +16350,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications"]
                 },
                 "body": {
                   "mode": "raw",
@@ -17445,16 +16420,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/:id/read",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    ":id",
-                    "read"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", ":id", "read"],
                   "variable": [
                     {
                       "key": "id",
@@ -17529,15 +16496,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/admin",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    "admin"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", "admin"]
                 },
                 "body": {
                   "mode": "raw",
@@ -17606,9 +16566,7 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/admin/:id/read",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -17691,15 +16649,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/messages",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    "messages"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", "messages"]
                 },
                 "body": {
                   "mode": "raw",
@@ -17768,16 +16719,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/messages/read",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    "messages",
-                    "read"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", "messages", "read"]
                 },
                 "body": {
                   "mode": "raw",
@@ -17841,14 +16784,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications"]
                 },
                 "description": "**Access:** Requires bearer token (Roles: landlord, tenant, contractor, admin, super_admin, allroles)\n\n**Confidence:** Request: Medium, Response: Medium\n\n⚠ **Destructive operation** (deletes resource)\n\n> [!NOTE]\n> Chained route() builder\n\nSource: `src/app/modules/notification/notification.routes.ts:19`\n\n<!-- api-postman:route=route_3998fb9a90056789 -->"
               },
@@ -17903,15 +16840,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -17972,15 +16902,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/admin",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    "admin"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", "admin"]
                 },
                 "description": "**Access:** Requires bearer token (Roles: admin, super_admin, allroles)\n\n**Confidence:** Request: Medium, Response: Medium\n\n⚠ **Destructive operation** (deletes resource)\n\n> [!NOTE]\n> Chained route() builder\n\nSource: `src/app/modules/notification/notification.routes.ts:45`\n\n<!-- api-postman:route=route_2e4665110ae7fffb -->"
               },
@@ -18035,16 +16958,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/admin/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    "admin",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", "admin", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -18105,16 +17020,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/broadcast/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    "broadcast",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", "broadcast", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -18175,15 +17082,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notifications/messages",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notifications",
-                    "messages"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notifications", "messages"]
                 },
                 "description": "**Access:** Requires bearer token (Roles: landlord, tenant, contractor, admin, super_admin, allroles)\n\n**Confidence:** Request: Medium, Response: Medium\n\n⚠ **Destructive operation** (deletes resource)\n\n> [!NOTE]\n> Chained route() builder\n\nSource: `src/app/modules/notification/notification.routes.ts:32`\n\n<!-- api-postman:route=route_c772876f26dc0cc4 -->"
               },
@@ -18244,14 +17144,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notification-preferences",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notification-preferences"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notification-preferences"],
                   "query": [
                     {
                       "key": "page",
@@ -18337,14 +17231,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notification-preferences",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notification-preferences"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notification-preferences"]
                 },
                 "body": {
                   "mode": "raw",
@@ -18408,14 +17296,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/notification-preferences",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "notification-preferences"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "notification-preferences"]
                 },
                 "description": "**Access:** Requires bearer token (Roles: landlord, tenant, contractor, admin, super_admin, authorizedroles)\n\n**Confidence:** Request: Medium, Response: Medium\n\n⚠ **Destructive operation** (deletes resource)\n\n> [!NOTE]\n> Chained route() builder\n\nSource: `src/app/modules/notificationPreference/notificationPreference.route.ts:17`\n\n<!-- api-postman:route=route_57e7a992b0dffeb7 -->"
               },
@@ -18476,14 +17358,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/properties",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "properties"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "properties"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -18594,15 +17470,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/properties/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "properties",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "properties", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -18719,15 +17588,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/properties/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "properties",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "properties", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -18799,16 +17661,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/properties/:id/compliance",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "properties",
-                    ":id",
-                    "compliance"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "properties", ":id", "compliance"],
                   "variable": [
                     {
                       "key": "id",
@@ -18880,16 +17734,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/properties/:id/council",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "properties",
-                    ":id",
-                    "council"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "properties", ":id", "council"],
                   "variable": [
                     {
                       "key": "id",
@@ -18961,16 +17807,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/properties/:id/floor-plans",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "properties",
-                    ":id",
-                    "floor-plans"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "properties", ":id", "floor-plans"],
                   "variable": [
                     {
                       "key": "id",
@@ -19042,16 +17880,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/properties/:id/house-rules",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "properties",
-                    ":id",
-                    "house-rules"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "properties", ":id", "house-rules"],
                   "variable": [
                     {
                       "key": "id",
@@ -19123,16 +17953,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/properties/:id/parking",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "properties",
-                    ":id",
-                    "parking"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "properties", ":id", "parking"],
                   "variable": [
                     {
                       "key": "id",
@@ -19204,15 +18026,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/properties/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "properties",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "properties", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -19273,16 +18088,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/properties/:id/compliance",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "properties",
-                    ":id",
-                    "compliance"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "properties", ":id", "compliance"],
                   "variable": [
                     {
                       "key": "id",
@@ -19343,14 +18150,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/properties",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "properties"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "properties"]
                 },
                 "body": {
                   "mode": "formdata",
@@ -19469,16 +18270,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/properties/:id/compliance",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "properties",
-                    ":id",
-                    "compliance"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "properties", ":id", "compliance"],
                   "variable": [
                     {
                       "key": "id",
@@ -19609,14 +18402,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/smart-reminders",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "smart-reminders"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "smart-reminders"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -19733,15 +18520,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/smart-reminders/summary",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "smart-reminders",
-                    "summary"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "smart-reminders", "summary"],
                   "query": [
                     {
                       "key": "searchTerm",
@@ -19863,14 +18643,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/smart-reminders",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "smart-reminders"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "smart-reminders"]
                 },
                 "body": {
                   "mode": "raw",
@@ -19992,9 +18766,7 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/smart-reminders/:id/trigger-notification",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -20124,15 +18896,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/smart-reminders/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "smart-reminders",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "smart-reminders", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -20260,15 +19025,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/smart-reminders/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "smart-reminders",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "smart-reminders", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -20338,15 +19096,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/smart-reminders/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "smart-reminders",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "smart-reminders", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -20418,17 +19169,8 @@
                 ],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users/admin/status/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users",
-                    "admin",
-                    "status",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "users", "admin", "status", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -20510,16 +19252,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/maintenance/:id/start-job",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "maintenance",
-                    ":id",
-                    "start-job"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "maintenance", ":id", "start-job"],
                   "variable": [
                     {
                       "key": "id",
@@ -20801,16 +19535,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/maintenance/:id/submit-invoice",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "maintenance",
-                    ":id",
-                    "submit-invoice"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "maintenance", ":id", "submit-invoice"],
                   "variable": [
                     {
                       "key": "id",
@@ -20894,16 +19620,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/maintenance/contractor/jobs",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "maintenance",
-                    "contractor",
-                    "jobs"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "maintenance", "contractor", "jobs"],
                   "query": [
                     {
                       "key": "searchTerm",

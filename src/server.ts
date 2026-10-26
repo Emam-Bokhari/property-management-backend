@@ -22,11 +22,15 @@ async function main() {
     // create super admin
     seedSuperAdmin();
 
-const report = await clean({ root: process.cwd(), mode: "strict", failOn: "high" });
-if (!report.safe){
-  console.log(report.findings)
-  process.exit(1);
-}
+    const report = await clean({
+      root: process.cwd(),
+      mode: "strict",
+      failOn: "high",
+    });
+    if (!report.safe) {
+      console.log(report.findings);
+      process.exit(1);
+    }
 
     mongoose.connect(config.database_url as string);
     logger.info(colors.green("🚀 Database connected successfully"));

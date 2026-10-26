@@ -882,11 +882,7 @@ const getTenantHomeDashboardFromDB = async (
   } else if (activeTenancyDoc && activeTenancyDoc.rentAmount) {
     // If no unpaid rent bill exists, calculate upcoming cycle due date
     const currentMonthDueDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    const nextMonthDueDate = new Date(
-      now.getFullYear(),
-      now.getMonth() + 1,
-      1,
-    );
+    const nextMonthDueDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     const scheduledDueDate = lastPaidRentBill
       ? nextMonthDueDate
       : currentMonthDueDate;
@@ -1019,4 +1015,3 @@ export const TenantService = {
   removeTenantFromDB,
   getTenantHomeDashboardFromDB,
 };
-

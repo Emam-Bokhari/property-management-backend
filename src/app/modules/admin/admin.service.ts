@@ -207,9 +207,8 @@ const getMonthlyRevenueFromDB = async (
   }));
 
   const totalRevenue =
-    Math.round(
-      revenueData.reduce((acc, curr) => acc + curr.revenue, 0) * 100,
-    ) / 100;
+    Math.round(revenueData.reduce((acc, curr) => acc + curr.revenue, 0) * 100) /
+    100;
 
   return {
     year: targetYear,
@@ -231,11 +230,7 @@ const getUserGrowthFromDB = async (
     {
       $match: {
         role: {
-          $in: [
-            USER_ROLES.LANDLORD,
-            USER_ROLES.TENANT,
-            USER_ROLES.CONTRACTOR,
-          ],
+          $in: [USER_ROLES.LANDLORD, USER_ROLES.TENANT, USER_ROLES.CONTRACTOR],
         },
         isDeleted: { $ne: true },
         createdAt: { $lt: startOfYear },
@@ -264,11 +259,7 @@ const getUserGrowthFromDB = async (
     {
       $match: {
         role: {
-          $in: [
-            USER_ROLES.LANDLORD,
-            USER_ROLES.TENANT,
-            USER_ROLES.CONTRACTOR,
-          ],
+          $in: [USER_ROLES.LANDLORD, USER_ROLES.TENANT, USER_ROLES.CONTRACTOR],
         },
         isDeleted: { $ne: true },
         createdAt: { $gte: startOfYear, $lte: endOfYear },
@@ -493,8 +484,7 @@ const fetchUnifiedTransactions = async (): Promise<IAdminTransactionItem[]> => {
       }
     } else {
       // Direct MongoDB record
-      const isCompleted =
-        sub.status === "active" || sub.status === "trialing";
+      const isCompleted = sub.status === "active" || sub.status === "trialing";
       const statusText: "Completed" | "Failed" = isCompleted
         ? "Completed"
         : "Failed";
@@ -632,12 +622,7 @@ const filterTransactionsBySearch = (
   list: IAdminTransactionItem[],
   query: IAdminTransactionQuery,
 ): IAdminTransactionItem[] => {
-  const term = (
-    query.searchTerm ||
-    query.search ||
-    query.q ||
-    ""
-  )
+  const term = (query.searchTerm || query.search || query.q || "")
     .trim()
     .toLowerCase();
 
@@ -1250,8 +1235,8 @@ const getLandlordPropertiesFromDB = async (
     // CP12 Gas Safety check
     const hasCp12 = Boolean(
       prop.compliance?.gasSafety?.current ||
-        (prop.compliance?.gasSafety?.history &&
-          prop.compliance.gasSafety.history.length > 0),
+      (prop.compliance?.gasSafety?.history &&
+        prop.compliance.gasSafety.history.length > 0),
     );
 
     const fullAddress = [prop.streetAddress, prop.postCode]
@@ -1388,10 +1373,7 @@ const getLandlordContractorsFromDB = async (
         landlord: new Types.ObjectId(landlordId),
         contractor: { $in: contractorUserIds },
         status: {
-          $in: [
-            MAINTENANCE_STATUS.PENDING,
-            MAINTENANCE_STATUS.IN_PROGRESS,
-          ],
+          $in: [MAINTENANCE_STATUS.PENDING, MAINTENANCE_STATUS.IN_PROGRESS],
         },
         isDeleted: { $ne: true },
       },
@@ -1697,4 +1679,3 @@ export const AdminService = {
   updateLandlordStatusToDB,
   deleteLandlordFromDB,
 };
-

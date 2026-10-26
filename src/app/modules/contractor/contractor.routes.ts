@@ -18,11 +18,7 @@ router.post(
 // 2. Contractor Home Dashboard
 router.get(
   "/dashboard",
-  auth(
-    USER_ROLES.CONTRACTOR,
-    USER_ROLES.ADMIN,
-    USER_ROLES.SUPER_ADMIN,
-  ),
+  auth(USER_ROLES.CONTRACTOR, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
   ContractorController.getContractorHomeDashboard,
 );
 

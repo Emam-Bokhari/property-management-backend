@@ -171,7 +171,10 @@ const getMessagesFromDB = async (
     (p) => p.toString() === userId.toString(),
   );
   if (!isParticipant) {
-    throw new ApiError(403, "You are not authorized to view messages in this chat");
+    throw new ApiError(
+      403,
+      "You are not authorized to view messages in this chat",
+    );
   }
 
   const { page, limit } = query;
@@ -189,11 +192,13 @@ const getMessagesFromDB = async (
   const response = await Message.find({ chatId })
     .populate({
       path: "sender",
-      select: "name role activeRole email profileImage companyName primaryTrade",
+      select:
+        "name role activeRole email profileImage companyName primaryTrade",
     })
     .populate({
       path: "pinnedBy",
-      select: "name role activeRole email profileImage companyName primaryTrade",
+      select:
+        "name role activeRole email profileImage companyName primaryTrade",
     })
     .skip(skip)
     .limit(limitInt)
@@ -224,11 +229,13 @@ const getMessagesFromDB = async (
   })
     .populate({
       path: "sender",
-      select: "name role activeRole email profileImage companyName primaryTrade",
+      select:
+        "name role activeRole email profileImage companyName primaryTrade",
     })
     .populate({
       path: "pinnedBy",
-      select: "name role activeRole email profileImage companyName primaryTrade",
+      select:
+        "name role activeRole email profileImage companyName primaryTrade",
     })
     .sort({ pinnedAt: -1 });
 

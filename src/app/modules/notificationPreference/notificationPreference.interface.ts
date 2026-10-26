@@ -18,4 +18,5 @@ export interface INotificationPreference {
   updatedAt?: Date;
 }
 
-export type NotificationPreferenceModel = ISoftDeleteModel<INotificationPreference>;
+export type NotificationPreferenceModel =
+  ISoftDeleteModel<INotificationPreference>;

@@ -289,4 +289,3 @@ export interface IAdminTransactionsResponse {
   };
   data: IAdminTransactionItem[];
 }
-

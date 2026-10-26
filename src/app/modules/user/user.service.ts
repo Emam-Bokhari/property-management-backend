@@ -285,11 +285,15 @@ const getUsersFromDB = async (query: Record<string, unknown>) => {
 
     const [propertiesCounts, flatsCounts, subscriptions] = await Promise.all([
       Property.aggregate([
-        { $match: { landlord: { $in: landlordIds }, isDeleted: { $ne: true } } },
+        {
+          $match: { landlord: { $in: landlordIds }, isDeleted: { $ne: true } },
+        },
         { $group: { _id: "$landlord", count: { $sum: 1 } } },
       ]),
       Flat.aggregate([
-        { $match: { landlord: { $in: landlordIds }, isDeleted: { $ne: true } } },
+        {
+          $match: { landlord: { $in: landlordIds }, isDeleted: { $ne: true } },
+        },
         { $group: { _id: "$landlord", count: { $sum: 1 } } },
       ]),
       Subscription.find({

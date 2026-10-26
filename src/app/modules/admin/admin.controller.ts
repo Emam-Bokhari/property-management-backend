@@ -160,8 +160,7 @@ const getLandlordFullDetails = catchAsync(
 const updateLandlordStatus = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const status =
-    req.body.status ||
-    (req.path.includes("suspend") ? "suspended" : "active");
+    req.body.status || (req.path.includes("suspend") ? "suspended" : "active");
 
   const result = await AdminService.updateLandlordStatusToDB(id, status);
 
@@ -201,4 +200,3 @@ export const AdminController = {
   updateLandlordStatus,
   deleteLandlord,
 };
-

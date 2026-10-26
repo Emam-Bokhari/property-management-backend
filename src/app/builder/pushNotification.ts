@@ -252,8 +252,7 @@ class NotificationHelper {
         referenceModel: payload.data?.referenceModel || undefined,
       }));
 
-      const createdNotifications =
-        await Notification.insertMany(notifications);
+      const createdNotifications = await Notification.insertMany(notifications);
 
       //@ts-ignore
       const socketIo = global.io;

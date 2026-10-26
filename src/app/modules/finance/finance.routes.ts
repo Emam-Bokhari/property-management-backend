@@ -17,7 +17,7 @@ router.get(
   auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
   FinanceController.getLandlordOverview,
 );
-  
+
 // 2. Cascaded Form Options for Add Charge & Record Payment (Properties -> Flats -> Tenants)
 router.get(
   "/form-options",

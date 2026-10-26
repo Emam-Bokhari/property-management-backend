@@ -39,11 +39,17 @@ const createChatIntoDB = async (
     uniqueParticipants.length < 2 &&
     commType !== CHAT_COMMUNICATION_TYPE.SUPPORT
   ) {
-    throw new ApiError(400, "Chat requires at least two distinct participants.");
+    throw new ApiError(
+      400,
+      "Chat requires at least two distinct participants.",
+    );
   }
 
   const query: any = {
-    participants: { $size: uniqueParticipants.length, $all: uniqueParticipants },
+    participants: {
+      $size: uniqueParticipants.length,
+      $all: uniqueParticipants,
+    },
     communicationType: commType,
     isDeleted: { $ne: true },
   };
@@ -182,7 +188,9 @@ const getAllChatsFromDB = async (
         const otherParticipants = await User.find({
           _id: { $in: otherParticipantIds },
         })
-          .select("_id name profileImage email role primaryTrade companyName phone")
+          .select(
+            "_id name profileImage email role primaryTrade companyName phone",
+          )
           .lean();
 
         const unreadCount = await Message.countDocuments({
@@ -238,7 +246,9 @@ const getAllChatsFromDB = async (
         const otherParticipants = await User.find({
           _id: { $in: otherParticipantIds },
         })
-          .select("_id name profileImage email role primaryTrade companyName phone")
+          .select(
+            "_id name profileImage email role primaryTrade companyName phone",
+          )
           .lean();
 
         // FIXED: Same unread count calculation

@@ -65,7 +65,7 @@ try {
 // webhooks
 app.use("/webhook", WebhookRoutes);
 
-//router 
+//router
 app.use("/api/v1", router);
 
 app.get("/", (req: Request, res: Response) => {

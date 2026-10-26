@@ -9,7 +9,9 @@ const formatRoleNotificationPreferences = (
   preferenceDoc: any,
   userRole?: string,
 ) => {
-  const plain = preferenceDoc?.toObject ? preferenceDoc.toObject() : preferenceDoc;
+  const plain = preferenceDoc?.toObject
+    ? preferenceDoc.toObject()
+    : preferenceDoc;
 
   // Normalized defaults in case DB has old records without new fields
   const safePref = {
@@ -208,4 +210,3 @@ export const NotificationPreferenceService = {
   deleteNotificationPreference,
   formatRoleNotificationPreferences,
 };
-

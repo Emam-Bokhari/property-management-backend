@@ -132,7 +132,8 @@ const syncMonthlyRentBillsForLandlord = async (landlordId: string) => {
         periodMonth: currentPeriod,
         invoiceNumber,
         description: `${currentPeriod} rent`,
-        status: currentDueDate < now ? BILL_STATUS.OVERDUE : BILL_STATUS.PENDING,
+        status:
+          currentDueDate < now ? BILL_STATUS.OVERDUE : BILL_STATUS.PENDING,
       });
     }
   }
@@ -149,8 +150,7 @@ const getLandlordOverviewFromDB = async (
   await syncMonthlyRentBillsForLandlord(landlordId);
 
   const now = new Date();
-  const selectedPeriod =
-    (query.period as string) || formatMonthPeriod(now);
+  const selectedPeriod = (query.period as string) || formatMonthPeriod(now);
 
   // Retrieve all bills for landlord for the current period and overall
   const bills = await FinanceBill.find({
@@ -248,7 +248,9 @@ const getBillsFromDB = async (
 
   // Filter by outstanding vs paid tab
   if (query.filter_type === "outstanding") {
-    filter.status = { $in: [BILL_STATUS.PENDING, BILL_STATUS.DUE, BILL_STATUS.OVERDUE] };
+    filter.status = {
+      $in: [BILL_STATUS.PENDING, BILL_STATUS.DUE, BILL_STATUS.OVERDUE],
+    };
     delete query.filter_type;
   } else if (query.filter_type === "paid") {
     filter.status = BILL_STATUS.PAID;
@@ -577,8 +579,7 @@ const recordRentReceivedIntoDB = async (
 ) => {
   const landlordId = authUser.userId || authUser.id;
   const paymentDate = new Date(payload.paymentDate);
-  const periodMonth =
-    payload.periodMonth || formatMonthPeriod(paymentDate);
+  const periodMonth = payload.periodMonth || formatMonthPeriod(paymentDate);
 
   // Check if an existing unpaid rent bill exists for this tenant & flat & period
   let bill = await FinanceBill.findOne({
@@ -729,7 +730,9 @@ const getReminderCandidatesFromDB = async (authUser: JwtPayload) => {
 
   const unpaidBills = await FinanceBill.find({
     landlord: new Types.ObjectId(landlordId),
-    status: { $in: [BILL_STATUS.PENDING, BILL_STATUS.DUE, BILL_STATUS.OVERDUE] },
+    status: {
+      $in: [BILL_STATUS.PENDING, BILL_STATUS.DUE, BILL_STATUS.OVERDUE],
+    },
   })
     .populate(billPopulateOptions)
     .lean();
@@ -753,9 +756,7 @@ const getReminderCandidatesFromDB = async (authUser: JwtPayload) => {
         bills: [],
         totalAmountDue: 0,
         isOverdue: false,
-        statusText: isOverdue
-          ? `${diffDays} days overdue`
-          : "Due soon",
+        statusText: isOverdue ? `${diffDays} days overdue` : "Due soon",
       });
     }
 
@@ -835,7 +836,10 @@ const getTenantOverviewFromDB = async (authUser: JwtPayload) => {
     status: "active",
   })
     .populate([
-      { path: "property", select: "propertyName streetAddress postCode propertyPhotos" },
+      {
+        path: "property",
+        select: "propertyName streetAddress postCode propertyPhotos",
+      },
       { path: "flat", select: "unitName floor rentPerMonth" },
       { path: "landlord", select: "firstName lastName email phone" },
     ])
@@ -845,7 +849,9 @@ const getTenantOverviewFromDB = async (authUser: JwtPayload) => {
   const nextRentDue = await FinanceBill.findOne({
     tenant: new Types.ObjectId(tenantId),
     billType: CHARGE_TYPE.RENT,
-    status: { $in: [BILL_STATUS.PENDING, BILL_STATUS.DUE, BILL_STATUS.OVERDUE] },
+    status: {
+      $in: [BILL_STATUS.PENDING, BILL_STATUS.DUE, BILL_STATUS.OVERDUE],
+    },
   })
     .sort({ dueDate: 1 })
     .lean();
@@ -863,7 +869,9 @@ const getTenantOverviewFromDB = async (authUser: JwtPayload) => {
   const pendingCharges = await FinanceBill.find({
     tenant: new Types.ObjectId(tenantId),
     billCategory: BILL_CATEGORY.CHARGES,
-    status: { $in: [BILL_STATUS.PENDING, BILL_STATUS.DUE, BILL_STATUS.OVERDUE] },
+    status: {
+      $in: [BILL_STATUS.PENDING, BILL_STATUS.DUE, BILL_STATUS.OVERDUE],
+    },
   })
     .sort({ dueDate: 1 })
     .lean();
@@ -873,7 +881,8 @@ const getTenantOverviewFromDB = async (authUser: JwtPayload) => {
       ? {
           tenancyId: tenancy._id,
           unitName: (tenancy.flat as any)?.unitName || "N/A",
-          propertyAddress: `${(tenancy.property as any)?.streetAddress || ""} ${(tenancy.property as any)?.postCode || ""}`.trim(),
+          propertyAddress:
+            `${(tenancy.property as any)?.streetAddress || ""} ${(tenancy.property as any)?.postCode || ""}`.trim(),
           propertyName: (tenancy.property as any)?.propertyName || "",
           rentAmount: tenancy.rentAmount,
           leaseStartDate: tenancy.leaseStartDate,
@@ -887,9 +896,7 @@ const getTenantOverviewFromDB = async (authUser: JwtPayload) => {
           dueDate: nextRentDue.dueDate,
           periodMonth: nextRentDue.periodMonth,
           status:
-            new Date(nextRentDue.dueDate) < now
-              ? "Overdue"
-              : "Payment due",
+            new Date(nextRentDue.dueDate) < now ? "Overdue" : "Payment due",
           invoiceNumber: nextRentDue.invoiceNumber,
         }
       : null,
@@ -926,10 +933,15 @@ const getTenantTransactionsFromDB = async (
   const unpaidRentBills = await FinanceBill.find({
     tenant: new Types.ObjectId(tenantId),
     billCategory: BILL_CATEGORY.RENT,
-    status: { $in: [BILL_STATUS.PENDING, BILL_STATUS.DUE, BILL_STATUS.OVERDUE] },
+    status: {
+      $in: [BILL_STATUS.PENDING, BILL_STATUS.DUE, BILL_STATUS.OVERDUE],
+    },
   }).lean();
 
-  const rentBalance = unpaidRentBills.reduce((acc, curr) => acc + curr.amount, 0);
+  const rentBalance = unpaidRentBills.reduce(
+    (acc, curr) => acc + curr.amount,
+    0,
+  );
   const outstandingRentCount = unpaidRentBills.length;
 
   if (tab === "maintenance") {
@@ -1061,8 +1073,7 @@ const createStripeCheckoutSessionIntoDB = async (
     );
   }
 
-  const secretKey =
-    config.stripe?.secretKey || process.env.STRIPE_SECRET_KEY;
+  const secretKey = config.stripe?.secretKey || process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
     throw new ApiError(
       StatusCodes.INTERNAL_SERVER_ERROR,
@@ -1152,9 +1163,7 @@ const handleStripePaymentSuccess = async (session: Stripe.Checkout.Session) => {
       ? session.payment_intent
       : session.id) || session.id;
   bill.stripePaymentIntentId =
-    typeof session.payment_intent === "string"
-      ? session.payment_intent
-      : null;
+    typeof session.payment_intent === "string" ? session.payment_intent : null;
   bill.receiptSent = true;
 
   if (

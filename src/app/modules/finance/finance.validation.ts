@@ -1,9 +1,5 @@
 import { z } from "zod";
-import {
-  CHARGE_TYPE,
-  PAYMENT_METHOD,
-  WHO_IS_BILLED,
-} from "./finance.constant";
+import { CHARGE_TYPE, PAYMENT_METHOD, WHO_IS_BILLED } from "./finance.constant";
 
 const createChargeZodSchema = z.object({
   body: z.object({

@@ -23,7 +23,10 @@ export const checkChatPermission = async (
 
   // 0. Verify sender is not receiver (prevent self-chat)
   if (senderId.toString() === receiverId.toString()) {
-    return { allowed: false, reason: "You cannot create a chat with yourself." };
+    return {
+      allowed: false,
+      reason: "You cannot create a chat with yourself.",
+    };
   }
 
   // 1. Verify user exists
@@ -75,7 +78,6 @@ export const checkChatPermission = async (
     case CHAT_COMMUNICATION_TYPE.TENANT:
     case CHAT_COMMUNICATION_TYPE.MAINTENANCE:
     case CHAT_COMMUNICATION_TYPE.OTHER:
-
       // Regular messaging between active users (Admin, Landlord, Contractor, Tenant)
       break;
 

@@ -355,7 +355,10 @@ const createMaintenanceIssueIntoDB = async (
       });
     }
   } catch (notifErr) {
-    logger.error("Failed to dispatch maintenance creation notification:", notifErr);
+    logger.error(
+      "Failed to dispatch maintenance creation notification:",
+      notifErr,
+    );
   }
 
   return enhanceMaintenanceData(populatedIssue);
@@ -769,7 +772,10 @@ const assignContractorIntoDB = async (
       });
     }
   } catch (notifErr) {
-    logger.error("Failed to dispatch contractor assignment notifications:", notifErr);
+    logger.error(
+      "Failed to dispatch contractor assignment notifications:",
+      notifErr,
+    );
   }
 
   const updatedIssue =
@@ -973,7 +979,10 @@ const contractorSubmitInvoiceIntoDB = async (
       });
     }
   } catch (notifErr) {
-    logger.error("Failed to dispatch invoice submission notification:", notifErr);
+    logger.error(
+      "Failed to dispatch invoice submission notification:",
+      notifErr,
+    );
   }
 
   const updatedIssue =

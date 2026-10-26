@@ -912,7 +912,9 @@ const getContractorHomeDashboardFromDB = async (
       title: "Pending review",
       count: pendingReviewCount,
       subtitle:
-        pendingReviewCount === 1 ? "Needs action" : `${pendingReviewCount} need action`,
+        pendingReviewCount === 1
+          ? "Needs action"
+          : `${pendingReviewCount} need action`,
     },
     {
       key: "assigned_jobs",
@@ -961,8 +963,7 @@ const getContractorHomeDashboardFromDB = async (
       inProgressCount,
       completedThisMonthCount,
       totalCompletedCount,
-      totalActiveJobs:
-        pendingReviewCount + assignedJobsCount + inProgressCount,
+      totalActiveJobs: pendingReviewCount + assignedJobsCount + inProgressCount,
     },
     upcomingJobs: {
       totalCount: upcomingJobs.length,

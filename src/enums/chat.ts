@@ -9,6 +9,5 @@ export enum CHAT_COMMUNICATION_TYPE {
   TENANT = "tenant",
   MAINTENANCE = "maintenance",
   SUPPORT = "support",
-  OTHER = "other"
+  OTHER = "other",
 }
-  
