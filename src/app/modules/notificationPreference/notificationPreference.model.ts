@@ -17,27 +17,24 @@ const notificationPreferenceSchema = new Schema<
       unique: true,
       index: true,
     },
-    email: {
+    // Event preferences matching UI settings
+    rentReminders: {
       type: Boolean,
       default: true,
     },
-    push: {
+    maintenanceUpdates: {
       type: Boolean,
       default: true,
     },
-    chatMessages: {
+    complianceAlerts: {
       type: Boolean,
       default: true,
     },
-    subscriptionUpdates: {
+    newMessages: {
       type: Boolean,
       default: true,
     },
-    advertisementUpdates: {
-      type: Boolean,
-      default: true,
-    },
-    reviewUpdates: {
+    jobUpdates: {
       type: Boolean,
       default: true,
     },

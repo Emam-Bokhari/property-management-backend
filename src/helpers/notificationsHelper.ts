@@ -7,34 +7,10 @@ export const sendNotifications = async (
   data: Partial<INotification>,
 ): Promise<INotification | any> => {
   if (
-    data.type === NOTIFICATION_TYPE.LANDLORD ||
-    data.type === NOTIFICATION_TYPE.TENANT ||
-    data.type === NOTIFICATION_TYPE.CONTRACTOR ||
-    data.type === NOTIFICATION_TYPE.ANNOUNCEMENT ||
-    data.type === NOTIFICATION_TYPE.SUBSCRIPTION_UPDATE ||
-    data.type === NOTIFICATION_TYPE.ADVERTISEMENT_UPDATE ||
-    data.type === NOTIFICATION_TYPE.REVIEW_UPDATE
+    data.type === NOTIFICATION_TYPE.ADMIN ||
+    data.type === NOTIFICATION_TYPE.SUPER_ADMIN
   ) {
-    // For landlord, tenant, contractor and announcement, use the Push Notification Helper (which also saves to DB)
-    if (!data.receiver) return;
-
-    const payload = {
-      title: data.title || "Notification",
-      body: data.text || "",
-      type: data.type || "",
-      data: {
-        type: data.type || "",
-        referenceId: data.referenceId?.toString() || "",
-        referenceModel: data.referenceModel || "",
-      },
-    };
-
-    return await notificationHelper.sendToUser(
-      data.receiver.toString(),
-      payload,
-    );
-  } else {
-    // For Admin and others, keep the existing Socket.io logic
+    // For Admin and super admin, keep the existing Socket.io & DB logic
     const result = await (
       await Notification.create(data)
     ).populate("receiver sender referenceId");
@@ -47,5 +23,25 @@ export const sendNotifications = async (
     }
 
     return result;
+  } else {
+    // For user events (landlord, tenant, contractor, rent_reminder, maintenance_update, compliance_alert, job_update, etc.)
+    if (!data.receiver) return;
+
+    const payload = {
+      title: data.title || "Notification",
+      body: data.text || "",
+      type: data.type || "",
+      data: {
+        type: data.type || "",
+        referenceId: data.referenceId?.toString() || "",
+        referenceModel: data.referenceModel || "",
+        sender: data.sender?.toString() || "",
+      },
+    };
+
+    return await notificationHelper.sendToUser(
+      data.receiver.toString(),
+      payload,
+    );
   }
 };

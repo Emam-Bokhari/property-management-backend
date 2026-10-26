@@ -9,11 +9,15 @@ export type INotification = {
   read: boolean;
   referenceId?: Types.ObjectId | string;
   referenceModel?:
-    | "Store"
-    | "Product"
-    | "Service"
-    | "Advertisement"
-    | "Review"
+    | "Property"
+    | "Flat"
+    | "Tenancy"
+    | "Maintenance"
+    | "Contractor"
+    | "SmartReminder"
+    | "Bill"
+    | "Inspection"
+    | "Inventory"
     | "User"
     | "Subscription"
     | "Transaction"
@@ -21,7 +25,13 @@ export type INotification = {
     | "Chat"
     | "Message"
     | "Broadcast"
-    | "Announcement";
+    | "Announcement"
+    | "Package"
+    | "Review"
+    | "Store"
+    | "Product"
+    | "Service"
+    | "Advertisement";
   type?: string;
   isDeleted?: boolean;
   deletedAt?: Date | null;

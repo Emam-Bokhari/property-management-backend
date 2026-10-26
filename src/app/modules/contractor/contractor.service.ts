@@ -217,7 +217,7 @@ const inviteContractorToDB = async (
   await sendNotifications({
     receiver: contractorUser._id,
     sender: new Types.ObjectId(landlordId),
-    type: NOTIFICATION_TYPE.CONTRACTOR,
+    type: NOTIFICATION_TYPE.JOB_UPDATE,
     title: "New Contractor Invitation",
     text: `${landlordName} has invited you to work as a contractor for their properties.`,
     referenceId: contractorUser._id,

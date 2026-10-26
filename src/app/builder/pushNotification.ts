@@ -64,18 +64,19 @@ class NotificationHelper {
       });
 
       const prefTypeMap: Record<string, string> = {
-        [NOTIFICATION_TYPE.MESSAGE_NEW]: "chatMessages",
-        [NOTIFICATION_TYPE.SUBSCRIPTION_UPDATE]: "subscriptionUpdates",
-        [NOTIFICATION_TYPE.ADVERTISEMENT_UPDATE]: "advertisementUpdates",
-        [NOTIFICATION_TYPE.REVIEW_UPDATE]: "reviewUpdates",
+        [NOTIFICATION_TYPE.MESSAGE_NEW]: "newMessages",
+        [NOTIFICATION_TYPE.RENT_REMINDER]: "rentReminders",
+        [NOTIFICATION_TYPE.MAINTENANCE_UPDATE]: "maintenanceUpdates",
+        [NOTIFICATION_TYPE.COMPLIANCE_ALERT]: "complianceAlerts",
+        [NOTIFICATION_TYPE.JOB_UPDATE]: "jobUpdates",
       };
 
-      const preferenceKey = prefTypeMap[payload.type];
+      const preferenceKey =
+        payload.data?.preferenceCategory || prefTypeMap[payload.type];
 
-      // 3. Filter users based on preference configurations
+      // 3. Filter users based on preference configurations (All notifications are Push Notifications)
       const dbSaveUserIds: mongoose.Types.ObjectId[] = [];
       const pushUserIds: mongoose.Types.ObjectId[] = [];
-      const emailUsers: typeof validUsers = [];
 
       for (const user of validUsers) {
         const uIdStr = user._id.toString();
@@ -86,26 +87,12 @@ class NotificationHelper {
           continue; // Opted out of this event type completely
         }
 
-        // Always save to Database if event is not disabled
+        // Save to Database and send Push Notification
         dbSaveUserIds.push(user._id);
-
-        // Check channel preferences: push (default to true)
-        if (!userPref || userPref.push !== false) {
-          pushUserIds.push(user._id);
-        }
-
-        // Check channel preferences: email (default to true)
-        // We only send emails for non-chat and non-broadcast events (i.e. not MESSAGE_NEW or BROADCAST)
-        if (
-          payload.type !== NOTIFICATION_TYPE.MESSAGE_NEW &&
-          payload.type !== NOTIFICATION_TYPE.BROADCAST &&
-          (!userPref || userPref.email !== false)
-        ) {
-          emailUsers.push(user);
-        }
+        pushUserIds.push(user._id);
       }
 
-      // 4. Fetch FCM Tokens for users with push enabled
+      // 4. Fetch FCM Tokens for users with push notifications
       let fcmTokens: string[] = [];
       if (pushUserIds.length > 0) {
         const tokensData = await DeviceToken.find({
@@ -131,17 +118,12 @@ class NotificationHelper {
         tasks.push(this.saveToDatabase(dbSaveUserIds, payload));
       }
 
-      // TASK C: Send Email Notifications
-      if (emailUsers.length > 0) {
-        tasks.push(this.sendToEmail(emailUsers, payload));
-      }
-
       await Promise.allSettled(tasks);
       // --- PARALLEL EXECUTION END ---
 
       logger.info(
         colors.green(
-          `✅ Notification flow completed. DB save: ${dbSaveUserIds.length}, Push: ${pushUserIds.length}, Email: ${emailUsers.length}`,
+          `✅ Notification flow completed. DB save: ${dbSaveUserIds.length}, Push: ${pushUserIds.length}`,
         ),
       );
     } catch (error) {
@@ -182,6 +164,7 @@ class NotificationHelper {
         body: bodyText.substring(0, 100),
         type: NOTIFICATION_TYPE.MESSAGE_NEW,
         data: {
+          preferenceCategory: "newMessages",
           type: NOTIFICATION_TYPE.MESSAGE_NEW,
           chatId: chat._id.toString(),
           messageId: message._id.toString(),
@@ -269,7 +252,16 @@ class NotificationHelper {
         referenceModel: payload.data?.referenceModel || undefined,
       }));
 
-      await Notification.insertMany(notifications);
+      const createdNotifications =
+        await Notification.insertMany(notifications);
+
+      //@ts-ignore
+      const socketIo = global.io;
+      if (socketIo) {
+        createdNotifications.forEach((notif) => {
+          socketIo.emit(`send-notification::${notif.receiver}`, notif);
+        });
+      }
     } catch (error) {
       logger.error(colors.red("DB Save Error:"), error);
     }

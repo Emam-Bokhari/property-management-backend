@@ -25,6 +25,8 @@ export type ISubscription = {
   canceledAt?: Date;
   latestInvoiceId?: string;
   isDeleted?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 };
 
 export type SubscriptionModel = Model<ISubscription>;

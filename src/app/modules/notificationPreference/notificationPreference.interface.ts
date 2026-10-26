@@ -1,18 +1,18 @@
-import { Model, Types } from "mongoose";
+import { Types } from "mongoose";
 import { ISoftDeleteModel } from "../../../types/softDelete";
 
 export interface INotificationPreference {
   userId: Types.ObjectId;
 
-  // Channel preferences
-  email: boolean;
-  push: boolean;
-
-  // Event preferences
-  chatMessages: boolean;
-  subscriptionUpdates: boolean;
-  advertisementUpdates: boolean;
-  reviewUpdates: boolean;
+  // Real estate role preferences (matching UI screenshots)
+  // Landlord: rentReminders, maintenanceUpdates, complianceAlerts
+  // Tenant: maintenanceUpdates, newMessages, rentReminders
+  // Contractor: jobUpdates, newMessages
+  rentReminders: boolean;
+  maintenanceUpdates: boolean;
+  complianceAlerts: boolean;
+  newMessages: boolean;
+  jobUpdates: boolean;
 
   createdAt?: Date;
   updatedAt?: Date;

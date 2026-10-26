@@ -18,6 +18,18 @@ const getNotificationFromDB = async (
     type: { $ne: NOTIFICATION_TYPE.MESSAGE_NEW },
   };
 
+  // If specific notification type is requested
+  if (query.type && typeof query.type === "string") {
+    filter.type = query.type;
+  }
+
+  // If unread only requested
+  if (query.unreadOnly === "true" || query.read === "false") {
+    filter.read = false;
+  } else if (query.read === "true") {
+    filter.read = true;
+  }
+
   const baseQuery = Notification.find(filter).populate([
     { path: "receiver" },
     { path: "sender" },
@@ -25,11 +37,15 @@ const getNotificationFromDB = async (
   ]);
 
   const unreadCount = await Notification.countDocuments({
-    ...filter,
+    receiver: user.id,
+    type: { $ne: NOTIFICATION_TYPE.MESSAGE_NEW },
     read: false,
   });
 
-  const queryBuilder = new QueryBuilder(baseQuery, query).sort().paginate();
+  const queryBuilder = new QueryBuilder(baseQuery, query)
+    .filter()
+    .sort()
+    .paginate();
 
   const result = await queryBuilder.modelQuery;
 

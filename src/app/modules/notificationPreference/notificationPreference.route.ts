@@ -1,7 +1,9 @@
 import express from "express";
 import auth from "../../middlewares/auth";
+import validateRequest from "../../middlewares/validateRequest";
 import { USER_ROLES } from "../../../enums/user";
 import { NotificationPreferenceController } from "./notificationPreference.controller";
+import { NotificationPreferenceValidation } from "./notificationPreference.validation";
 
 const router = express.Router();
 
@@ -22,6 +24,9 @@ router
   )
   .patch(
     auth(...authorizedRoles),
+    validateRequest(
+      NotificationPreferenceValidation.updateNotificationPreferenceZodSchema,
+    ),
     NotificationPreferenceController.updateNotificationPreference,
   )
   .delete(

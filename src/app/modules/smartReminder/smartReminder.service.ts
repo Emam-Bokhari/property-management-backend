@@ -125,9 +125,9 @@ const createSmartReminderToDB = async (
         receiver: payload.landlord,
         title: `Smart Reminder: ${result.title}`,
         text: `Your reminder for ${property.propertyName} is due today!`,
-        type: NOTIFICATION_TYPE.LANDLORD,
+        type: NOTIFICATION_TYPE.COMPLIANCE_ALERT,
         referenceId: result._id,
-        referenceModel: "SmartReminder" as any,
+        referenceModel: "SmartReminder",
       });
 
       result.isNotified = true;
@@ -452,9 +452,9 @@ const checkAndSendDueReminders = async () => {
         receiver: reminder.landlord,
         title,
         text: body,
-        type: NOTIFICATION_TYPE.LANDLORD,
+        type: NOTIFICATION_TYPE.COMPLIANCE_ALERT,
         referenceId: reminder._id,
-        referenceModel: "SmartReminder" as any,
+        referenceModel: "SmartReminder",
       });
 
       // Emit real-time socket event if landlord is currently active
@@ -464,7 +464,7 @@ const checkAndSendDueReminders = async () => {
         socketIo.emit(`send-notification::${reminder.landlord}`, {
           title,
           text: body,
-          type: NOTIFICATION_TYPE.LANDLORD,
+          type: NOTIFICATION_TYPE.COMPLIANCE_ALERT,
           reminderId: reminder._id,
           createdAt: new Date(),
         });
@@ -532,9 +532,9 @@ const testTriggerNotification = async (user: any, id: string) => {
     receiver: reminder.landlord,
     title,
     text: body,
-    type: NOTIFICATION_TYPE.LANDLORD,
+    type: NOTIFICATION_TYPE.COMPLIANCE_ALERT,
     referenceId: reminder._id,
-    referenceModel: "SmartReminder" as any,
+    referenceModel: "SmartReminder",
   });
 
   //@ts-ignore
@@ -543,7 +543,7 @@ const testTriggerNotification = async (user: any, id: string) => {
     socketIo.emit(`send-notification::${reminder.landlord}`, {
       title,
       text: body,
-      type: NOTIFICATION_TYPE.LANDLORD,
+      type: NOTIFICATION_TYPE.COMPLIANCE_ALERT,
       reminderId: reminder._id,
       createdAt: new Date(),
     });

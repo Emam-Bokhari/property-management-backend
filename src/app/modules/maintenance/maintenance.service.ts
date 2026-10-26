@@ -32,6 +32,9 @@ import { TENANCY_STATUS } from "../tenant/tenant.constant";
 import { Contractor } from "../contractor/contractor.model";
 import { AppOption } from "../appOption/appOption.model";
 import { User } from "../user/user.model";
+import { sendNotifications } from "../../../helpers/notificationsHelper";
+import { NOTIFICATION_TYPE } from "../notification/notification.constant";
+import { logger } from "../../../shared/logger";
 
 const maintenancePopulate = [
   {
@@ -322,6 +325,38 @@ const createMaintenanceIssueIntoDB = async (
   const populatedIssue = await Maintenance.findById(createdIssue._id).populate(
     maintenancePopulate,
   );
+
+  // Trigger push/in-app notifications based on preference settings
+  try {
+    const propDoc = populatedIssue?.property as any;
+    const propertyTitle = propDoc?.propertyName || "your property";
+
+    if (requesterRole === MAINTENANCE_REQUESTER.TENANT) {
+      // Notify Landlord about new maintenance issue (maintenanceUpdates)
+      await sendNotifications({
+        receiver: landlordId,
+        sender: authUser.userId,
+        type: NOTIFICATION_TYPE.MAINTENANCE_UPDATE,
+        title: "New Maintenance Request",
+        text: `Tenant reported an issue: "${createdIssue.issueTitle}" for ${propertyTitle}.`,
+        referenceId: createdIssue._id,
+        referenceModel: "Maintenance",
+      });
+    } else if (requesterRole === MAINTENANCE_REQUESTER.LANDLORD && tenantId) {
+      // Notify Tenant that landlord scheduled maintenance (maintenanceUpdates)
+      await sendNotifications({
+        receiver: tenantId,
+        sender: authUser.userId,
+        type: NOTIFICATION_TYPE.MAINTENANCE_UPDATE,
+        title: "Maintenance Issue Logged",
+        text: `Maintenance has been scheduled for "${createdIssue.issueTitle}" at ${propertyTitle}.`,
+        referenceId: createdIssue._id,
+        referenceModel: "Maintenance",
+      });
+    }
+  } catch (notifErr) {
+    logger.error("Failed to dispatch maintenance creation notification:", notifErr);
+  }
 
   return enhanceMaintenanceData(populatedIssue);
 };
@@ -708,6 +743,35 @@ const assignContractorIntoDB = async (
 
   await issue.save();
 
+  // Notify Contractor (jobUpdates) & Tenant (maintenanceUpdates)
+  try {
+    // 1. Notify contractor about job assignment
+    await sendNotifications({
+      receiver: payload.contractor,
+      sender: authUser.userId,
+      type: NOTIFICATION_TYPE.JOB_UPDATE,
+      title: "New Maintenance Job Assigned",
+      text: `You have been assigned to maintenance job "${issue.issueTitle}".`,
+      referenceId: issue._id,
+      referenceModel: "Maintenance",
+    });
+
+    // 2. Notify tenant that a contractor was assigned
+    if (issue.tenant) {
+      await sendNotifications({
+        receiver: issue.tenant,
+        sender: authUser.userId,
+        type: NOTIFICATION_TYPE.MAINTENANCE_UPDATE,
+        title: "Maintenance Contractor Assigned",
+        text: `A contractor has been assigned to your maintenance request "${issue.issueTitle}".`,
+        referenceId: issue._id,
+        referenceModel: "Maintenance",
+      });
+    }
+  } catch (notifErr) {
+    logger.error("Failed to dispatch contractor assignment notifications:", notifErr);
+  }
+
   const updatedIssue =
     await Maintenance.findById(id).populate(maintenancePopulate);
   return enhanceMaintenanceData(updatedIssue);
@@ -744,6 +808,38 @@ const contractorScheduleVisitIntoDB = async (
   issue.status = MAINTENANCE_STATUS.SCHEDULED;
 
   await issue.save();
+
+  // Notify Tenant and Landlord about confirmed visit date/time (maintenanceUpdates)
+  try {
+    const formattedDate = new Date(payload.visitDate).toLocaleDateString();
+    const timeSlot = payload.visitTime || "the agreed time";
+
+    if (issue.tenant) {
+      await sendNotifications({
+        receiver: issue.tenant,
+        sender: authUser.userId,
+        type: NOTIFICATION_TYPE.MAINTENANCE_UPDATE,
+        title: "Maintenance Visit Scheduled",
+        text: `Contractor visit for "${issue.issueTitle}" is confirmed for ${formattedDate} at ${timeSlot}.`,
+        referenceId: issue._id,
+        referenceModel: "Maintenance",
+      });
+    }
+
+    if (issue.landlord) {
+      await sendNotifications({
+        receiver: issue.landlord,
+        sender: authUser.userId,
+        type: NOTIFICATION_TYPE.MAINTENANCE_UPDATE,
+        title: "Maintenance Visit Scheduled",
+        text: `Contractor scheduled a visit for "${issue.issueTitle}" on ${formattedDate} at ${timeSlot}.`,
+        referenceId: issue._id,
+        referenceModel: "Maintenance",
+      });
+    }
+  } catch (notifErr) {
+    logger.error("Failed to dispatch visit schedule notifications:", notifErr);
+  }
 
   const updatedIssue =
     await Maintenance.findById(id).populate(maintenancePopulate);
@@ -862,6 +958,23 @@ const contractorSubmitInvoiceIntoDB = async (
   issue.rejectedAt = undefined;
 
   await issue.save();
+
+  // Notify Landlord about invoice submission (maintenanceUpdates)
+  try {
+    if (issue.landlord) {
+      await sendNotifications({
+        receiver: issue.landlord,
+        sender: authUser.userId,
+        type: NOTIFICATION_TYPE.MAINTENANCE_UPDATE,
+        title: "Maintenance Invoice Submitted",
+        text: `Contractor has submitted an invoice of £${payload.invoiceAmount} for "${issue.issueTitle}".`,
+        referenceId: issue._id,
+        referenceModel: "Maintenance",
+      });
+    }
+  } catch (notifErr) {
+    logger.error("Failed to dispatch invoice submission notification:", notifErr);
+  }
 
   const updatedIssue =
     await Maintenance.findById(id).populate(maintenancePopulate);

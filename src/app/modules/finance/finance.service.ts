@@ -491,8 +491,11 @@ const createChargeIntoDB = async (
     notificationHelper.sendToUser(tenantId, {
       title: "New Charge Added",
       body: `A new charge of £${payload.amount} has been issued for ${property.propertyName} (${flat.unitName}). Due date: ${dueDate.toLocaleDateString()}.`,
-      type: NOTIFICATION_TYPE.TENANT,
+      type: NOTIFICATION_TYPE.RENT_REMINDER,
       data: {
+        preferenceCategory: "rentReminders",
+        referenceId: newBill._id.toString(),
+        referenceModel: "Bill",
         billId: newBill._id.toString(),
         invoiceNumber,
         amount: payload.amount.toString(),
@@ -546,8 +549,11 @@ const recordPaymentIntoDB = async (
       notificationHelper.sendToUser(bill.tenant, {
         title: "Rent / Charge Payment Recorded",
         body: `Payment of £${bill.amount} for invoice ${bill.invoiceNumber} (${bill.periodMonth}) has been recorded by your landlord.`,
-        type: NOTIFICATION_TYPE.TENANT,
+        type: NOTIFICATION_TYPE.RENT_REMINDER,
         data: {
+          preferenceCategory: "rentReminders",
+          referenceId: bill._id.toString(),
+          referenceModel: "Bill",
           billId: bill._id.toString(),
           invoiceNumber: bill.invoiceNumber,
           paidAmount: bill.amount.toString(),
@@ -804,7 +810,10 @@ const sendPaymentReminderIntoDB = async (
   notificationHelper.sendToBatch(tenantIdArray, {
     title: "Payment Reminder",
     body: defaultMessage,
-    type: NOTIFICATION_TYPE.TENANT,
+    type: NOTIFICATION_TYPE.RENT_REMINDER,
+    data: {
+      preferenceCategory: "rentReminders",
+    },
   });
 
   return {
@@ -1161,8 +1170,11 @@ const handleStripePaymentSuccess = async (session: Stripe.Checkout.Session) => {
   notificationHelper.sendToUser(bill.landlord, {
     title: "Rent / Charge Paid via Stripe",
     body: `Payment of £${bill.amount} for invoice ${bill.invoiceNumber} has been received.`,
-    type: NOTIFICATION_TYPE.LANDLORD,
+    type: NOTIFICATION_TYPE.RENT_REMINDER,
     data: {
+      preferenceCategory: "rentReminders",
+      referenceId: bill._id.toString(),
+      referenceModel: "Bill",
       billId: bill._id.toString(),
       invoiceNumber: bill.invoiceNumber,
     },
@@ -1171,8 +1183,11 @@ const handleStripePaymentSuccess = async (session: Stripe.Checkout.Session) => {
   notificationHelper.sendToUser(bill.tenant, {
     title: "Payment Confirmation",
     body: `Your payment of £${bill.amount} for invoice ${bill.invoiceNumber} has been confirmed. Thank you!`,
-    type: NOTIFICATION_TYPE.TENANT,
+    type: NOTIFICATION_TYPE.RENT_REMINDER,
     data: {
+      preferenceCategory: "rentReminders",
+      referenceId: bill._id.toString(),
+      referenceModel: "Bill",
       billId: bill._id.toString(),
       invoiceNumber: bill.invoiceNumber,
     },
