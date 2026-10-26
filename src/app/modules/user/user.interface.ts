@@ -41,6 +41,8 @@ export type IUser = {
     authType?: string | null;
   };
   isDeleted?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 };
 
 export type UserModal = {

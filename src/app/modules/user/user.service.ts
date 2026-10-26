@@ -15,6 +15,11 @@ import bcrypt from "bcrypt";
 import { sendNotifications } from "../../../helpers/notificationsHelper";
 import { NOTIFICATION_TYPE } from "../notification/notification.constant";
 import { USER_SEARCHABLE_FIELDS } from "./user.constant";
+import { Property } from "../property/property.model";
+import { Flat } from "../flat/flat.model";
+import { Subscription } from "../subscription/subscription.model";
+import { IPackage } from "../package/package.interface";
+import { AdminService } from "../admin/admin.service";
 
 // --- ADMIN SERVICES ---
 const createAdminToDB = async (payload: Partial<IUser>): Promise<IUser> => {
@@ -253,13 +258,10 @@ const updateProfileToDB = async (
 };
 
 const getUsersFromDB = async (query: Record<string, unknown>) => {
+  // If role is explicitly provided, filter by that; otherwise ONLY return Landlords (Admin Dashboard requirement)
   const roleFilter = query.role
     ? { role: query.role }
-    : {
-        role: {
-          $in: [USER_ROLES.LANDLORD, USER_ROLES.TENANT, USER_ROLES.CONTRACTOR],
-        },
-      };
+    : { role: USER_ROLES.LANDLORD };
 
   const baseQuery = User.find(roleFilter).select(
     "-password -authentication -deviceToken",
@@ -277,6 +279,128 @@ const getUsersFromDB = async (query: Record<string, unknown>) => {
     queryBuilder.countTotal(),
   ]);
 
+  // Enrich landlords with portfolio, plan, and statusBadge
+  if (!query.role || query.role === USER_ROLES.LANDLORD) {
+    const landlordIds = users.map((u) => u._id);
+
+    const [propertiesCounts, flatsCounts, subscriptions] = await Promise.all([
+      Property.aggregate([
+        { $match: { landlord: { $in: landlordIds }, isDeleted: { $ne: true } } },
+        { $group: { _id: "$landlord", count: { $sum: 1 } } },
+      ]),
+      Flat.aggregate([
+        { $match: { landlord: { $in: landlordIds }, isDeleted: { $ne: true } } },
+        { $group: { _id: "$landlord", count: { $sum: 1 } } },
+      ]),
+      Subscription.find({
+        userId: { $in: landlordIds },
+        isDeleted: { $ne: true },
+      })
+        .sort({ createdAt: -1 })
+        .populate<{ packageId: IPackage }>("packageId")
+        .lean(),
+    ]);
+
+    const propCountMap: Record<string, number> = {};
+    for (const item of propertiesCounts) {
+      propCountMap[item._id.toString()] = item.count;
+    }
+
+    const flatCountMap: Record<string, number> = {};
+    for (const item of flatsCounts) {
+      flatCountMap[item._id.toString()] = item.count;
+    }
+
+    const subMap: Record<string, any> = {};
+    for (const sub of subscriptions) {
+      const uId = sub.userId.toString();
+      if (!subMap[uId]) {
+        subMap[uId] = sub;
+      }
+    }
+
+    const enrichedUsers = users.map((user: any) => {
+      const uId = user._id.toString();
+      const propCount = propCountMap[uId] || 0;
+      const unitCount = flatCountMap[uId] || 0;
+      const sub = subMap[uId];
+      const pkg = sub ? (sub.packageId as unknown as IPackage) : null;
+      const maxUnits =
+        pkg && typeof pkg.maxFlats === "number" && pkg.maxFlats > 0
+          ? pkg.maxFlats
+          : null;
+      const isNearLimit =
+        maxUnits !== null && maxUnits > 0 && unitCount >= maxUnits;
+
+      const isTrial = Boolean(sub?.isTrial || sub?.status === "trialing");
+      const isPastDue = Boolean(
+        sub?.status === "past_due" || sub?.status === "unpaid",
+      );
+      const isSuspended = user.status === STATUS.INACTIVE;
+
+      let displayStatus: "active" | "trial" | "past_due" | "suspended" =
+        "active";
+      let statusBadge: {
+        label: string;
+        variant: "success" | "warning" | "danger" | "neutral";
+      } = {
+        label: "Active",
+        variant: "success",
+      };
+
+      if (isSuspended) {
+        displayStatus = "suspended";
+        statusBadge = { label: "Suspended", variant: "danger" };
+      } else if (isTrial) {
+        displayStatus = "trial";
+        statusBadge = { label: "Trial", variant: "warning" };
+      } else if (isPastDue) {
+        displayStatus = "past_due";
+        statusBadge = { label: "Past Due", variant: "danger" };
+      }
+
+      const planData = pkg
+        ? {
+            packageName: pkg.name,
+            price: pkg.monthlyPrice || 0,
+            formattedPrice:
+              (pkg.monthlyPrice || 0) > 0 ? `£${pkg.monthlyPrice}/mo` : "Free",
+            billingCadence:
+              sub?.planType === "yearly"
+                ? "yearly"
+                : (pkg.monthlyPrice || 0) > 0
+                  ? "monthly"
+                  : "free",
+            isTrial,
+            status: sub?.status || "active",
+          }
+        : null;
+
+      return {
+        ...user,
+        portfolio: {
+          propertiesCount: propCount,
+          unitsCount: unitCount,
+          maxUnits,
+          formattedPortfolio: `${propCount} ${propCount === 1 ? "Property" : "Properties"}`,
+          formattedUnits:
+            maxUnits !== null
+              ? `${unitCount} / ${maxUnits} units`
+              : `${unitCount} ${unitCount === 1 ? "unit" : "units"}`,
+          isNearLimit,
+        },
+        plan: planData,
+        displayStatus,
+        statusBadge,
+      };
+    });
+
+    return {
+      data: enrichedUsers,
+      meta,
+    };
+  }
+
   return {
     data: users,
     meta,
@@ -284,18 +408,20 @@ const getUsersFromDB = async (query: Record<string, unknown>) => {
 };
 
 const getUserByIdFromDB = async (id: string) => {
-  const result = await User.findOne({
-    _id: id,
-    role: {
-      $in: [USER_ROLES.LANDLORD, USER_ROLES.TENANT, USER_ROLES.CONTRACTOR],
-    },
-  }).select("-password -authentication -deviceToken");
+  const user = await User.findById(id).select(
+    "-password -authentication -deviceToken",
+  );
 
-  if (!result) {
+  if (!user) {
     throw new ApiError(StatusCodes.NOT_FOUND, "No user is found by this ID");
   }
 
-  return result;
+  // If landlord, return full rich landlord detail with stats and plan
+  if (user.role === USER_ROLES.LANDLORD) {
+    return await AdminService.getLandlordByIdFromDB(id);
+  }
+
+  return user;
 };
 
 const updateUserStatusByIdToDB = async (
@@ -312,6 +438,11 @@ const updateUserStatusByIdToDB = async (
   const user = await User.findById(id);
   if (!user) {
     throw new ApiError(StatusCodes.NOT_FOUND, "No user is found by this ID");
+  }
+
+  // If landlord, cascade suspend/reactivate tenants and contractors!
+  if (user.role === USER_ROLES.LANDLORD) {
+    return await AdminService.updateLandlordStatusToDB(id, status);
   }
 
   const result = await User.findByIdAndUpdate(
@@ -331,6 +462,11 @@ const deleteUserByIdFromD = async (id: string) => {
   const user = await User.findById(id);
   if (!user) {
     throw new ApiError(StatusCodes.NOT_FOUND, "User does not exist");
+  }
+
+  // If landlord, cascade soft-delete properties, flats, tenants, contractors!
+  if (user.role === USER_ROLES.LANDLORD) {
+    return await AdminService.deleteLandlordFromDB(id);
   }
 
   const result = await User.softDeleteById(id);

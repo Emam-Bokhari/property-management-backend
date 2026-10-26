@@ -10,6 +10,7 @@ import {
   isSuperAdmin,
 } from "../../../helpers/authHelper";
 import fileUploadHandler from "../../middlewares/flieUploadHandler";
+import { AdminController } from "../admin/admin.controller";
 
 const router = express.Router();
 
@@ -98,6 +99,12 @@ router.patch(
   validateRequest(UserValidation.updateUserStatusZodSchema),
   UserController.updateUserStatusById,
 );
+
+/* ---------------------------- LANDLORD SUB-ROUTES ----------------------- */
+router.get("/:id/properties", isAdmin, AdminController.getLandlordProperties);
+router.get("/:id/tenants", isAdmin, AdminController.getLandlordTenants);
+router.get("/:id/contractors", isAdmin, AdminController.getLandlordContractors);
+router.get("/:id/full-details", isAdmin, AdminController.getLandlordFullDetails);
 
 /* ---------------------------- DYNAMIC USER ID ROUTES (KEEP LAST!) ------- */
 router
