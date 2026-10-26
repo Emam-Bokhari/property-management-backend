@@ -400,14 +400,31 @@ const handleInvoicePaymentSucceeded = async (invoice: Stripe.Invoice) => {
     subscription.latestInvoiceId = inv.id;
     subscription.cancelAtPeriodEnd = subObj.cancel_at_period_end || false;
 
-    // If trial transitioned to active paid
+    // Check if it was trial
+    const wasTrial = subscription.isTrial;
     if (subscription.isTrial && subObj.status === "active") {
       subscription.isTrial = false;
     }
 
     await subscription.save();
 
-    // Send notification for successful renewal
+    // Do NOT send renewed notification on initial checkout (Stripe fires both checkout.session.completed and invoice.payment_succeeded)
+    if (inv.billing_reason === "subscription_create") {
+      return;
+    }
+
+    // If trial transitioned to active paid
+    if (wasTrial && subObj.status === "active") {
+      await sendNotifications({
+        receiver: subscription.userId as any,
+        title: "🎉 Trial Converted to Active Subscription",
+        text: `Your free trial has ended and your subscription is now active. Next billing date: ${subscription.currentPeriodEnd.toLocaleDateString()}`,
+        type: NOTIFICATION_TYPE.SUBSCRIPTION_UPDATE,
+      });
+      return;
+    }
+
+    // Send notification for successful recurring renewal (e.g., subscription_cycle)
     await sendNotifications({
       receiver: subscription.userId as any,
       title: "✅ Subscription Renewed",
