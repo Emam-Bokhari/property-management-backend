@@ -399,6 +399,8 @@ const getSinglePropertyFromDB = async (user: any, id: string) => {
     totalUnits,
     occupied: occupiedUnits,
     vacant: vacantUnits,
+    totalRent: monthlyRent,
+    formattedTotalRent: `${formatCurrency(monthlyRent)}/mo`,
   };
 
   const propObj = (property as any).toObject
