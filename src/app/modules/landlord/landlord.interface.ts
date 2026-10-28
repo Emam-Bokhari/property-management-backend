@@ -33,23 +33,88 @@ export interface ILandlordFinancialOverview {
   period: string;
 }
 
-export interface INeedsAttentionItem {
-  type: "overdue_rent" | "tenant_reports";
+export interface INeedsAttentionOverdueRentItem {
+  id: string;
+  invoiceNumber?: string;
+  billType?: string;
+  billCategory?: string;
+  title: string;
+  subtitle: string;
+  amount: number;
+  formattedAmount: string;
+  dueDate: Date | string;
+  daysOverdue: number;
+  statusText?: string;
+  tenant?: {
+    id?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    profileImage?: string;
+  };
+  property?: {
+    id?: string;
+    propertyName?: string;
+    streetAddress?: string;
+    postCode?: string;
+  };
+  flat?: {
+    id?: string;
+    unitName?: string;
+    floor?: number;
+  };
+}
+
+export interface INeedsAttentionTenantReportItem {
+  id: string;
+  jobId?: string;
+  title: string;
+  subtitle: string;
+  priority: string;
+  status?: string;
+  date: Date | string;
+  tenant?: {
+    id?: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+    profileImage?: string;
+  };
+  property?: {
+    id?: string;
+    propertyName?: string;
+    streetAddress?: string;
+    postCode?: string;
+  };
+  flat?: {
+    id?: string;
+    unitName?: string;
+  };
+}
+
+export interface INeedsAttentionOverdueRent {
+  type: "overdue_rent";
   count: number;
   title: string;
   subtitle: string;
-  amount?: number;
-  formattedAmount?: string;
+  amount: number;
+  formattedAmount: string;
   actionRoute: string;
-  items?: Array<{
-    id: string;
-    title: string;
-    subtitle?: string;
-    amount?: number;
-    date?: Date | string;
-    priority?: string;
-  }>;
+  items: INeedsAttentionOverdueRentItem[];
 }
+
+export interface INeedsAttentionTenantReports {
+  type: "tenant_reports";
+  count: number;
+  title: string;
+  subtitle: string;
+  actionRoute: string;
+  items: INeedsAttentionTenantReportItem[];
+}
+
+export type INeedsAttentionItem =
+  | INeedsAttentionOverdueRent
+  | INeedsAttentionTenantReports;
 
 export interface ISmartReminderDashboardItem {
   id: string;
@@ -81,17 +146,12 @@ export interface ILandlordHomeDashboardData {
   unreadNotificationsCount: number;
   incomeOverview: ILandlordMonthlyIncomeCard;
   financialOverview: ILandlordFinancialOverview;
-  quickActions: IQuickActionItem[];
   needsAttention: {
     totalCount: number;
-    overdueRent: INeedsAttentionItem;
-    tenantReports: INeedsAttentionItem;
-    items: INeedsAttentionItem[];
+    overdueRent: INeedsAttentionOverdueRent;
+    tenantReports: INeedsAttentionTenantReports;
   };
   smartReminders: {
-    totalCount: number;
-    overdueCount: number;
-    dueSoonCount: number;
     items: ISmartReminderDashboardItem[];
   };
 }

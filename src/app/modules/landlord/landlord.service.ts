@@ -9,17 +9,19 @@ import { Maintenance } from "../maintenance/maintenance.model";
 import { SmartReminder } from "../smartReminder/smartReminder.model";
 import { Notification } from "../notification/notification.model";
 import { FinanceService } from "../finance/finance.service";
+import { FinanceBill } from "../finance/finance.model";
+import { BILL_STATUS } from "../finance/finance.constant";
 import { REMINDER_STATUS } from "../smartReminder/smartReminder.constant";
 import { MAINTENANCE_STATUS } from "../maintenance/maintenance.constant";
-import {
-  LANDLORD_CURRENCY_SYMBOL,
-  DEFAULT_LANDLORD_QUICK_ACTIONS,
-} from "./landlord.constant";
+import { LANDLORD_CURRENCY_SYMBOL } from "./landlord.constant";
 import {
   ILandlordHomeDashboardData,
   ILandlordMonthlyIncomeCard,
   ILandlordFinancialOverview,
-  INeedsAttentionItem,
+  INeedsAttentionOverdueRent,
+  INeedsAttentionOverdueRentItem,
+  INeedsAttentionTenantReports,
+  INeedsAttentionTenantReportItem,
   ISmartReminderDashboardItem,
 } from "./landlord.interface";
 
@@ -83,10 +85,11 @@ const getLandlordHomeDashboardFromDB = async (
       contractor: { $in: [null, undefined] },
     })
       .select(
-        "issueTitle priority status locationInProperty reportedAt createdAt",
+        "jobId issueTitle priority status locationInProperty reportedAt createdAt",
       )
-      .populate("property", "propertyName streetAddress")
+      .populate("property", "propertyName streetAddress postCode")
       .populate("flat", "unitName")
+      .populate("tenant", "name email phone profileImage")
       .sort({ createdAt: -1 })
       .lean(),
     SmartReminder.find({
@@ -107,6 +110,21 @@ const getLandlordHomeDashboardFromDB = async (
   if (!landlordUser) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Landlord account not found");
   }
+
+  const now = new Date();
+
+  // Query overdue rent bills (after syncMonthlyRentBills in financeOverview)
+  const overdueBills = await FinanceBill.find({
+    landlord: landlordObjectId,
+    status: { $nin: [BILL_STATUS.PAID, BILL_STATUS.CANCELLED] },
+    dueDate: { $lt: now },
+    isDeleted: { $ne: true },
+  })
+    .populate("tenant", "name email phone profileImage")
+    .populate("property", "propertyName streetAddress postCode")
+    .populate("flat", "unitName floor")
+    .sort({ dueDate: 1 })
+    .lean();
 
   // 1. Calculate Monthly Income & Portfolio stats (Top Blue Card)
   const totalMonthlyIncome = activeTenancies.reduce((sum, tenancy) => {
@@ -153,7 +171,13 @@ const getLandlordHomeDashboardFromDB = async (
   const allFinances = financeOverview.all;
   const paidAmount = allFinances.thisMonth.collected || 0;
   const pendingAmount = allFinances.dueSoon || 0;
-  const overdueAmount = allFinances.overdue || 0;
+  const overdueAmount =
+    overdueBills.reduce(
+      (sum, bill) => sum + (Number(bill.amount) || 0),
+      0,
+    ) ||
+    allFinances.overdue ||
+    0;
   const expectedTotal =
     allFinances.thisMonth.expected ||
     paidAmount + pendingAmount + overdueAmount;
@@ -175,53 +199,162 @@ const getLandlordHomeDashboardFromDB = async (
 
   // 3. Needs Attention Section
   // 3.1 Overdue Rent
-  const overdueRentCount = allFinances.overdueCount || 0;
-  const overdueRentItem: INeedsAttentionItem = {
+  const overdueRentCount = overdueBills.length || allFinances.overdueCount || 0;
+  const overdueRentItems: INeedsAttentionOverdueRentItem[] = overdueBills.map(
+    (bill: any) => {
+      const dueDate = new Date(bill.dueDate);
+      const diffTime = now.getTime() - dueDate.getTime();
+      const daysOverdue = Math.max(
+        0,
+        Math.floor(diffTime / (1000 * 60 * 60 * 24)),
+      );
+
+      let statusText = "Overdue";
+      if (daysOverdue === 0) {
+        statusText = "Due today";
+      } else if (daysOverdue === 1) {
+        statusText = "1 day overdue";
+      } else {
+        statusText = `${daysOverdue} days overdue`;
+      }
+
+      const prop = bill.property;
+      const flat = bill.flat;
+      const tenant = bill.tenant;
+
+      const propertyAddress =
+        prop?.streetAddress || prop?.propertyName || "Property";
+      const unitPart = flat?.unitName ? `${flat.unitName} · ` : "";
+      const subtitle = `${unitPart}${propertyAddress}`;
+
+      return {
+        id: bill._id.toString(),
+        invoiceNumber: bill.invoiceNumber,
+        billType: bill.billType,
+        billCategory: bill.billCategory,
+        title: bill.description || `${bill.periodMonth || ""} Rent`.trim(),
+        subtitle,
+        amount: bill.amount,
+        formattedAmount: formatCurrency(bill.amount),
+        dueDate: bill.dueDate,
+        daysOverdue,
+        statusText,
+        tenant: tenant
+          ? {
+              id: tenant._id?.toString(),
+              name: tenant.name,
+              email: tenant.email,
+              phone: tenant.phone,
+              profileImage: tenant.profileImage,
+            }
+          : undefined,
+        property: prop
+          ? {
+              id: prop._id?.toString(),
+              propertyName: prop.propertyName,
+              streetAddress: prop.streetAddress,
+              postCode: prop.postCode,
+            }
+          : undefined,
+        flat: flat
+          ? {
+              id: flat._id?.toString(),
+              unitName: flat.unitName,
+              floor: flat.floor,
+            }
+          : undefined,
+      };
+    },
+  );
+
+  const overdueRentItem: INeedsAttentionOverdueRent = {
     type: "overdue_rent",
     count: overdueRentCount,
-    title: `${overdueRentCount} overdue rent`,
-    subtitle: `${formatCurrency(overdueAmount)} to collect`,
+    title: `${overdueRentCount} overdue rent${overdueRentCount === 1 ? "" : "s"}`,
+    subtitle:
+      overdueRentCount > 0
+        ? `${formatCurrency(overdueAmount)} to collect`
+        : "All rents are up to date",
     amount: overdueAmount,
     formattedAmount: formatCurrency(overdueAmount),
     actionRoute: "/finance?tab=outstanding&status=overdue",
+    items: overdueRentItems,
   };
 
   // 3.2 Tenant reports needing contractor
   const reportsCount = pendingMaintenanceReports.length;
   const sampleTitles = pendingMaintenanceReports
-    .map((r) => r.issueTitle)
+    .map((r: any) => r.issueTitle)
     .filter(Boolean)
     .slice(0, 2);
 
   let reportsSubtitle = "All reports currently assigned";
   if (sampleTitles.length > 0) {
-    reportsSubtitle = sampleTitles.join(", ") + (reportsCount > 2 ? "..." : "");
+    reportsSubtitle =
+      sampleTitles.join(", ") + (reportsCount > 2 ? "..." : "");
   }
 
-  const tenantReportsItem: INeedsAttentionItem = {
+  const tenantReportItems: INeedsAttentionTenantReportItem[] =
+    pendingMaintenanceReports.map((r: any) => {
+      const prop = r.property;
+      const flat = r.flat;
+      const tenant = r.tenant;
+
+      const propertyAddress =
+        prop?.streetAddress || prop?.propertyName || "Property";
+      const unitPart = flat?.unitName ? `${flat.unitName} · ` : "";
+      const subtitle = `${unitPart}${propertyAddress}`;
+
+      return {
+        id: r._id.toString(),
+        jobId: r.jobId,
+        title: r.issueTitle,
+        subtitle,
+        priority: r.priority,
+        status: r.status,
+        date: r.createdAt || r.reportedAt,
+        tenant: tenant
+          ? {
+              id: tenant._id?.toString(),
+              name: tenant.name,
+              email: tenant.email,
+              phone: tenant.phone,
+              profileImage: tenant.profileImage,
+            }
+          : undefined,
+        property: prop
+          ? {
+              id: prop._id?.toString(),
+              propertyName: prop.propertyName,
+              streetAddress: prop.streetAddress,
+              postCode: prop.postCode,
+            }
+          : undefined,
+        flat: flat
+          ? {
+              id: flat._id?.toString(),
+              unitName: flat.unitName,
+            }
+          : undefined,
+      };
+    });
+
+  const tenantReportsItem: INeedsAttentionTenantReports = {
     type: "tenant_reports",
     count: reportsCount,
     title: `${reportsCount} tenant report${reportsCount === 1 ? "" : "s"} need contractor`,
     subtitle: reportsSubtitle,
     actionRoute: "/maintenance?tab=reported&status=pending",
-    items: pendingMaintenanceReports.slice(0, 5).map((r: any) => ({
-      id: r._id.toString(),
-      title: r.issueTitle,
-      subtitle: r.property?.streetAddress || r.property?.propertyName || "",
-      priority: r.priority,
-      date: r.createdAt || r.reportedAt,
-    })),
+    items: tenantReportItems,
   };
 
   const needsAttention = {
     totalCount: overdueRentCount + reportsCount,
     overdueRent: overdueRentItem,
     tenantReports: tenantReportsItem,
-    items: [overdueRentItem, tenantReportsItem],
   };
 
   // 4. Smart Reminders (Urgent expiry & overdue reminders)
-  const now = new Date();
   const reminderItems: ISmartReminderDashboardItem[] = [];
 
   dbSmartReminders.forEach((r: any) => {
@@ -273,19 +406,7 @@ const getLandlordHomeDashboardFromDB = async (
     (i) => i.urgencyLevel === "due_soon",
   ).length;
 
-  // 5. Quick Actions with dynamic badge counts
-  const quickActions = DEFAULT_LANDLORD_QUICK_ACTIONS.map((action) => {
-    let badgeCount = 0;
-    if (action.id === "maintenance") {
-      badgeCount = reportsCount;
-    } else if (action.id === "finance") {
-      badgeCount = overdueRentCount;
-    }
-    return {
-      ...action,
-      badgeCount,
-    };
-  });
+
 
   return {
     landlord: {
@@ -299,12 +420,8 @@ const getLandlordHomeDashboardFromDB = async (
     unreadNotificationsCount,
     incomeOverview,
     financialOverview: financialOverviewResult,
-    quickActions,
     needsAttention,
     smartReminders: {
-      totalCount: reminderItems.length,
-      overdueCount,
-      dueSoonCount,
       items: reminderItems,
     },
   };
