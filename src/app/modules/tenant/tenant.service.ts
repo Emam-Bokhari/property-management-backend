@@ -9,6 +9,10 @@ import { Property } from "../property/property.model";
 import { User } from "../user/user.model";
 import { USER_ROLES, STATUS } from "../../../enums/user";
 import {
+  formatCurrency,
+  getCurrencySymbol,
+} from "../../../helpers/currencyHelper";
+import {
   DEPOSIT_PROTECTION_SCHEME,
   TENANCY_STATUS,
   tenantSearchableFields,
@@ -583,10 +587,6 @@ const removeTenantFromDB = async (authUser: JwtPayload, id: string) => {
 // -------------------------------------------------------------
 // Formatters and Helpers for Tenant Home Dashboard
 // -------------------------------------------------------------
-const formatCurrency = (amount: number, symbol = "£"): string => {
-  return `${symbol}${Number(amount || 0).toLocaleString("en-GB")}`;
-};
-
 const formatUIDate = (date?: Date | string | null): string => {
   if (!date) return "";
   const d = new Date(date);
@@ -866,7 +866,7 @@ const getTenantHomeDashboardFromDB = async (
       title: "Next rent due",
       amount: unpaidRentBill.amount,
       amountFormatted: formatCurrency(unpaidRentBill.amount),
-      currency: "£",
+      currency: getCurrencySymbol(),
       dueDate: unpaidRentBill.dueDate,
       dueDateFormatted: `Due ${formatUIDate(unpaidRentBill.dueDate)}`,
       status: isOverdue ? "Overdue" : "Payment due",
@@ -891,7 +891,7 @@ const getTenantHomeDashboardFromDB = async (
       title: "Next rent due",
       amount: activeTenancyDoc.rentAmount,
       amountFormatted: formatCurrency(activeTenancyDoc.rentAmount),
-      currency: "£",
+      currency: getCurrencySymbol(),
       dueDate: scheduledDueDate,
       dueDateFormatted: `Due ${formatUIDate(scheduledDueDate)}`,
       status: lastPaidRentBill ? "Paid" : "Payment due",

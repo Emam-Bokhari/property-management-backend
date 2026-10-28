@@ -73,7 +73,7 @@ export interface IActiveTenancyCard {
   displayAddress: string; // "12 Park Lane"
   fullAddress: string;
   rentAmount: number;
-  rentAmountFormatted: string; // "£2,450"
+  rentAmountFormatted: string; // e.g., "$2,450"
   leaseStartDate: Date | string;
   leaseEndDate: Date | string;
   depositProtectionScheme?: string;
@@ -91,15 +91,15 @@ export interface INextRentDueCard {
   billId?: string;
   title: string; // "Next rent due"
   amount: number; // 2450
-  amountFormatted: string; // "£2,450"
-  currency: string; // "£"
+  amountFormatted: string; // e.g., "$2,450"
+  currency: string; // e.g., "$"
   dueDate: Date | string;
   dueDateFormatted: string; // "Due Jul 1, 2026"
   status: string; // "Payment due" | "Overdue" | "Paid"
   statusBadge: "payment_due" | "overdue" | "paid";
   isOverdue: boolean;
   isPaid: boolean;
-  lastPaidText?: string | null; // "Last paid: £2,450 on May 2, 2026"
+  lastPaidText?: string | null; // e.g., "Last paid: $2,450 on May 2, 2026"
   lastPaidAmount?: number | null;
   lastPaidDate?: Date | string | null;
   actionText: string; // "Pay Rent"
@@ -113,7 +113,7 @@ export interface IPendingChargeItem {
   chargeType: string; // "repair_charge"
   category: string;
   amount: number; // 85
-  amountFormatted: string; // "£85"
+  amountFormatted: string; // e.g., "$85"
   dueDate: Date | string;
   dueDateFormatted: string; // "Due Jul 20, 2026"
   status: string; // "pending" | "due" | "overdue"

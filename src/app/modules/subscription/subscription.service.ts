@@ -11,6 +11,7 @@ import { Property } from "../property/property.model";
 import { Flat } from "../flat/flat.model";
 import { sendNotifications } from "../../../helpers/notificationsHelper";
 import { NOTIFICATION_TYPE } from "../notification/notification.constant";
+import { getCurrencyCode } from "../../../helpers/currencyHelper";
 
 // 1. Create Stripe Checkout Session
 const createCheckoutSession = async (
@@ -41,7 +42,7 @@ const createCheckoutSession = async (
 
   // Auto-heal / generate real Stripe price if missing or not a live Stripe ID
   if (!priceId || !priceId.startsWith("price_")) {
-    const currency = (process.env.CURRENCY || "usd").toLowerCase();
+    const currency = getCurrencyCode();
 
     // Ensure Stripe product exists
     let productId = selectedPackage.stripeProductId;

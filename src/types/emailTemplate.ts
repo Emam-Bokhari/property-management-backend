@@ -23,6 +23,7 @@ export type ITenantInvitationEmail = {
   securityDeposit?: number;
   advanceRent?: number;
   depositProtectionScheme?: string;
+  currencySymbol?: string;
   personalMessage?: string;
   loginUrl?: string;
 };

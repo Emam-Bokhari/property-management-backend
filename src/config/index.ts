@@ -66,4 +66,13 @@ export default {
     secretKey: process.env.STRIPE_SECRET_KEY,
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
   },
+  currency: (process.env.CURRENCY || "usd").toLowerCase(),
+  currency_code: (process.env.CURRENCY || "USD").toUpperCase(),
+  currency_symbol:
+    process.env.CURRENCY_SYMBOL ||
+    (process.env.CURRENCY?.toLowerCase() === "gbp"
+      ? "£"
+      : process.env.CURRENCY?.toLowerCase() === "eur"
+        ? "€"
+        : "$"),
 };

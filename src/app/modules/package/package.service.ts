@@ -1,6 +1,7 @@
 import { StatusCodes } from "http-status-codes";
 import ApiError from "../../../errors/ApiErrors";
 import { getStripe } from "../../../helpers/stripeHelper";
+import { getCurrencyCode } from "../../../helpers/currencyHelper";
 import { IPackage } from "./package.interface";
 import { Package } from "./package.model";
 
@@ -16,7 +17,7 @@ const createPackageIntoDB = async (payload: IPackage): Promise<IPackage> => {
   // Auto-generate Stripe Product and Recurring Prices if not provided
   if (!payload.stripeMonthlyPriceId || !payload.stripeYearlyPriceId) {
     const stripe = getStripe();
-    const currency = (process.env.CURRENCY || "usd").toLowerCase();
+    const currency = getCurrencyCode();
 
     // 1. Create Product in Stripe
     const product = await stripe.products.create({
@@ -96,7 +97,7 @@ const updatePackageIntoDB = async (
   }
 
   const stripe = getStripe();
-  const currency = (process.env.CURRENCY || "usd").toLowerCase();
+  const currency = getCurrencyCode();
 
   // If Stripe product exists, keep it updated
   if (isExist.stripeProductId) {

@@ -1,4 +1,7 @@
-export const LANDLORD_CURRENCY_SYMBOL = "£";
+import { getCurrencySymbol } from "../../../helpers/currencyHelper";
+
+export const getLandlordCurrencySymbol = (): string => getCurrencySymbol();
+export const LANDLORD_CURRENCY_SYMBOL = getCurrencySymbol();
 
 export const DEFAULT_LANDLORD_QUICK_ACTIONS = [
   {

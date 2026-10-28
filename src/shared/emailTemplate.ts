@@ -4,6 +4,7 @@ import {
   IResetPassword,
   ITenantInvitationEmail,
 } from "../types/emailTemplate";
+import { getCurrencySymbol } from "../helpers/currencyHelper";
 
 const COLORS = {
   background: "#FAFAF7",
@@ -652,6 +653,7 @@ ${values.text}
 
 const tenantInvitation = (values: ITenantInvitationEmail) => {
   const passwordDisplay = values.password || "12345678";
+  const currencySymbol = values.currencySymbol || getCurrencySymbol();
 
   const content = `
 <tr>
@@ -735,7 +737,7 @@ const tenantInvitation = (values: ITenantInvitationEmail) => {
         </tr>
         <tr>
           <td style="padding: 7px 0; color: #64748B;">Monthly Rent:</td>
-          <td align="right" style="padding: 7px 0; font-weight: 600; color: #0F172A;">£${values.rentAmount.toLocaleString()}</td>
+          <td align="right" style="padding: 7px 0; font-weight: 600; color: #0F172A;">${currencySymbol}${values.rentAmount.toLocaleString()}</td>
         </tr>
         <tr>
           <td style="padding: 7px 0; color: #64748B;">Lease Period:</td>
@@ -746,7 +748,7 @@ const tenantInvitation = (values: ITenantInvitationEmail) => {
             ? `
         <tr>
           <td style="padding: 7px 0; color: #64748B;">Security Deposit:</td>
-          <td align="right" style="padding: 7px 0; font-weight: 600; color: #0F172A;">£${values.securityDeposit.toLocaleString()}</td>
+          <td align="right" style="padding: 7px 0; font-weight: 600; color: #0F172A;">${currencySymbol}${values.securityDeposit.toLocaleString()}</td>
         </tr>`
             : ""
         }
@@ -755,7 +757,7 @@ const tenantInvitation = (values: ITenantInvitationEmail) => {
             ? `
         <tr>
           <td style="padding: 7px 0; color: #64748B;">Advance Rent:</td>
-          <td align="right" style="padding: 7px 0; font-weight: 600; color: #0F172A;">£${values.advanceRent.toLocaleString()}</td>
+          <td align="right" style="padding: 7px 0; font-weight: 600; color: #0F172A;">${currencySymbol}${values.advanceRent.toLocaleString()}</td>
         </tr>`
             : ""
         }

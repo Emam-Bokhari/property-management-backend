@@ -16,6 +16,7 @@ import { Flat } from "../flat/flat.model";
 import { Tenancy } from "../tenant/tenant.model";
 import { TENANCY_STATUS } from "../tenant/tenant.constant";
 import { USER_ROLES } from "../../../enums/user";
+import { formatCurrency } from "../../../helpers/currencyHelper";
 
 const complianceKeyMap: Record<string, keyof TCompliance> = {
   [COMPLIANCE_TYPE.GAS_SAFETY]: "gasSafety",
@@ -261,7 +262,7 @@ const getAllPropertiesFromDB = async (
       occupancyStatus: occupancyBadge,
       occupancyBadge,
       monthlyRent: propMonthlyRent,
-      formattedMonthlyRent: `£${propMonthlyRent.toLocaleString("en-GB")}`,
+      formattedMonthlyRent: formatCurrency(propMonthlyRent),
     };
   });
 
@@ -323,23 +324,44 @@ const getSinglePropertyFromDB = async (user: any, id: string) => {
     }
   }
 
-  const propFlats = await Flat.find({
-    property: new Types.ObjectId(id),
-    isDeleted: { $ne: true },
-  })
-    .select("_id property unitName rentPerMonth tenant tenants")
-    .lean();
-
-  const activeTenancies = await Tenancy.find({
-    property: new Types.ObjectId(id),
-    status: TENANCY_STATUS.ACTIVE,
-    isDeleted: { $ne: true },
-  })
-    .select("flat property tenant")
-    .lean();
+  const [propFlats, tenancies] = await Promise.all([
+    Flat.find({
+      property: new Types.ObjectId(id),
+      isDeleted: { $ne: true },
+    })
+      .populate({
+        path: "tenant",
+        select:
+          "name email phone profileImage dateOfBirth nidNumber nidPhoto emergencyPhone address status role verified",
+      })
+      .sort({ floor: 1, unitName: 1 })
+      .lean(),
+    Tenancy.find({
+      property: new Types.ObjectId(id),
+      isDeleted: { $ne: true },
+    })
+      .populate({
+        path: "tenant",
+        select:
+          "name email phone profileImage dateOfBirth nidNumber nidPhoto emergencyPhone address homeAddress status role verified",
+      })
+      .populate({
+        path: "flat",
+        select:
+          "unitName floor rentPerMonth unitType beds baths flatPhotos key appliances",
+      })
+      .sort({ createdAt: -1 })
+      .lean(),
+  ]);
 
   const activeTenancyFlatIds = new Set(
-    activeTenancies.map((t) => t.flat?.toString()).filter(Boolean),
+    tenancies
+      .filter((t) => t.status === TENANCY_STATUS.ACTIVE)
+      .map(
+        (t) =>
+          (t.flat as any)?._id?.toString() || (t.flat as any)?.toString(),
+      )
+      .filter(Boolean),
   );
 
   const isOcc = (flat: any): boolean =>
@@ -353,37 +375,127 @@ const getSinglePropertyFromDB = async (user: any, id: string) => {
   let occupiedUnits = 0;
   let monthlyRent = 0;
 
-  for (const flat of propFlats) {
+  const enhancedFlats = propFlats.map((flat: any) => {
     monthlyRent += Number(flat.rentPerMonth) || 0;
-    if (isOcc(flat)) {
+    const isOccupied = isOcc(flat);
+    if (isOccupied) {
       occupiedUnits++;
     }
-  }
 
-  const occupancyRate =
-    totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
-  const occupancyBadge =
-    totalUnits === 0
-      ? "No Units"
-      : occupiedUnits === 0
-      ? "Vacant"
-      : `${occupiedUnits}/${totalUnits} occupied`;
+    const { tenants, ...flatData } = flat;
+
+    return {
+      ...flatData,
+      isOccupied,
+      status: isOccupied ? "Occupied" : "Vacant",
+      formattedRent: `${formatCurrency(Number(flat.rentPerMonth) || 0)}/mo`,
+      formattedRentPerMonth: `${formatCurrency(Number(flat.rentPerMonth) || 0)}/mo`,
+    };
+  });
+
+  const vacantUnits = Math.max(0, totalUnits - occupiedUnits);
+
+  const stats = {
+    totalUnits,
+    occupied: occupiedUnits,
+    vacant: vacantUnits,
+  };
 
   const propObj = (property as any).toObject
     ? (property as any).toObject()
     : property;
 
+  const enhancedTenants: any[] = [];
+  const handledTenantUserIds = new Set<string>();
+
+  for (const t of tenancies) {
+    const tenantUser = t.tenant as any;
+    const flatDoc = t.flat as any;
+    const effectiveRent = t.rentAmount || flatDoc?.rentPerMonth || 0;
+    const tUserId = tenantUser?._id
+      ? tenantUser._id.toString()
+      : tenantUser?.toString();
+
+    if (tUserId) {
+      handledTenantUserIds.add(tUserId);
+    }
+
+    enhancedTenants.push({
+      _id: tenantUser?._id || t._id,
+      name: tenantUser?.name || t.email,
+      email: tenantUser?.email || t.email,
+      phone: tenantUser?.phone || "",
+      emergencyContact: tenantUser?.emergencyPhone || "",
+      profileImage: tenantUser?.profileImage || "",
+      dateOfBirth: tenantUser?.dateOfBirth,
+      nidNumber: tenantUser?.nidNumber,
+      nidPhoto: tenantUser?.nidPhoto,
+      address:
+        tenantUser?.address ||
+        (flatDoc?.unitName
+          ? `${flatDoc.unitName}, ${propObj.streetAddress || ""}`
+          : propObj.streetAddress || ""),
+      status: t.status || TENANCY_STATUS.ACTIVE,
+      rentAmount: effectiveRent,
+      formattedRent: `${formatCurrency(effectiveRent)}/mo`,
+      leaseStartDate: t.leaseStartDate,
+      leaseEndDate: t.leaseEndDate,
+      securityDeposit: t.securityDeposit || 0,
+      advanceRent: t.advanceRent || 0,
+      depositProtectionScheme: t.depositProtectionScheme,
+      personalMessage: t.personalMessage || "",
+      flat: flatDoc
+        ? {
+            _id: flatDoc._id,
+            unitName: flatDoc.unitName,
+            floor: flatDoc.floor,
+            rentPerMonth: flatDoc.rentPerMonth,
+          }
+        : null,
+      createdAt: (t as any).createdAt,
+    });
+  }
+
+  for (const flat of propFlats) {
+    if (flat.tenant) {
+      const userObj = flat.tenant as any;
+      const uId = userObj?._id ? userObj._id.toString() : userObj?.toString();
+      if (!uId || handledTenantUserIds.has(uId)) continue;
+      handledTenantUserIds.add(uId);
+
+      const effectiveRent = flat.rentPerMonth || 0;
+      enhancedTenants.push({
+        _id: uId,
+        name: userObj?.name || "",
+        email: userObj?.email || "",
+        phone: userObj?.phone || "",
+        emergencyContact: userObj?.emergencyPhone || "",
+        profileImage: userObj?.profileImage || "",
+        dateOfBirth: userObj?.dateOfBirth,
+        nidNumber: userObj?.nidNumber,
+        nidPhoto: userObj?.nidPhoto,
+        address:
+          userObj?.address ||
+          `${flat.unitName || ""}, ${propObj.streetAddress || ""}`,
+        status: TENANCY_STATUS.ACTIVE,
+        rentAmount: effectiveRent,
+        formattedRent: `${formatCurrency(effectiveRent)}/mo`,
+        flat: {
+          _id: flat._id,
+          unitName: flat.unitName,
+          floor: flat.floor,
+          rentPerMonth: flat.rentPerMonth,
+        },
+        createdAt: (flat as any).createdAt,
+      });
+    }
+  }
+
   return {
     ...propObj,
-    totalUnits,
-    occupiedUnits,
-    occupancyRate,
-    formattedOccupancyRate: `${occupancyRate}%`,
-    occupancyPercentage: occupancyRate,
-    occupancyStatus: occupancyBadge,
-    occupancyBadge,
-    monthlyRent,
-    formattedMonthlyRent: `£${monthlyRent.toLocaleString("en-GB")}`,
+    flats: enhancedFlats,
+    tenants: enhancedTenants,
+    stats,
   };
 };
 

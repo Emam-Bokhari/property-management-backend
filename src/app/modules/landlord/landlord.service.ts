@@ -13,7 +13,10 @@ import { FinanceBill } from "../finance/finance.model";
 import { BILL_STATUS } from "../finance/finance.constant";
 import { REMINDER_STATUS } from "../smartReminder/smartReminder.constant";
 import { MAINTENANCE_STATUS } from "../maintenance/maintenance.constant";
-import { LANDLORD_CURRENCY_SYMBOL } from "./landlord.constant";
+import {
+  formatCurrency,
+  getCurrencySymbol,
+} from "../../../helpers/currencyHelper";
 import {
   ILandlordHomeDashboardData,
   ILandlordMonthlyIncomeCard,
@@ -24,14 +27,6 @@ import {
   INeedsAttentionTenantReportItem,
   ISmartReminderDashboardItem,
 } from "./landlord.interface";
-
-// Helper to format currency numbers like £8,350
-const formatCurrency = (
-  amount: number,
-  symbol = LANDLORD_CURRENCY_SYMBOL,
-): string => {
-  return `${symbol}${Number(amount || 0).toLocaleString("en-GB")}`;
-};
 
 const getLandlordHomeDashboardFromDB = async (
   authUser: JwtPayload,
@@ -155,7 +150,7 @@ const getLandlordHomeDashboardFromDB = async (
 
   const incomeOverview: ILandlordMonthlyIncomeCard = {
     monthlyIncome: totalMonthlyIncome,
-    currency: LANDLORD_CURRENCY_SYMBOL,
+    currency: getCurrencySymbol(),
     formattedMonthlyIncome: formatCurrency(totalMonthlyIncome),
     occupiedPropertiesCount,
     occupiedPropertiesText: `From ${occupiedPropertiesCount} occupied ${

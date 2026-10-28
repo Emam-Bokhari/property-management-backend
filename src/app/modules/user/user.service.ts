@@ -20,6 +20,7 @@ import { Flat } from "../flat/flat.model";
 import { Subscription } from "../subscription/subscription.model";
 import { IPackage } from "../package/package.interface";
 import { AdminService } from "../admin/admin.service";
+import { formatMonthlyPrice } from "../../../helpers/currencyHelper";
 
 // --- ADMIN SERVICES ---
 const createAdminToDB = async (payload: Partial<IUser>): Promise<IUser> => {
@@ -367,8 +368,7 @@ const getUsersFromDB = async (query: Record<string, unknown>) => {
         ? {
             packageName: pkg.name,
             price: pkg.monthlyPrice || 0,
-            formattedPrice:
-              (pkg.monthlyPrice || 0) > 0 ? `£${pkg.monthlyPrice}/mo` : "Free",
+            formattedPrice: formatMonthlyPrice(pkg.monthlyPrice),
             billingCadence:
               sub?.planType === "yearly"
                 ? "yearly"

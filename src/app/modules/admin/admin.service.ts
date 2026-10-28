@@ -5,6 +5,12 @@ import ApiError from "../../../errors/ApiErrors";
 import config from "../../../config";
 import { STATUS, USER_ROLES } from "../../../enums/user";
 import { getStripe } from "../../../helpers/stripeHelper";
+import {
+  formatCurrency,
+  formatMonthlyPrice,
+  getCurrencyCodeUpper,
+  getCurrencySymbol,
+} from "../../../helpers/currencyHelper";
 import { IPackage } from "../package/package.interface";
 import { Package } from "../package/package.model";
 import { Subscription } from "../subscription/subscription.model";
@@ -354,20 +360,6 @@ const getUserGrowthFromDB = async (
 // 4. Admin Transactions & Summary Stats
 // ==========================================
 
-const getCurrencySymbol = (currency?: string): string => {
-  const curr = (currency || process.env.CURRENCY || "gbp").toLowerCase();
-  switch (curr) {
-    case "gbp":
-      return "£";
-    case "eur":
-      return "€";
-    case "usd":
-      return "$";
-    default:
-      return "£";
-  }
-};
-
 const formatTransactionDate = (date: Date): string => {
   return date.toLocaleDateString("en-US", {
     month: "short",
@@ -401,7 +393,7 @@ const fetchUnifiedTransactions = async (): Promise<IAdminTransactionItem[]> => {
     }
   }
 
-  const defaultCurrency = (process.env.CURRENCY || "USD").toUpperCase();
+  const defaultCurrency = getCurrencyCodeUpper();
   const defaultSymbol = getCurrencySymbol(defaultCurrency);
 
   for (const sub of subscriptions) {
@@ -668,8 +660,7 @@ const getTransactionStatsFromDB = async (
   const payingLandlords = payingLandlordsSet.size;
 
   const currency =
-    allTransactions[0]?.currency ||
-    (process.env.CURRENCY || "GBP").toUpperCase();
+    allTransactions[0]?.currency || getCurrencyCodeUpper();
   const currencySymbol =
     allTransactions[0]?.currencySymbol || getCurrencySymbol(currency);
 
@@ -995,8 +986,7 @@ const getLandlordsFromDB = async (
       ? {
           packageName: pkg.name,
           price: pkg.monthlyPrice || 0,
-          formattedPrice:
-            (pkg.monthlyPrice || 0) > 0 ? `£${pkg.monthlyPrice}/mo` : "Free",
+          formattedPrice: formatMonthlyPrice(pkg.monthlyPrice),
           billingCadence:
             sub?.planType === "yearly"
               ? ("yearly" as const)
@@ -1115,7 +1105,7 @@ const getLandlordByIdFromDB = async (
     plan: pkg
       ? {
           packageName: pkg.name.toUpperCase(),
-          price: pkg.monthlyPrice ? `£${pkg.monthlyPrice} /mo` : "Free",
+          price: formatMonthlyPrice(pkg.monthlyPrice),
           nextRenewal: subscription?.currentPeriodEnd
             ? formatDate(subscription.currentPeriodEnd)
             : "N/A",
@@ -1213,7 +1203,7 @@ const getLandlordPropertiesFromDB = async (
         baths: flat.baths,
         floor: formatFloor(flat.floor, flat.floorNote),
         rentPerMonth: flat.rentPerMonth || 0,
-        formattedRent: `£${flat.rentPerMonth || 0}/mo`,
+        formattedRent: formatMonthlyPrice(flat.rentPerMonth),
         isOccupied,
         status: isOccupied ? "Occupied" : "Vacant",
         occupant: occupantName,
@@ -1328,7 +1318,7 @@ const getLandlordTenantsFromDB = async (
       leaseEndDate: tenancy.leaseEndDate,
       moveInDate: formatDate(tenancy.leaseStartDate),
       rentAmount: tenancy.rentAmount || flat.rentPerMonth || 0,
-      formattedRent: `£${tenancy.rentAmount || flat.rentPerMonth || 0}`,
+      formattedRent: formatCurrency(tenancy.rentAmount || flat.rentPerMonth || 0),
       tenantAccountStatus:
         tenant.status === STATUS.INACTIVE ? "inactive" : "active",
     };

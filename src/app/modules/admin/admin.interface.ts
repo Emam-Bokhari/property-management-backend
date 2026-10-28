@@ -47,7 +47,7 @@ export interface IAdminLandlordPortfolio {
 export interface IAdminLandlordPlan {
   packageName: string;
   price: number;
-  formattedPrice: string; // e.g. "£19/mo", "Free"
+  formattedPrice: string; // e.g. "$19/mo", "Free"
   billingCadence: "monthly" | "yearly" | "free";
   isTrial: boolean;
   status: string;

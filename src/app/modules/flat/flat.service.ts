@@ -28,15 +28,35 @@ const flatPopulateOptions = [
   },
   {
     path: "landlord",
-    select: "firstName lastName email role profileImage phone companyName",
+    select: "name firstName lastName email role profileImage phone companyName",
   },
   {
     path: "tenant",
-    select: "firstName lastName email role profileImage phone",
+    select: "name firstName lastName email role profileImage phone",
+  },
+];
+
+// Single flat populate options: populates ALL fields of property
+const singleFlatPopulateOptions = [
+  {
+    path: "property",
+    populate: [
+      { path: "propertyType" },
+      {
+        path: "landlord",
+        select:
+          "name firstName lastName email role profileImage phone companyName",
+      },
+    ],
   },
   {
-    path: "tenants",
-    select: "firstName lastName email role profileImage phone",
+    path: "landlord",
+    select: "name firstName lastName email role profileImage phone companyName",
+  },
+  {
+    path: "tenant",
+    select:
+      "name firstName lastName email role profileImage phone dateOfBirth nidNumber emergencyPhone address status",
   },
 ];
 
@@ -144,9 +164,14 @@ const getAllFlatsFromDB = async (
     queryBuilder.countTotal(),
   ]);
 
+  const cleanedFlats = flats.map((f: any) => {
+    const { tenants, ...rest } = f;
+    return rest;
+  });
+
   return {
     meta,
-    data: flats,
+    data: cleanedFlats,
   };
 };
 
@@ -156,7 +181,7 @@ const getSingleFlatFromDB = async (user: JwtPayload, id: string) => {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid flat ID");
   }
 
-  const flat = await Flat.findById(id).populate(flatPopulateOptions);
+  const flat = await Flat.findById(id).populate(singleFlatPopulateOptions);
   if (!flat) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
@@ -165,10 +190,13 @@ const getSingleFlatFromDB = async (user: JwtPayload, id: string) => {
     checkFlatOwnership(user, flat);
   } else if (user.role === USER_ROLES.TENANT) {
     const isTenant =
-      (flat.tenant && flat.tenant.toString() === user.id) ||
+      (flat.tenant &&
+        ((flat.tenant as any)?._id
+          ? (flat.tenant as any)._id.toString()
+          : flat.tenant.toString()) === user.id) ||
       (Array.isArray(flat.tenants) &&
         flat.tenants.some(
-          (t: any) => (t._id ? t._id.toString() : t.toString()) === user.id,
+          (t: any) => (t?._id ? t._id.toString() : t.toString()) === user.id,
         ));
 
     if (!isTenant) {
@@ -179,7 +207,10 @@ const getSingleFlatFromDB = async (user: JwtPayload, id: string) => {
     }
   }
 
-  return flat;
+  const flatObj = (flat as any).toObject ? (flat as any).toObject() : flat;
+  delete flatObj.tenants;
+
+  return flatObj;
 };
 
 // 4. Update Flat

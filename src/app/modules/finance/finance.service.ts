@@ -28,6 +28,10 @@ import { User } from "../user/user.model";
 import { notificationHelper } from "../../builder/pushNotification";
 import { NOTIFICATION_TYPE } from "../notification/notification.constant";
 import { USER_ROLES } from "../../../enums/user";
+import {
+  getCurrencyCode,
+  getCurrencySymbol,
+} from "../../../helpers/currencyHelper";
 import { Maintenance } from "../maintenance/maintenance.model";
 
 // Common populate options
@@ -492,7 +496,7 @@ const createChargeIntoDB = async (
     // Notify Tenant
     notificationHelper.sendToUser(tenantId, {
       title: "New Charge Added",
-      body: `A new charge of £${payload.amount} has been issued for ${property.propertyName} (${flat.unitName}). Due date: ${dueDate.toLocaleDateString()}.`,
+      body: `A new charge of ${getCurrencySymbol()}${payload.amount} has been issued for ${property.propertyName} (${flat.unitName}). Due date: ${dueDate.toLocaleDateString()}.`,
       type: NOTIFICATION_TYPE.RENT_REMINDER,
       data: {
         preferenceCategory: "rentReminders",
@@ -550,7 +554,7 @@ const recordPaymentIntoDB = async (
     if (payload.receiptSentToTenant) {
       notificationHelper.sendToUser(bill.tenant, {
         title: "Rent / Charge Payment Recorded",
-        body: `Payment of £${bill.amount} for invoice ${bill.invoiceNumber} (${bill.periodMonth}) has been recorded by your landlord.`,
+        body: `Payment of ${getCurrencySymbol()}${bill.amount} for invoice ${bill.invoiceNumber} (${bill.periodMonth}) has been recorded by your landlord.`,
         type: NOTIFICATION_TYPE.RENT_REMINDER,
         data: {
           preferenceCategory: "rentReminders",
@@ -631,7 +635,7 @@ const recordRentReceivedIntoDB = async (
   if (payload.receiptSentToTenant) {
     notificationHelper.sendToUser(payload.tenant, {
       title: "Rent Receipt Received",
-      body: `Your rent payment of £${payload.amount} for ${periodMonth} has been confirmed. Invoice #${bill.invoiceNumber}.`,
+      body: `Your rent payment of ${getCurrencySymbol()}${payload.amount} for ${periodMonth} has been confirmed. Invoice #${bill.invoiceNumber}.`,
       type: NOTIFICATION_TYPE.TENANT,
       data: {
         billId: bill._id.toString(),
@@ -1090,7 +1094,7 @@ const createStripeCheckoutSessionIntoDB = async (
     payload.cancelUrl ||
     `${clientBaseUrl}/finance/payment-cancel?bill_id=${bill._id}`;
 
-  const currency = (process.env.CURRENCY || "gbp").toLowerCase();
+  const currency = getCurrencyCode();
   const billTitle =
     bill.billType === CHARGE_TYPE.RENT
       ? `${bill.periodMonth} Rent`
@@ -1178,7 +1182,7 @@ const handleStripePaymentSuccess = async (session: Stripe.Checkout.Session) => {
   // Notify Landlord & Tenant
   notificationHelper.sendToUser(bill.landlord, {
     title: "Rent / Charge Paid via Stripe",
-    body: `Payment of £${bill.amount} for invoice ${bill.invoiceNumber} has been received.`,
+    body: `Payment of ${getCurrencySymbol()}${bill.amount} for invoice ${bill.invoiceNumber} has been received.`,
     type: NOTIFICATION_TYPE.RENT_REMINDER,
     data: {
       preferenceCategory: "rentReminders",
@@ -1191,7 +1195,7 @@ const handleStripePaymentSuccess = async (session: Stripe.Checkout.Session) => {
 
   notificationHelper.sendToUser(bill.tenant, {
     title: "Payment Confirmation",
-    body: `Your payment of £${bill.amount} for invoice ${bill.invoiceNumber} has been confirmed. Thank you!`,
+    body: `Your payment of ${getCurrencySymbol()}${bill.amount} for invoice ${bill.invoiceNumber} has been confirmed. Thank you!`,
     type: NOTIFICATION_TYPE.RENT_REMINDER,
     data: {
       preferenceCategory: "rentReminders",

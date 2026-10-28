@@ -24,6 +24,10 @@ import {
   PAYMENT_STATUS,
   maintenanceSearchableFields,
 } from "./maintenance.constant";
+import {
+  getCurrencyCode,
+  getCurrencySymbol,
+} from "../../../helpers/currencyHelper";
 import { USER_ROLES } from "../../../enums/user";
 import { Property } from "../property/property.model";
 import { Flat } from "../flat/flat.model";
@@ -973,7 +977,7 @@ const contractorSubmitInvoiceIntoDB = async (
         sender: authUser.userId,
         type: NOTIFICATION_TYPE.MAINTENANCE_UPDATE,
         title: "Maintenance Invoice Submitted",
-        text: `Contractor has submitted an invoice of £${payload.invoiceAmount} for "${issue.issueTitle}".`,
+        text: `Contractor has submitted an invoice of ${getCurrencySymbol()}${payload.invoiceAmount} for "${issue.issueTitle}".`,
         referenceId: issue._id,
         referenceModel: "Maintenance",
       });
@@ -1169,7 +1173,7 @@ const createPaymentSessionIntoDB = async (
     payload.cancelUrl ||
     `${clientBaseUrl}/maintenance/payment-cancel?issue_id=${issue._id}`;
 
-  const currency = (process.env.CURRENCY || "usd").toLowerCase();
+  const currency = getCurrencyCode();
 
   const session = await stripe.checkout.sessions.create({
     line_items: [
