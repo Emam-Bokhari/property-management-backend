@@ -63,3 +63,9 @@ export type TProperty = {
 };
 
 export type PropertyModel = ISoftDeleteModel<TProperty>;
+
+export interface IPropertyStats {
+  totalProperties: number;
+  totalUnits: number;
+  overallOccupancy: string;
+}

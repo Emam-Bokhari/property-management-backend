@@ -14,16 +14,20 @@ type IData<T> = {
   };
   data?: T;
   meta?: any;
+  stats?: any;
 };
 
 const sendResponse = <T>(res: Response, data: IData<T>) => {
-  const resData = {
+  const resData: Record<string, any> = {
     success: data.success,
     message: data.message,
     pagination: data.pagination,
     data: data.data,
     meta: data.meta,
   };
+  if (data.stats !== undefined) {
+    resData.stats = data.stats;
+  }
   res.status(data.statusCode).json(resData);
 };
 

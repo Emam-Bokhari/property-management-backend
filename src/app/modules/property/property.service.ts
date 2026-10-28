@@ -8,10 +8,13 @@ import {
   TCouncil,
   TParking,
   TCompliance,
+  IPropertyStats,
 } from "./property.interface";
 import { propertySearchableFields, COMPLIANCE_TYPE } from "./property.constant";
 import { User } from "../user/user.model";
 import { Flat } from "../flat/flat.model";
+import { Tenancy } from "../tenant/tenant.model";
+import { TENANCY_STATUS } from "../tenant/tenant.constant";
 import { USER_ROLES } from "../../../enums/user";
 
 const complianceKeyMap: Record<string, keyof TCompliance> = {
@@ -64,10 +67,13 @@ const getAllPropertiesFromDB = async (
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid user ID");
   }
 
-  const filter: Record<string, any> = {};
+  // Base scope filter strictly isolating data by SaaS role
+  const scopeFilter: Record<string, any> = {
+    isDeleted: { $ne: true },
+  };
 
   if (userRole === USER_ROLES.LANDLORD) {
-    filter.landlord = new Types.ObjectId(userId);
+    scopeFilter.landlord = new Types.ObjectId(userId);
   } else if (userRole === USER_ROLES.TENANT) {
     const tenantUser = await User.findById(userId);
     const tenantPropertyIds: Types.ObjectId[] = [];
@@ -89,7 +95,116 @@ const getAllPropertiesFromDB = async (
         tenantPropertyIds.push(f.property);
       }
     }
-    filter._id = { $in: tenantPropertyIds };
+    scopeFilter._id = { $in: tenantPropertyIds };
+  } else if (
+    (userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.SUPER_ADMIN) &&
+    query.landlord &&
+    mongoose.Types.ObjectId.isValid(query.landlord as string)
+  ) {
+    scopeFilter.landlord = new Types.ObjectId(query.landlord as string);
+  }
+
+  // 1. Fetch all properties belonging to the scoped user to calculate portfolio stats
+  const scopedProperties = await Property.find(scopeFilter)
+    .select("_id")
+    .lean();
+  const allPropertyIds = scopedProperties.map((p) => p._id);
+  const totalProperties = allPropertyIds.length;
+
+  // 2. Fetch all flats and active tenancies belonging to these properties
+  const [allFlats, activeTenancies] = await Promise.all([
+    Flat.find({
+      property: { $in: allPropertyIds },
+      isDeleted: { $ne: true },
+    })
+      .select("_id property unitName rentPerMonth tenant tenants")
+      .lean(),
+    Tenancy.find({
+      property: { $in: allPropertyIds },
+      status: TENANCY_STATUS.ACTIVE,
+      isDeleted: { $ne: true },
+    })
+      .select("flat property tenant")
+      .lean(),
+  ]);
+
+  const totalUnits = allFlats.length;
+
+  const activeTenancyFlatIds = new Set(
+    activeTenancies.map((t) => t.flat?.toString()).filter(Boolean),
+  );
+
+  const isFlatOccupied = (flat: any): boolean =>
+    Boolean(
+      flat.tenant ||
+        (Array.isArray(flat.tenants) && flat.tenants.length > 0) ||
+        activeTenancyFlatIds.has(flat._id.toString()),
+    );
+
+  // Group flats by property ID
+  const flatsByProperty: Record<string, any[]> = {};
+  for (const flat of allFlats) {
+    const propId = flat.property.toString();
+    if (!flatsByProperty[propId]) {
+      flatsByProperty[propId] = [];
+    }
+    flatsByProperty[propId].push(flat);
+  }
+
+  let totalOccupiedUnits = 0;
+  const occupiedPropertyIdSet = new Set<string>();
+  const vacantPropertyIdSet = new Set<string>();
+
+  for (const pId of allPropertyIds.map((id) => id.toString())) {
+    const propFlats = flatsByProperty[pId] || [];
+    const pOccupiedCount = propFlats.filter(isFlatOccupied).length;
+    if (pOccupiedCount > 0) {
+      occupiedPropertyIdSet.add(pId);
+    } else {
+      vacantPropertyIdSet.add(pId);
+    }
+  }
+
+  for (const flat of allFlats) {
+    if (isFlatOccupied(flat)) {
+      totalOccupiedUnits++;
+    }
+  }
+
+  const overallOccupancyRate =
+    totalUnits > 0 ? Math.round((totalOccupiedUnits / totalUnits) * 100) : 0;
+  const overallOccupancy = `${overallOccupancyRate}%`;
+
+  const stats: IPropertyStats = {
+    totalProperties,
+    totalUnits,
+    overallOccupancy,
+  };
+
+  // 3. Prepare filtered query for pagination & listing
+  const filter: Record<string, any> = { ...scopeFilter };
+
+  // Handle optional status filter from frontend tabs: "occupied", "vacant", "all"
+  const rawStatus = (query.status || query.occupancyStatus) as
+    | string
+    | undefined;
+  if (rawStatus) {
+    const normalizedStatus = rawStatus.toLowerCase().trim();
+    if (normalizedStatus === "occupied") {
+      filter._id = {
+        $in: Array.from(occupiedPropertyIdSet).map(
+          (id) => new Types.ObjectId(id),
+        ),
+      };
+    } else if (normalizedStatus === "vacant") {
+      filter._id = {
+        $in: Array.from(vacantPropertyIdSet).map(
+          (id) => new Types.ObjectId(id),
+        ),
+      };
+    }
+    delete query.status;
+    delete query.occupancyStatus;
   }
 
   const baseQuery = Property.find(filter).populate("propertyType").populate({
@@ -109,9 +224,51 @@ const getAllPropertiesFromDB = async (
     queryBuilder.countTotal(),
   ]);
 
+  // Enrich each property with units, rent, and occupancy breakdown
+  const enhancedProperties = properties.map((prop: any) => {
+    const pId = prop._id.toString();
+    const propFlats = flatsByProperty[pId] || [];
+    const propTotalUnits = propFlats.length;
+    let propOccupiedUnits = 0;
+    let propMonthlyRent = 0;
+
+    for (const flat of propFlats) {
+      propMonthlyRent += Number(flat.rentPerMonth) || 0;
+      if (isFlatOccupied(flat)) {
+        propOccupiedUnits++;
+      }
+    }
+
+    const propOccupancyRate =
+      propTotalUnits > 0
+        ? Math.round((propOccupiedUnits / propTotalUnits) * 100)
+        : 0;
+
+    const occupancyBadge =
+      propTotalUnits === 0
+        ? "No Units"
+        : propOccupiedUnits === 0
+        ? "Vacant"
+        : `${propOccupiedUnits}/${propTotalUnits} occupied`;
+
+    return {
+      ...prop,
+      totalUnits: propTotalUnits,
+      occupiedUnits: propOccupiedUnits,
+      occupancyRate: propOccupancyRate,
+      formattedOccupancyRate: `${propOccupancyRate}%`,
+      occupancyPercentage: propOccupancyRate,
+      occupancyStatus: occupancyBadge,
+      occupancyBadge,
+      monthlyRent: propMonthlyRent,
+      formattedMonthlyRent: `£${propMonthlyRent.toLocaleString("en-GB")}`,
+    };
+  });
+
   return {
     meta,
-    data: properties,
+    stats,
+    data: enhancedProperties,
   };
 };
 
@@ -166,7 +323,68 @@ const getSinglePropertyFromDB = async (user: any, id: string) => {
     }
   }
 
-  return property;
+  const propFlats = await Flat.find({
+    property: new Types.ObjectId(id),
+    isDeleted: { $ne: true },
+  })
+    .select("_id property unitName rentPerMonth tenant tenants")
+    .lean();
+
+  const activeTenancies = await Tenancy.find({
+    property: new Types.ObjectId(id),
+    status: TENANCY_STATUS.ACTIVE,
+    isDeleted: { $ne: true },
+  })
+    .select("flat property tenant")
+    .lean();
+
+  const activeTenancyFlatIds = new Set(
+    activeTenancies.map((t) => t.flat?.toString()).filter(Boolean),
+  );
+
+  const isOcc = (flat: any): boolean =>
+    Boolean(
+      flat.tenant ||
+        (Array.isArray(flat.tenants) && flat.tenants.length > 0) ||
+        activeTenancyFlatIds.has(flat._id.toString()),
+    );
+
+  const totalUnits = propFlats.length;
+  let occupiedUnits = 0;
+  let monthlyRent = 0;
+
+  for (const flat of propFlats) {
+    monthlyRent += Number(flat.rentPerMonth) || 0;
+    if (isOcc(flat)) {
+      occupiedUnits++;
+    }
+  }
+
+  const occupancyRate =
+    totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
+  const occupancyBadge =
+    totalUnits === 0
+      ? "No Units"
+      : occupiedUnits === 0
+      ? "Vacant"
+      : `${occupiedUnits}/${totalUnits} occupied`;
+
+  const propObj = (property as any).toObject
+    ? (property as any).toObject()
+    : property;
+
+  return {
+    ...propObj,
+    totalUnits,
+    occupiedUnits,
+    occupancyRate,
+    formattedOccupancyRate: `${occupancyRate}%`,
+    occupancyPercentage: occupancyRate,
+    occupancyStatus: occupancyBadge,
+    occupancyBadge,
+    monthlyRent,
+    formattedMonthlyRent: `£${monthlyRent.toLocaleString("en-GB")}`,
+  };
 };
 
 // Update property by ID (SaaS: owner only)
