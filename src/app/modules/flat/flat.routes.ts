@@ -56,9 +56,18 @@ router
   );
 
 // ------------------- KEY REGISTER ROUTES -------------------
-// Add key set
+// Add key set / Get all keys for flat
 router
   .route("/:id/keys")
+  .get(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+      USER_ROLES.TENANT,
+    ),
+    FlatController.getKeysByFlatId,
+  )
   .post(
     auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
     validateRequest(FlatValidation.addKeyZodSchema),
@@ -78,10 +87,32 @@ router
     FlatController.deleteKey,
   );
 
-// ------------------- UTILITIES (Gas) ROUTES (Single data, create or replace) -------------------
+// ------------------- UTILITIES (Combined: WiFi, Water, Electricity, Gas) -------------------
+router
+  .route("/:id/utilities")
+  .get(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+      USER_ROLES.TENANT,
+    ),
+    FlatController.getUtilitiesByFlatId,
+  );
+
+// ------------------- UTILITIES (Gas, Electricity, Water, WiFi) ROUTES -------------------
 // Gas
 router
   .route("/:id/gas")
+  .get(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+      USER_ROLES.TENANT,
+    ),
+    FlatController.getGas,
+  )
   .post(
     auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
     fileUploadHandler(),
@@ -100,6 +131,15 @@ router
 // Electricity
 router
   .route("/:id/electricity")
+  .get(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+      USER_ROLES.TENANT,
+    ),
+    FlatController.getElectricity,
+  )
   .post(
     auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
     fileUploadHandler(),
@@ -118,6 +158,15 @@ router
 // Water
 router
   .route("/:id/water")
+  .get(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+      USER_ROLES.TENANT,
+    ),
+    FlatController.getWater,
+  )
   .post(
     auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
     fileUploadHandler(),
@@ -136,6 +185,15 @@ router
 // WiFi
 router
   .route("/:id/wifi")
+  .get(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+      USER_ROLES.TENANT,
+    ),
+    FlatController.getWifi,
+  )
   .post(
     auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
     fileUploadHandler(),
@@ -152,9 +210,18 @@ router
   );
 
 // ------------------- SAFETY ALARMS ROUTES (Multiple, add, update, delete) -------------------
-// Add safety alarm
+// Add safety alarm / Get all safety alarms for flat
 router
   .route("/:id/safety-alarms")
+  .get(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+      USER_ROLES.TENANT,
+    ),
+    FlatController.getSafetyAlarmsByFlatId,
+  )
   .post(
     auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
     fileUploadHandler(),
@@ -179,9 +246,18 @@ router
   );
 
 // ------------------- APPLIANCES ROUTES (Multiple, add, update, delete) -------------------
-// Add appliance
+// Add appliance / Get all appliances for flat
 router
   .route("/:id/appliances")
+  .get(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+      USER_ROLES.TENANT,
+    ),
+    FlatController.getAppliancesByFlatId,
+  )
   .post(
     auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
     fileUploadHandler(),
@@ -203,6 +279,20 @@ router
   .delete(
     auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
     FlatController.deleteAppliance,
+  );
+
+// ------------------- TENANTS ROUTES -------------------
+// Flat-wise tenant(s) details
+router
+  .route("/:id/tenants")
+  .get(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+      USER_ROLES.TENANT,
+    ),
+    FlatController.getTenantsByFlatId,
   );
 
 export const FlatRoutes = router;

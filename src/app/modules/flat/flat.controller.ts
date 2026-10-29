@@ -347,6 +347,170 @@ const deleteAppliance = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// 19. Get Keys By Flat ID
+const getKeysByFlatId = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
+  const { id } = req.params;
+  if (!user?.id) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await FlatService.getKeysByFlatIdFromDB(user, id);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Flat keys retrieved successfully",
+    data: result,
+  });
+});
+
+// 20. Get Safety Alarms By Flat ID
+const getSafetyAlarmsByFlatId = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    const { id } = req.params;
+    if (!user?.id) {
+      throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+    }
+
+    const result = await FlatService.getSafetyAlarmsByFlatIdFromDB(user, id);
+
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      message: "Flat safety alarms retrieved successfully",
+      data: result,
+    });
+  },
+);
+
+// 21. Get Appliances By Flat ID
+const getAppliancesByFlatId = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
+  const { id } = req.params;
+  if (!user?.id) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await FlatService.getAppliancesByFlatIdFromDB(user, id);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Flat appliances retrieved successfully",
+    data: result,
+  });
+});
+
+// 22. Get Combined Utilities By Flat ID (WiFi, Water, Electricity, Gas)
+const getUtilitiesByFlatId = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
+  const { id } = req.params;
+  if (!user?.id) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await FlatService.getUtilitiesByFlatIdFromDB(user, id);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Flat utilities retrieved successfully",
+    data: result,
+  });
+});
+
+// 23. Get Gas By Flat ID
+const getGas = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
+  const { id } = req.params;
+  if (!user?.id) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await FlatService.getGasByFlatIdFromDB(user, id);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Flat gas details retrieved successfully",
+    data: result,
+  });
+});
+
+// 24. Get Electricity By Flat ID
+const getElectricity = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
+  const { id } = req.params;
+  if (!user?.id) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await FlatService.getElectricityByFlatIdFromDB(user, id);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Flat electricity details retrieved successfully",
+    data: result,
+  });
+});
+
+// 25. Get Water By Flat ID
+const getWater = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
+  const { id } = req.params;
+  if (!user?.id) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await FlatService.getWaterByFlatIdFromDB(user, id);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Flat water details retrieved successfully",
+    data: result,
+  });
+});
+
+// 26. Get Wifi By Flat ID
+const getWifi = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
+  const { id } = req.params;
+  if (!user?.id) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await FlatService.getWifiByFlatIdFromDB(user, id);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Flat WiFi details retrieved successfully",
+    data: result,
+  });
+});
+
+// 27. Get Tenants By Flat ID
+const getTenantsByFlatId = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
+  const { id } = req.params;
+  if (!user?.id) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await FlatService.getTenantsByFlatIdFromDB(user, id);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Flat tenant details retrieved successfully",
+    data: result,
+  });
+});
+
 export const FlatController = {
   createFlat,
   getAllFlats,
@@ -366,4 +530,13 @@ export const FlatController = {
   addAppliance,
   updateAppliance,
   deleteAppliance,
+  getKeysByFlatId,
+  getSafetyAlarmsByFlatId,
+  getAppliancesByFlatId,
+  getUtilitiesByFlatId,
+  getGas,
+  getElectricity,
+  getWater,
+  getWifi,
+  getTenantsByFlatId,
 };

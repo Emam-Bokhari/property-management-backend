@@ -18,6 +18,8 @@ import {
 import { flatSearchableFields } from "./flat.constant";
 import { USER_ROLES } from "../../../enums/user";
 import unlinkFile from "../../../shared/unlinkFile";
+import { Tenancy } from "../tenant/tenant.model";
+import { TENANCY_STATUS } from "../tenant/tenant.constant";
 
 // Common populate options
 const flatPopulateOptions = [
@@ -78,6 +80,40 @@ const checkFlatOwnership = (user: JwtPayload, flat: any) => {
   }
 
   return true;
+};
+
+// Helper: check if authenticated user can view this flat (Landlord, Admin, Super Admin, or assigned Tenant)
+const checkFlatViewAccess = (user: JwtPayload, flat: any) => {
+  if (user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.SUPER_ADMIN) {
+    return true;
+  }
+
+  if (user.role === USER_ROLES.LANDLORD) {
+    return checkFlatOwnership(user, flat);
+  }
+
+  if (user.role === USER_ROLES.TENANT) {
+    const isTenant =
+      (flat.tenant &&
+        ((flat.tenant as any)?._id
+          ? (flat.tenant as any)._id.toString()
+          : flat.tenant.toString()) === user.id) ||
+      (Array.isArray(flat.tenants) &&
+        flat.tenants.some(
+          (t: any) => (t?._id ? t._id.toString() : t.toString()) === user.id,
+        ));
+
+    if (!isTenant) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        "You do not have permission to view this flat",
+      );
+    }
+
+    return true;
+  }
+
+  throw new ApiError(StatusCodes.FORBIDDEN, "Access forbidden");
 };
 
 // 1. Create Flat
@@ -186,26 +222,7 @@ const getSingleFlatFromDB = async (user: JwtPayload, id: string) => {
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  if (user.role === USER_ROLES.LANDLORD) {
-    checkFlatOwnership(user, flat);
-  } else if (user.role === USER_ROLES.TENANT) {
-    const isTenant =
-      (flat.tenant &&
-        ((flat.tenant as any)?._id
-          ? (flat.tenant as any)._id.toString()
-          : flat.tenant.toString()) === user.id) ||
-      (Array.isArray(flat.tenants) &&
-        flat.tenants.some(
-          (t: any) => (t?._id ? t._id.toString() : t.toString()) === user.id,
-        ));
-
-    if (!isTenant) {
-      throw new ApiError(
-        StatusCodes.FORBIDDEN,
-        "You do not have permission to view this flat",
-      );
-    }
-  }
+  checkFlatViewAccess(user, flat);
 
   const flatObj = (flat as any).toObject ? (flat as any).toObject() : flat;
   delete flatObj.tenants;
@@ -729,6 +746,207 @@ const deleteApplianceFromDB = async (
   return await Flat.findById(flatId).populate(flatPopulateOptions);
 };
 
+// 19. Get Keys By Flat ID
+const getKeysByFlatIdFromDB = async (user: JwtPayload, flatId: string) => {
+  if (!mongoose.Types.ObjectId.isValid(flatId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid flat ID");
+  }
+
+  const flat = await Flat.findById(flatId);
+  if (!flat) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
+  }
+
+  checkFlatViewAccess(user, flat);
+
+  return flat.key || [];
+};
+
+// 20. Get Safety Alarms By Flat ID
+const getSafetyAlarmsByFlatIdFromDB = async (
+  user: JwtPayload,
+  flatId: string,
+) => {
+  if (!mongoose.Types.ObjectId.isValid(flatId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid flat ID");
+  }
+
+  const flat = await Flat.findById(flatId);
+  if (!flat) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
+  }
+
+  checkFlatViewAccess(user, flat);
+
+  return flat.safetyAlarms || [];
+};
+
+// 21. Get Appliances By Flat ID
+const getAppliancesByFlatIdFromDB = async (
+  user: JwtPayload,
+  flatId: string,
+) => {
+  if (!mongoose.Types.ObjectId.isValid(flatId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid flat ID");
+  }
+
+  const flat = await Flat.findById(flatId);
+  if (!flat) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
+  }
+
+  checkFlatViewAccess(user, flat);
+
+  return flat.appliances || [];
+};
+
+// 22. Get Combined Utilities By Flat ID (WiFi, Water, Electricity, Gas)
+const getUtilitiesByFlatIdFromDB = async (
+  user: JwtPayload,
+  flatId: string,
+) => {
+  if (!mongoose.Types.ObjectId.isValid(flatId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid flat ID");
+  }
+
+  const flat = await Flat.findById(flatId);
+  if (!flat) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
+  }
+
+  checkFlatViewAccess(user, flat);
+
+  return {
+    wifi: flat.wifi || null,
+    water: flat.water || null,
+    electricity: flat.electricity || null,
+    gas: flat.gas || null,
+  };
+};
+
+// 23. Get Gas By Flat ID
+const getGasByFlatIdFromDB = async (user: JwtPayload, flatId: string) => {
+  if (!mongoose.Types.ObjectId.isValid(flatId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid flat ID");
+  }
+  const flat = await Flat.findById(flatId);
+  if (!flat) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
+  }
+  checkFlatViewAccess(user, flat);
+  return flat.gas || null;
+};
+
+// 24. Get Electricity By Flat ID
+const getElectricityByFlatIdFromDB = async (
+  user: JwtPayload,
+  flatId: string,
+) => {
+  if (!mongoose.Types.ObjectId.isValid(flatId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid flat ID");
+  }
+  const flat = await Flat.findById(flatId);
+  if (!flat) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
+  }
+  checkFlatViewAccess(user, flat);
+  return flat.electricity || null;
+};
+
+// 25. Get Water By Flat ID
+const getWaterByFlatIdFromDB = async (user: JwtPayload, flatId: string) => {
+  if (!mongoose.Types.ObjectId.isValid(flatId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid flat ID");
+  }
+  const flat = await Flat.findById(flatId);
+  if (!flat) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
+  }
+  checkFlatViewAccess(user, flat);
+  return flat.water || null;
+};
+
+// 26. Get Wifi By Flat ID
+const getWifiByFlatIdFromDB = async (user: JwtPayload, flatId: string) => {
+  if (!mongoose.Types.ObjectId.isValid(flatId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid flat ID");
+  }
+  const flat = await Flat.findById(flatId);
+  if (!flat) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
+  }
+  checkFlatViewAccess(user, flat);
+  return flat.wifi || null;
+};
+
+// 27. Get Tenants By Flat ID
+const getTenantsByFlatIdFromDB = async (
+  user: JwtPayload,
+  flatId: string,
+) => {
+  if (!mongoose.Types.ObjectId.isValid(flatId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid flat ID");
+  }
+
+  const flat = await Flat.findById(flatId)
+    .populate({
+      path: "tenant",
+      select:
+        "name firstName lastName email role profileImage phone dateOfBirth nidNumber emergencyPhone address status verified",
+    })
+    .populate({
+      path: "tenants",
+      select:
+        "name firstName lastName email role profileImage phone dateOfBirth nidNumber emergencyPhone address status verified",
+    });
+
+  if (!flat) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
+  }
+
+  checkFlatViewAccess(user, flat);
+
+  const tenancies = await Tenancy.find({
+    flat: flatId,
+    isDeleted: { $ne: true },
+  })
+    .populate({
+      path: "tenant",
+      select:
+        "name firstName lastName email role profileImage phone dateOfBirth nidNumber emergencyPhone address status verified",
+    })
+    .populate({
+      path: "landlord",
+      select: "name email phone profileImage companyName",
+    })
+    .populate({
+      path: "property",
+      select: "propertyName streetAddress postCode",
+    })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const activeTenancy =
+    tenancies.find((t) => t.status === TENANCY_STATUS.ACTIVE) ||
+    tenancies[0] ||
+    null;
+
+  const tenant =
+    flat.tenant || (activeTenancy ? (activeTenancy as any).tenant : null);
+
+  const tenants =
+    Array.isArray(flat.tenants) && flat.tenants.length > 0
+      ? flat.tenants
+      : tenancies.map((t: any) => t.tenant).filter(Boolean);
+
+  return {
+    tenant,
+    tenants,
+    activeTenancy,
+    tenancies,
+  };
+};
+
 export const FlatService = {
   createFlatToDB,
   getAllFlatsFromDB,
@@ -748,4 +966,13 @@ export const FlatService = {
   addApplianceToDB,
   updateApplianceToDB,
   deleteApplianceFromDB,
+  getKeysByFlatIdFromDB,
+  getSafetyAlarmsByFlatIdFromDB,
+  getAppliancesByFlatIdFromDB,
+  getUtilitiesByFlatIdFromDB,
+  getGasByFlatIdFromDB,
+  getElectricityByFlatIdFromDB,
+  getWaterByFlatIdFromDB,
+  getWifiByFlatIdFromDB,
+  getTenantsByFlatIdFromDB,
 };
