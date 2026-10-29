@@ -1,7 +1,6 @@
 node_modules
 # uploads
 /winston
-.env
 dist
 practice.yaml
 practice
@@ -10,3 +9,4 @@ docs/erd/**/*.pdf
 docs/erd/**/*.svg
 README.md
 .gitignore
+config.bat

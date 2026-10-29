@@ -3,9 +3,7 @@ import { z } from "zod";
 const createReviewZodSchema = z.object({
   body: z
     .object({
-      contractor: z.string({
-        required_error: "Contractor ID is required",
-      }),
+      contractor: z.string().optional(),
       tenant: z
         .string({
           required_error: "Tenant ID is required",

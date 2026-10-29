@@ -27,6 +27,13 @@ export type TReview = {
   updatedAt?: Date | string;
 };
 
+export type TCreateReviewPayload = {
+  contractor?: string;
+  maintenance: string;
+  rating: TRating;
+  feedback?: string;
+};
+
 export interface ReviewModel extends Model<TReview> {
   calculateAverageRating(
     contractorId: Types.ObjectId | string,

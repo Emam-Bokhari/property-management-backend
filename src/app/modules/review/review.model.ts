@@ -1,7 +1,10 @@
 import { model, Schema, Types } from "mongoose";
 import { StatusCodes } from "http-status-codes";
 import ApiError from "../../../errors/ApiErrors";
-import { MAINTENANCE_STATUS } from "../maintenance/maintenance.constant";
+import {
+  MAINTENANCE_STATUS,
+  PAYMENT_STATUS,
+} from "../maintenance/maintenance.constant";
 import { Maintenance } from "../maintenance/maintenance.model";
 import {
   ReviewModel,
@@ -75,7 +78,7 @@ reviewSchema.pre("validate", function (next) {
   next();
 });
 
-// Validation: Kaj complete hoile e kebol shai kaj ar maje review/rating dite parbe
+// Validation: Kaj complete hoile e abong payment complete hoile e kebol review/rating dite parbe
 reviewSchema.pre("save", async function (next) {
   if (this.isNew || this.isModified("maintenance")) {
     const maintenanceDoc = await Maintenance.findById(this.maintenance);
@@ -95,8 +98,25 @@ reviewSchema.pre("save", async function (next) {
       );
     }
 
+    if (maintenanceDoc.paymentStatus !== PAYMENT_STATUS.PAID) {
+      return next(
+        new ApiError(
+          StatusCodes.BAD_REQUEST,
+          "Review can only be submitted once the maintenance job payment is completed",
+        ),
+      );
+    }
+
+    if (!maintenanceDoc.contractor) {
+      return next(
+        new ApiError(
+          StatusCodes.BAD_REQUEST,
+          "This maintenance job does not have an assigned contractor",
+        ),
+      );
+    }
+
     if (
-      maintenanceDoc.contractor &&
       maintenanceDoc.contractor.toString() !== this.contractor.toString()
     ) {
       return next(
@@ -107,9 +127,13 @@ reviewSchema.pre("save", async function (next) {
       );
     }
 
+    const jobTenantId = maintenanceDoc.tenant
+      ? maintenanceDoc.tenant.toString()
+      : maintenanceDoc.requestedBy?.toString();
+
     if (
-      maintenanceDoc.tenant &&
-      maintenanceDoc.tenant.toString() !== this.tenant.toString()
+      jobTenantId &&
+      jobTenantId !== this.tenant.toString()
     ) {
       return next(
         new ApiError(
