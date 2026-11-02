@@ -52,7 +52,7 @@ const complianceSchema = new Schema<TCompliance>(
     depositProtection: complianceItemSchema,
     propertyLicense: complianceItemSchema,
     otherDocuments: {
-      type: [Schema.Types.Mixed],
+      type: [String],
       default: [],
       set: (val: any) => {
         if (!val) return [];
