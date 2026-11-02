@@ -216,7 +216,7 @@ const createUserToDB = async (payload: Partial<IUser>) => {
       referenceId: createUser._id.toString(),
       referenceModel: "User",
     });
-  }
+  };
 
   return result;
 };

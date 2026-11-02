@@ -340,7 +340,7 @@ const softDeleteChatForUser = async (chatId: string, id: string) => {
   // Add userId to deletedBy array
   chat.deletedBy.push(userId);
 
-  // Optional: If all participants deleted, mark status deleted (soft delete for everyone)
+  // If all participants deleted, mark status deleted (soft delete for everyone)
   if (chat.deletedBy.length === chat.participants.length) {
     chat.isDeleted = true;
   }

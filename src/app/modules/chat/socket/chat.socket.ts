@@ -1,8 +1,5 @@
 import { socketHelper } from "../../../../helpers/socketHelper";
 
-/**
- * Socket.io events wrapper for the chat and message modules
- */
 const emitNewChat = (userId: string, data: any): boolean => {
   return socketHelper.sendToUser(userId, `newChat::${userId}`, data);
 };
