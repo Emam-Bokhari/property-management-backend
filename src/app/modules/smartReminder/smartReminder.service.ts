@@ -475,7 +475,7 @@ const checkAndSendDueReminders = async () => {
       if (reminder.status === REMINDER_STATUS.PENDING) {
         reminder.status = REMINDER_STATUS.OVERDUE;
       }
-      await reminder.save();
+      await (reminder as any).save();
 
       notifiedCount++;
     } catch (err) {

@@ -10,3 +10,4 @@ docs/erd/**/*.svg
 README.md
 .gitignore
 config.bat
+.env

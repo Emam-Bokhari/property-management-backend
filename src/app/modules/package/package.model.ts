@@ -1,4 +1,4 @@
-import { Schema, model } from "mongoose";
+import { model, Schema, Query } from "mongoose";
 import { IPackage, PackageModel } from "./package.interface";
 
 const packageSchema = new Schema<IPackage, PackageModel>(
@@ -10,39 +10,36 @@ const packageSchema = new Schema<IPackage, PackageModel>(
     },
     description: {
       type: String,
-      default: "",
+      trim: true,
     },
     monthlyPrice: {
       type: Number,
       required: true,
-      min: 0,
     },
     yearlyPrice: {
       type: Number,
       required: true,
-      min: 0,
     },
     stripeProductId: {
       type: String,
-      trim: true,
     },
     stripeMonthlyPriceId: {
       type: String,
-      trim: true,
+      required: true,
     },
     stripeYearlyPriceId: {
       type: String,
-      trim: true,
+      required: true,
     },
     maxProperties: {
       type: Number,
       required: true,
-      default: 1, // -1 means unlimited
+      default: 1,
     },
     maxFlats: {
       type: Number,
       required: true,
-      default: 5, // -1 means unlimited
+      default: 5,
     },
     features: {
       type: [String],
@@ -55,7 +52,6 @@ const packageSchema = new Schema<IPackage, PackageModel>(
     trialDays: {
       type: Number,
       default: 0,
-      min: 0,
     },
     isPopular: {
       type: Boolean,
@@ -75,13 +71,13 @@ const packageSchema = new Schema<IPackage, PackageModel>(
   },
 );
 
-packageSchema.pre("find", function (next) {
-  this.find({ isDeleted: { $ne: true } });
+packageSchema.pre("find", function (this: Query<any, any>, next) {
+  this.find({ isDeleted: { $ne: true } } as any);
   next();
 });
 
-packageSchema.pre("findOne", function (next) {
-  this.find({ isDeleted: { $ne: true } });
+packageSchema.pre("findOne", function (this: Query<any, any>, next) {
+  this.find({ isDeleted: { $ne: true } } as any);
   next();
 });
 

@@ -60,6 +60,8 @@ export type TProperty = {
   parking?: TParking;
   houseRules?: string;
   compliance?: TCompliance;
+  isDeleted?: boolean;
+  deletedAt?: Date;
 };
 
 export type PropertyModel = ISoftDeleteModel<TProperty>;

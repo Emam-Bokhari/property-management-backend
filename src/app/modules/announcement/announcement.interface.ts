@@ -11,6 +11,8 @@ export type TAnnouncement = {
   image?: string;
   landlord: Types.ObjectId;
   recipients?: Types.ObjectId[];
+  isDeleted?: boolean;
+  deletedAt?: Date;
 };
 
 export type AnnouncementModel = ISoftDeleteModel<TAnnouncement>;

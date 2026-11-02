@@ -13,6 +13,8 @@ export type TSmartReminder = {
   status: TReminderStatus;
   note?: string;
   isNotified?: boolean;
+  isDeleted?: boolean;
+  deletedAt?: Date;
 };
 
 export type SmartReminderModel = ISoftDeleteModel<TSmartReminder>;
