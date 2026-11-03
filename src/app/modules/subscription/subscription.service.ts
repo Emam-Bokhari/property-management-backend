@@ -5,7 +5,6 @@ import ApiError from "../../../errors/ApiErrors";
 import { getStripe } from "../../../helpers/stripeHelper";
 import { Package } from "../package/package.model";
 import { User } from "../user/user.model";
-import { ISubscription } from "./subscription.interface";
 import { Subscription } from "./subscription.model";
 import { Property } from "../property/property.model";
 import { Flat } from "../flat/flat.model";

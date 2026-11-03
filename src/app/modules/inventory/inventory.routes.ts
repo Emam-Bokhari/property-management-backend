@@ -34,6 +34,19 @@ router.get(
 );
 
 // ======================== ROOM ROUTES ========================
+// Get all rooms for a specific flat
+router.get(
+  "/flats/:flatId/rooms",
+  auth(
+    USER_ROLES.LANDLORD,
+    USER_ROLES.TENANT,
+    USER_ROLES.ADMIN,
+    USER_ROLES.SUPER_ADMIN,
+  ),
+  InventoryController.getRoomsByFlatId,
+);
+
+
 router
   .route("/rooms")
   .post(

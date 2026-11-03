@@ -233,6 +233,47 @@ const getSingleRoomFromDB = async (user: JwtPayload, roomId: string) => {
   };
 };
 
+// 3b. Get All Rooms of a Flat by Flat ID (Landlord / Tenant / Admin)
+const getRoomsByFlatIdFromDB = async (user: JwtPayload, flatId: string) => {
+  if (!mongoose.Types.ObjectId.isValid(flatId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid flat ID");
+  }
+
+  const flat = await Flat.findById(flatId);
+  if (!flat || (flat as any).isDeleted) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
+  }
+
+  if (user.role === USER_ROLES.TENANT) {
+    await verifyTenantBelongsToFlat(user.id, flatId);
+  } else if (user.role === USER_ROLES.LANDLORD) {
+    verifyLandlordOrAdmin(user, flat.landlord);
+  }
+
+  const rooms = await InventoryRoom.find({
+    flat: flatId,
+    isDeleted: { $ne: true },
+  })
+    .populate("flat", "unitName floor rentPerMonth")
+    .populate("property", "propertyName streetAddress postCode")
+    .lean();
+
+  const roomsWithItemCount = await Promise.all(
+    rooms.map(async (room: any) => {
+      const itemsCount = await InventoryItem.countDocuments({
+        room: room._id,
+        isDeleted: { $ne: true },
+      });
+      return {
+        ...room,
+        itemsCount,
+      };
+    }),
+  );
+
+  return roomsWithItemCount;
+};
+
 // 4. Update Room (Landlord / Admin)
 const updateRoomInDB = async (
   user: JwtPayload,
@@ -552,4 +593,5 @@ export const InventoryService = {
   updateItemInDB,
   deleteItemFromDB,
   getTenantInventoryFromDB,
+  getRoomsByFlatIdFromDB,
 };

@@ -1,3 +1,4 @@
+import { InventoryService } from "../inventory/inventory.service";
 import mongoose, { Types } from "mongoose";
 import { JwtPayload } from "jsonwebtoken";
 import { StatusCodes } from "http-status-codes";
@@ -947,6 +948,14 @@ const getTenantsByFlatIdFromDB = async (
   };
 };
 
+// 28. Get Rooms By Flat ID
+const getRoomsByFlatIdFromDB = async (
+  user: JwtPayload,
+  flatId: string,
+) => {
+  return InventoryService.getRoomsByFlatIdFromDB(user, flatId);
+};
+
 export const FlatService = {
   createFlatToDB,
   getAllFlatsFromDB,
@@ -975,4 +984,5 @@ export const FlatService = {
   getWaterByFlatIdFromDB,
   getWifiByFlatIdFromDB,
   getTenantsByFlatIdFromDB,
+  getRoomsByFlatIdFromDB,
 };

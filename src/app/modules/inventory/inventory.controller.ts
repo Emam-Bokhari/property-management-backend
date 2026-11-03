@@ -38,6 +38,20 @@ const getSingleRoom = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getRoomsByFlatId = catchAsync(async (req: Request, res: Response) => {
+  const { flatId } = req.params;
+  const result = await InventoryService.getRoomsByFlatIdFromDB(
+    req.user,
+    flatId,
+  );
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Rooms retrieved successfully",
+    data: result,
+  });
+});
+
 const updateRoom = catchAsync(async (req: Request, res: Response) => {
   const { roomId } = req.params;
   const result = await InventoryService.updateRoomInDB(
@@ -145,6 +159,7 @@ export const InventoryController = {
   createRoom,
   getAllRooms,
   getSingleRoom,
+  getRoomsByFlatId,
   updateRoom,
   deleteRoom,
   createItem,

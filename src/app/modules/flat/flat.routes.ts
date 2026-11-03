@@ -295,4 +295,18 @@ router
     FlatController.getTenantsByFlatId,
   );
 
+// ------------------- ROOMS ROUTES -------------------
+// Flat-wise rooms
+router
+  .route("/:id/rooms")
+  .get(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+      USER_ROLES.TENANT,
+    ),
+    FlatController.getRoomsByFlatId,
+  );
+
 export const FlatRoutes = router;

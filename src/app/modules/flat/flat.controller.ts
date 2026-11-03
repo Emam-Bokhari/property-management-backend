@@ -511,6 +511,24 @@ const getTenantsByFlatId = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// 28. Get Rooms By Flat ID
+const getRoomsByFlatId = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
+  const { id } = req.params;
+  if (!user?.id) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await FlatService.getRoomsByFlatIdFromDB(user, id);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Rooms retrieved successfully",
+    data: result,
+  });
+});
+
 export const FlatController = {
   createFlat,
   getAllFlats,
@@ -539,4 +557,5 @@ export const FlatController = {
   getWater,
   getWifi,
   getTenantsByFlatId,
+  getRoomsByFlatId,
 };
