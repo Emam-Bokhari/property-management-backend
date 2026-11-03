@@ -153,6 +153,12 @@ const createUserToDB = async (payload: Partial<IUser>) => {
       ? payload.role
       : USER_ROLES.LANDLORD;
 
+  if (payload.emergencyContact && !payload.emergencyPhone) {
+    payload.emergencyPhone = payload.emergencyContact;
+  } else if (payload.emergencyPhone && !payload.emergencyContact) {
+    payload.emergencyContact = payload.emergencyPhone;
+  }
+
   // Generate OTP
   const otp = generateOTP();
   const authentication = {
@@ -250,6 +256,13 @@ const updateProfileToDB = async (
   if (payload.nidPhoto && isExistUser.nidPhoto) {
     unlinkFile(isExistUser.nidPhoto);
   }
+
+  if (payload.emergencyContact && !payload.emergencyPhone) {
+    payload.emergencyPhone = payload.emergencyContact;
+  } else if (payload.emergencyPhone && !payload.emergencyContact) {
+    payload.emergencyContact = payload.emergencyPhone;
+  }
+
 
   const updateDoc = await User.findOneAndUpdate({ _id: id }, payload, {
     new: true,

@@ -1,4 +1,4 @@
-import mongoose, { Types } from "mongoose";
+import { Types } from "mongoose";
 import { JwtPayload } from "jsonwebtoken";
 import { StatusCodes } from "http-status-codes";
 import Stripe from "stripe";
@@ -24,7 +24,6 @@ import {
 import { Property } from "../property/property.model";
 import { Flat } from "../flat/flat.model";
 import { Tenancy } from "../tenant/tenant.model";
-import { User } from "../user/user.model";
 import { notificationHelper } from "../../builder/pushNotification";
 import { NOTIFICATION_TYPE } from "../notification/notification.constant";
 import { USER_ROLES } from "../../../enums/user";

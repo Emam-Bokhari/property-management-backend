@@ -58,7 +58,7 @@ const singleFlatPopulateOptions = [
   {
     path: "tenant",
     select:
-      "name firstName lastName email role profileImage phone dateOfBirth nidNumber emergencyPhone address status",
+      "name firstName lastName email role profileImage phone dateOfBirth nidNumber emergencyPhone emergencyContact address status",
   },
 ];
 
@@ -892,12 +892,12 @@ const getTenantsByFlatIdFromDB = async (
     .populate({
       path: "tenant",
       select:
-        "name firstName lastName email role profileImage phone dateOfBirth nidNumber emergencyPhone address status verified",
+        "name firstName lastName email role profileImage phone dateOfBirth nidNumber emergencyPhone emergencyContact address status verified",
     })
     .populate({
       path: "tenants",
       select:
-        "name firstName lastName email role profileImage phone dateOfBirth nidNumber emergencyPhone address status verified",
+        "name firstName lastName email role profileImage phone dateOfBirth nidNumber emergencyPhone emergencyContact address status verified",
     });
 
   if (!flat) {
@@ -913,7 +913,7 @@ const getTenantsByFlatIdFromDB = async (
     .populate({
       path: "tenant",
       select:
-        "name firstName lastName email role profileImage phone dateOfBirth nidNumber emergencyPhone address status verified",
+        "name firstName lastName email role profileImage phone dateOfBirth nidNumber emergencyPhone emergencyContact address status verified",
     })
     .populate({
       path: "landlord",

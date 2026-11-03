@@ -332,7 +332,7 @@ const getSinglePropertyFromDB = async (user: any, id: string) => {
       .populate({
         path: "tenant",
         select:
-          "name email phone profileImage dateOfBirth nidNumber nidPhoto emergencyPhone address status role verified",
+          "name email phone profileImage dateOfBirth nidNumber nidPhoto emergencyPhone emergencyContact address status role verified",
       })
       .sort({ floor: 1, unitName: 1 })
       .lean(),
@@ -343,7 +343,7 @@ const getSinglePropertyFromDB = async (user: any, id: string) => {
       .populate({
         path: "tenant",
         select:
-          "name email phone profileImage dateOfBirth nidNumber nidPhoto emergencyPhone address homeAddress status role verified",
+          "name email phone profileImage dateOfBirth nidNumber nidPhoto emergencyPhone emergencyContact address homeAddress status role verified",
       })
       .populate({
         path: "flat",
@@ -427,7 +427,7 @@ const getSinglePropertyFromDB = async (user: any, id: string) => {
       name: tenantUser?.name || t.email,
       email: tenantUser?.email || t.email,
       phone: tenantUser?.phone || "",
-      emergencyContact: tenantUser?.emergencyPhone || "",
+      emergencyContact: tenantUser?.emergencyContact || tenantUser?.emergencyPhone || "",
       profileImage: tenantUser?.profileImage || "",
       dateOfBirth: tenantUser?.dateOfBirth,
       nidNumber: tenantUser?.nidNumber,
@@ -471,7 +471,7 @@ const getSinglePropertyFromDB = async (user: any, id: string) => {
         name: userObj?.name || "",
         email: userObj?.email || "",
         phone: userObj?.phone || "",
-        emergencyContact: userObj?.emergencyPhone || "",
+        emergencyContact: userObj?.emergencyContact || userObj?.emergencyPhone || "",
         profileImage: userObj?.profileImage || "",
         dateOfBirth: userObj?.dateOfBirth,
         nidNumber: userObj?.nidNumber,

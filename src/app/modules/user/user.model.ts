@@ -88,6 +88,10 @@ const userSchema = new Schema<IUser, IUserModel>(
       type: String,
       required: false,
     },
+    emergencyContact: {
+      type: String,
+      required: false,
+    },
     nidNumber: {
       type: Schema.Types.Mixed,
       required: false,
@@ -194,6 +198,12 @@ userSchema.statics.isMatchPassword = async (
 
 // hash password pre-save
 userSchema.pre("save", async function (next) {
+  if (this.emergencyContact && !this.emergencyPhone) {
+    this.emergencyPhone = this.emergencyContact;
+  } else if (this.emergencyPhone && !this.emergencyContact) {
+    this.emergencyContact = this.emergencyPhone;
+  }
+
   if (this.isModified("password") && this.password) {
     this.password = await bcrypt.hash(
       this.password,

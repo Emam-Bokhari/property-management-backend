@@ -28,6 +28,7 @@ export type IUser = {
   nidNumber?: string | number;
   nidPhoto?: string;
   emergencyPhone?: string;
+  emergencyContact?: string;
   homeAddress?: string;
   certificates?: TCertificate[];
   companyName?: string;
