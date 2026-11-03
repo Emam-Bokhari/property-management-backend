@@ -238,6 +238,26 @@ const deleteCompliance = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getCompliance = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  if (!req.user) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await PropertyService.getComplianceFromDB(
+    req.user,
+    id,
+    req.query as { complianceType?: string },
+  );
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Property compliance retrieved successfully",
+    data: result,
+  });
+});
+
 const updatePropertyPhotos = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.id;
   const { id } = req.params;
@@ -290,6 +310,7 @@ export const PropertyController = {
   updateCouncil,
   updateParking,
   updateCompliance,
+  getCompliance,
   deleteCompliance,
   updateFloorPlans,
   deleteFloorPlans,

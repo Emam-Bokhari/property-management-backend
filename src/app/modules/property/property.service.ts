@@ -837,6 +837,72 @@ const deleteComplianceFromDB = async (
   });
 };
 
+// Get Compliance Documents by Property ID
+const getComplianceFromDB = async (
+  user: any,
+  id: string,
+  query?: { complianceType?: string },
+) => {
+  const userId = typeof user === "string" ? user : user.id;
+  const userRole = typeof user === "string" ? USER_ROLES.LANDLORD : user.role;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid property ID");
+  }
+
+  const property = await Property.findById(id).select(
+    "compliance landlord isDeleted",
+  );
+  if (!property || (property as any).isDeleted) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Property not found");
+  }
+
+  if (userRole === USER_ROLES.LANDLORD) {
+    const landlordId = (property.landlord as any)?._id
+      ? (property.landlord as any)._id.toString()
+      : property.landlord?.toString();
+
+    if (landlordId !== userId.toString()) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        "You do not have permission to access this property",
+      );
+    }
+  } else if (userRole === USER_ROLES.TENANT) {
+    const tenantUser = await User.findById(userId);
+    const isDirectProperty = tenantUser?.property?.toString() === id.toString();
+    const hasFlatInProperty = await Flat.exists({
+      property: new Types.ObjectId(id),
+      $or: [
+        { tenant: new Types.ObjectId(userId) },
+        { tenants: new Types.ObjectId(userId) },
+      ],
+      isDeleted: { $ne: true },
+    });
+
+    if (!isDirectProperty && !hasFlatInProperty) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        "You do not have access to this property",
+      );
+    }
+  }
+
+  const compliance = property.compliance || {};
+
+  if (query?.complianceType) {
+    const categoryKey = complianceKeyMap[query.complianceType];
+    if (!categoryKey) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid compliance type");
+    }
+    return {
+      [categoryKey]: (compliance as any)[categoryKey] || null,
+    };
+  }
+
+  return compliance;
+};
+
 // Delete property by ID (SaaS: owner only)
 const deletePropertyFromDB = async (userId: string, id: string) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -1102,6 +1168,7 @@ export const PropertyService = {
   updateCouncilToDB,
   updateParkingToDB,
   updateComplianceToDB,
+  getComplianceFromDB,
   deleteComplianceFromDB,
   updateFloorPlansToDB,
   deleteFloorPlanFromDB,
