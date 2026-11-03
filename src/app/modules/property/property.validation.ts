@@ -254,6 +254,22 @@ const updateHouseRulesZodSchema = z.object({
   }),
 });
 
+const updatePropertyPhotosZodSchema = z.object({
+  body: z.object({
+    propertyPhotos: z
+      .array(z.string({ required_error: "Property photo is required" }))
+      .min(1, "At least one property photo is required"),
+  }),
+});
+
+const deletePropertyPhotoZodSchema = z.object({
+  body: z
+    .object({
+      photoUrl: z.string().optional(),
+    })
+    .optional(),
+});
+
 export const PropertyValidation = {
   createPropertyZodSchema,
   updatePropertyZodSchema,
@@ -262,5 +278,7 @@ export const PropertyValidation = {
   updateComplianceZodSchema,
   deleteComplianceZodSchema,
   updateFloorPlansZodSchema,
+  updatePropertyPhotosZodSchema,
+  deletePropertyPhotoZodSchema,
   updateHouseRulesZodSchema,
 };

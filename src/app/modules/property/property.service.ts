@@ -887,9 +887,13 @@ const updateFloorPlansToDB = async (
     );
   }
 
+  const photos = Array.isArray(payload.floorPlanPhotos)
+    ? payload.floorPlanPhotos
+    : [payload.floorPlanPhotos];
+
   const updatedProperty = await Property.findByIdAndUpdate(
     id,
-    { $set: { floorPlanPhotos: payload.floorPlanPhotos } },
+    { $push: { floorPlanPhotos: { $each: photos } } },
     { new: true, runValidators: true },
   )
     .populate("propertyType")
@@ -900,6 +904,54 @@ const updateFloorPlansToDB = async (
 
   if (!updatedProperty) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Failed to update floor plans");
+  }
+
+  return updatedProperty;
+};
+
+// Delete Floor Plan Photo by Property ID
+const deleteFloorPlanFromDB = async (
+  userId: string,
+  id: string,
+  payload?: { photoUrl?: string },
+) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid property ID");
+  }
+
+  const isExistProperty = await Property.findById(id);
+  if (!isExistProperty) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Property not found");
+  }
+
+  const landlordId = isExistProperty.landlord?.toString();
+  if (landlordId !== userId.toString()) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      "You are not authorized to update this property",
+    );
+  }
+
+  const updateOperation = payload?.photoUrl
+    ? { $pull: { floorPlanPhotos: payload.photoUrl } }
+    : { $set: { floorPlanPhotos: [] } };
+
+  const updatedProperty = await Property.findByIdAndUpdate(
+    id,
+    updateOperation,
+    { new: true, runValidators: true },
+  )
+    .populate("propertyType")
+    .populate({
+      path: "landlord",
+      select: "firstName lastName email role profileImage",
+    });
+
+  if (!updatedProperty) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Failed to delete floor plan photo",
+    );
   }
 
   return updatedProperty;
@@ -946,6 +998,102 @@ const updateHouseRulesToDB = async (
   return updatedProperty;
 };
 
+// Add Property Photos by Property ID
+const updatePropertyPhotosToDB = async (
+  userId: string,
+  id: string,
+  payload: { propertyPhotos: string[] },
+) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid property ID");
+  }
+
+  const isExistProperty = await Property.findById(id);
+  if (!isExistProperty) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Property not found");
+  }
+
+  const landlordId = isExistProperty.landlord?.toString();
+  if (landlordId !== userId.toString()) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      "You are not authorized to update this property",
+    );
+  }
+
+  const photos = Array.isArray(payload.propertyPhotos)
+    ? payload.propertyPhotos
+    : [payload.propertyPhotos];
+
+  const updatedProperty = await Property.findByIdAndUpdate(
+    id,
+    { $push: { propertyPhotos: { $each: photos } } },
+    { new: true, runValidators: true },
+  )
+    .populate("propertyType")
+    .populate({
+      path: "landlord",
+      select: "firstName lastName email role profileImage",
+    });
+
+  if (!updatedProperty) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Failed to update property photos",
+    );
+  }
+
+  return updatedProperty;
+};
+
+// Delete Property Photo by Property ID
+const deletePropertyPhotoFromDB = async (
+  userId: string,
+  id: string,
+  payload?: { photoUrl?: string },
+) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid property ID");
+  }
+
+  const isExistProperty = await Property.findById(id);
+  if (!isExistProperty) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Property not found");
+  }
+
+  const landlordId = isExistProperty.landlord?.toString();
+  if (landlordId !== userId.toString()) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      "You are not authorized to update this property",
+    );
+  }
+
+  const updateOperation = payload?.photoUrl
+    ? { $pull: { propertyPhotos: payload.photoUrl } }
+    : { $set: { propertyPhotos: [] } };
+
+  const updatedProperty = await Property.findByIdAndUpdate(
+    id,
+    updateOperation,
+    { new: true, runValidators: true },
+  )
+    .populate("propertyType")
+    .populate({
+      path: "landlord",
+      select: "firstName lastName email role profileImage",
+    });
+
+  if (!updatedProperty) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Failed to delete property photo",
+    );
+  }
+
+  return updatedProperty;
+};
+
 export const PropertyService = {
   createPropertyToDB,
   getAllPropertiesFromDB,
@@ -956,6 +1104,9 @@ export const PropertyService = {
   updateComplianceToDB,
   deleteComplianceFromDB,
   updateFloorPlansToDB,
+  deleteFloorPlanFromDB,
+  updatePropertyPhotosToDB,
+  deletePropertyPhotoFromDB,
   updateHouseRulesToDB,
   deletePropertyFromDB,
 };

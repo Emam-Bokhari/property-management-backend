@@ -25,6 +25,7 @@ export type IUser = {
   address?: string;
   timezone?: string;
   dateOfBirth?: string | Date;
+  
   nidNumber?: string | number;
   nidPhoto?: string;
   emergencyPhone?: string;

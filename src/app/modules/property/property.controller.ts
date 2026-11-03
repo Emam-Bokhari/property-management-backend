@@ -167,6 +167,33 @@ const updateFloorPlans = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const deleteFloorPlans = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+  if (!userId) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const photoUrl =
+    req.body?.photoUrl ||
+    req.body?.floorPlanUrl ||
+    req.query?.photoUrl ||
+    req.query?.floorPlanUrl;
+
+  const result = await PropertyService.deleteFloorPlanFromDB(userId, id, {
+    photoUrl: photoUrl as string,
+  });
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: photoUrl
+      ? "Property floor plan deleted successfully"
+      : "Property floor plans deleted successfully",
+    data: result,
+  });
+});
+
 const updateHouseRules = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.id;
   const { id } = req.params;
@@ -211,6 +238,50 @@ const deleteCompliance = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updatePropertyPhotos = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+  if (!userId) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const { propertyPhotos } = req.body;
+
+  const result = await PropertyService.updatePropertyPhotosToDB(userId, id, {
+    propertyPhotos,
+  });
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Property photos added successfully",
+    data: result,
+  });
+});
+
+const deletePropertyPhoto = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user?.id;
+  const { id } = req.params;
+  if (!userId) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const photoUrl = req.body?.photoUrl || req.query?.photoUrl;
+
+  const result = await PropertyService.deletePropertyPhotoFromDB(userId, id, {
+    photoUrl: photoUrl as string,
+  });
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: photoUrl
+      ? "Property photo deleted successfully"
+      : "Property photos deleted successfully",
+    data: result,
+  });
+});
+
 export const PropertyController = {
   createProperty,
   getAllProperties,
@@ -221,6 +292,9 @@ export const PropertyController = {
   updateCompliance,
   deleteCompliance,
   updateFloorPlans,
+  deleteFloorPlans,
+  updatePropertyPhotos,
+  deletePropertyPhoto,
   updateHouseRules,
   deleteProperty,
 };

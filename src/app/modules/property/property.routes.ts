@@ -116,13 +116,46 @@ router
   );
 
 router
+  .route("/:id/photos")
+  .post(
+    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    fileUploadHandler(),
+    parseFileData({ fieldName: "propertyPhotos", mode: "multiple" }),
+    validateRequest(PropertyValidation.updatePropertyPhotosZodSchema),
+    PropertyController.updatePropertyPhotos,
+  )
+  .patch(
+    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    fileUploadHandler(),
+    parseFileData({ fieldName: "propertyPhotos", mode: "multiple" }),
+    validateRequest(PropertyValidation.updatePropertyPhotosZodSchema),
+    PropertyController.updatePropertyPhotos,
+  )
+  .delete(
+    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    validateRequest(PropertyValidation.deletePropertyPhotoZodSchema),
+    PropertyController.deletePropertyPhoto,
+  );
+
+router
   .route("/:id/floor-plans")
+  .post(
+    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    fileUploadHandler(),
+    parseFileData({ fieldName: "floorPlanPhotos", mode: "multiple" }),
+    validateRequest(PropertyValidation.updateFloorPlansZodSchema),
+    PropertyController.updateFloorPlans,
+  )
   .patch(
     auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
     fileUploadHandler(),
     parseFileData({ fieldName: "floorPlanPhotos", mode: "multiple" }),
     validateRequest(PropertyValidation.updateFloorPlansZodSchema),
     PropertyController.updateFloorPlans,
+  )
+  .delete(
+    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    PropertyController.deleteFloorPlans,
   );
 
 router
