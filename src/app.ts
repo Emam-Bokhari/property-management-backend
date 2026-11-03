@@ -4,8 +4,6 @@ import { StatusCodes } from "http-status-codes";
 import { Morgan } from "./shared/morgan";
 import globalErrorHandler from "./app/middlewares/globalErrorHandler";
 import path from "path";
-import swaggerUi from "swagger-ui-express";
-import yaml from "yamljs";
 import router from "./app/routes";
 import { WebhookRoutes } from "./app/modules/webhook/webhook.routes";
 import { requestContextMiddleware } from "./app/middlewares/requestContextMiddleware";
@@ -50,18 +48,6 @@ app.use(express.urlencoded({ extended: true }));
 
 //file retrieve
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
-
-// swagger docs
-try {
-  const swaggerDocument = yaml.load(
-    path.join(__dirname, "..", "docs", "swagger", "index.yaml"),
-  );
-  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-} catch (error) {
-  console.log(
-    "Swagger documentation file not found. Skipping swagger UI setup.",
-  );
-}
 
 // webhooks
 app.use("/webhook", WebhookRoutes);
