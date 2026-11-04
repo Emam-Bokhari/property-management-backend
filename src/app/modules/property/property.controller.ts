@@ -194,6 +194,22 @@ const deleteFloorPlans = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getHouseRules = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  if (!req.user) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await PropertyService.getHouseRulesFromDB(req.user, id);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Property house rules retrieved successfully",
+    data: result,
+  });
+});
+
 const updateHouseRules = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.id;
   const { id } = req.params;
@@ -316,6 +332,7 @@ export const PropertyController = {
   deleteFloorPlans,
   updatePropertyPhotos,
   deletePropertyPhoto,
+  getHouseRules,
   updateHouseRules,
   deleteProperty,
 };

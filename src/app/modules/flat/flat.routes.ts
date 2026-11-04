@@ -55,6 +55,22 @@ router
     FlatController.deleteFlat,
   );
 
+// ------------------- FLAT PHOTOS ROUTES -------------------
+router
+  .route("/:id/photos")
+  .patch(
+    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    fileUploadHandler(),
+    parseFileData({ fieldName: "flatPhotos", mode: "multiple" }),
+    validateRequest(FlatValidation.updateFlatPhotosZodSchema),
+    FlatController.updateFlatPhotos,
+  )
+  .delete(
+    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    validateRequest(FlatValidation.deleteFlatPhotoZodSchema),
+    FlatController.deleteFlatPhoto,
+  );
+
 // ------------------- KEY REGISTER ROUTES -------------------
 // Add key set / Get all keys for flat
 router

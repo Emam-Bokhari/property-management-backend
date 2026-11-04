@@ -169,6 +169,15 @@ router
 
 router
   .route("/:id/house-rules")
+  .get(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+      USER_ROLES.TENANT,
+    ),
+    PropertyController.getHouseRules,
+  )
   .patch(
     auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
     fileUploadHandler(),

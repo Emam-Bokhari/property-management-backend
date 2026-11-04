@@ -167,7 +167,36 @@ const updateFlatZodSchema = z.object({
   }),
 });
 
+const updateFlatPhotosZodSchema = z.object({
+  body: z.object({
+    flatPhotos: z
+      .union([
+        z.string({ required_error: "Flat photo is required" }),
+        z.array(z.string({ required_error: "Flat photo is required" })),
+      ])
+      .transform((val) => (Array.isArray(val) ? val : [val]))
+      .refine((val) => val.length > 0, {
+        message: "At least one flat photo is required",
+      }),
+  }),
+});
+
+const deleteFlatPhotoZodSchema = z.object({
+  body: z
+    .object({
+      photoUrl: z.string().optional(),
+    })
+    .optional(),
+  query: z
+    .object({
+      photoUrl: z.string().optional(),
+    })
+    .optional(),
+});
+
 export const FlatValidation = {
+  updateFlatPhotosZodSchema,
+  deleteFlatPhotoZodSchema,
   createFlatZodSchema,
   updateFlatZodSchema,
   addKeyZodSchema,

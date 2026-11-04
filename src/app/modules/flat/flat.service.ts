@@ -956,7 +956,89 @@ const getRoomsByFlatIdFromDB = async (
   return InventoryService.getRoomsByFlatIdFromDB(user, flatId);
 };
 
+// 29. Add / Update Flat Photos by Flat ID (preserves existing photos, pushes new ones)
+const updateFlatPhotosToDB = async (
+  user: JwtPayload,
+  id: string,
+  payload: { flatPhotos: string[] },
+) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid flat ID");
+  }
+
+  const isExistFlat = await Flat.findById(id);
+  if (!isExistFlat) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
+  }
+
+  checkFlatOwnership(user, isExistFlat);
+
+  const photos = Array.isArray(payload.flatPhotos)
+    ? payload.flatPhotos
+    : [payload.flatPhotos];
+
+  const updatedFlat = await Flat.findByIdAndUpdate(
+    id,
+    { $push: { flatPhotos: { $each: photos } } },
+    { new: true, runValidators: true },
+  ).populate(flatPopulateOptions);
+
+  if (!updatedFlat) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Failed to update flat photos",
+    );
+  }
+
+  return updatedFlat;
+};
+
+// 30. Delete Flat Photo by Flat ID
+const deleteFlatPhotoFromDB = async (
+  user: JwtPayload,
+  id: string,
+  payload?: { photoUrl?: string },
+) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid flat ID");
+  }
+
+  const isExistFlat = await Flat.findById(id);
+  if (!isExistFlat) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
+  }
+
+  checkFlatOwnership(user, isExistFlat);
+
+  if (payload?.photoUrl) {
+    unlinkFile(payload.photoUrl);
+  } else if (Array.isArray(isExistFlat.flatPhotos)) {
+    isExistFlat.flatPhotos.forEach((photo) => unlinkFile(photo));
+  }
+
+  const updateOperation = payload?.photoUrl
+    ? { $pull: { flatPhotos: payload.photoUrl } }
+    : { $set: { flatPhotos: [] } };
+
+  const updatedFlat = await Flat.findByIdAndUpdate(
+    id,
+    updateOperation,
+    { new: true, runValidators: true },
+  ).populate(flatPopulateOptions);
+
+  if (!updatedFlat) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Failed to delete flat photo",
+    );
+  }
+
+  return updatedFlat;
+};
+
 export const FlatService = {
+  updateFlatPhotosToDB,
+  deleteFlatPhotoFromDB,
   createFlatToDB,
   getAllFlatsFromDB,
   getSingleFlatFromDB,

@@ -529,7 +529,57 @@ const getRoomsByFlatId = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// 29. Update / Add Flat Photos
+const updateFlatPhotos = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
+  const { id } = req.params;
+  if (!user?.id) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const { flatPhotos } = req.body;
+
+  const result = await FlatService.updateFlatPhotosToDB(user, id, {
+    flatPhotos,
+  });
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Flat photos added successfully",
+    data: result,
+  });
+});
+
+// 30. Delete Flat Photo
+const deleteFlatPhoto = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
+  const { id } = req.params;
+  if (!user?.id) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const photoUrl = (req.body?.photoUrl || req.query?.photoUrl) as
+    | string
+    | undefined;
+
+  const result = await FlatService.deleteFlatPhotoFromDB(user, id, {
+    photoUrl,
+  });
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: photoUrl
+      ? "Flat photo deleted successfully"
+      : "Flat photos deleted successfully",
+    data: result,
+  });
+});
+
 export const FlatController = {
+  updateFlatPhotos,
+  deleteFlatPhoto,
   createFlat,
   getAllFlats,
   getSingleFlat,
