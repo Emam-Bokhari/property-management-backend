@@ -1,7 +1,22 @@
 import { model, Schema } from "mongoose";
 import { softDeletePlugin } from "../../../DB/plugins/softDeletePlugin";
 import { DEPOSIT_PROTECTION_SCHEME, TENANCY_STATUS } from "./tenant.constant";
-import { ITenancy, TenancyModel } from "./tenant.interface";
+import { ITenancy, TenancyModel, TTenantNote } from "./tenant.interface";
+
+const tenantNoteSchema = new Schema<TTenantNote>(
+  {
+    notes: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+  },
+  {
+    _id: true,
+    id: false,
+    timestamps: true,
+  },
+);
 
 const tenancySchema = new Schema<ITenancy, TenancyModel>(
   {
@@ -76,6 +91,10 @@ const tenancySchema = new Schema<ITenancy, TenancyModel>(
     invitedAt: {
       type: Date,
       default: Date.now,
+    },
+    notes: {
+      type: [tenantNoteSchema],
+      default: [],
     },
   },
   {

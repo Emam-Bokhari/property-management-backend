@@ -1005,6 +1005,196 @@ const getTenantHomeDashboardFromDB = async (
   };
 };
 
+// 8. Add Note to Tenant / Tenancy
+const addNoteToTenantToDB = async (
+  authUser: JwtPayload,
+  id: string,
+  payload: { notes?: string; note?: string },
+) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid tenant or tenancy ID");
+  }
+
+  const tenancy = await Tenancy.findOne({
+    $or: [{ _id: new Types.ObjectId(id) }, { tenant: new Types.ObjectId(id) }],
+    isDeleted: { $ne: true },
+  }).sort({ createdAt: -1 });
+
+  if (!tenancy) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Tenant / Tenancy not found");
+  }
+
+  if (authUser.role === USER_ROLES.LANDLORD) {
+    const landlordId = (tenancy.landlord as any)?._id
+      ? (tenancy.landlord as any)._id.toString()
+      : tenancy.landlord?.toString();
+
+    if (landlordId !== authUser.id) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        "You do not have permission to add notes for this tenant",
+      );
+    }
+  }
+
+  const noteText = (payload.notes || payload.note)?.trim();
+  if (!noteText) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Note text is required");
+  }
+
+  tenancy.notes = tenancy.notes || [];
+  tenancy.notes.push({ notes: noteText } as any);
+  await tenancy.save();
+
+  const addedNote = tenancy.notes[tenancy.notes.length - 1];
+  return addedNote;
+};
+
+// 9. Get All Notes of a Tenant
+const getNotesByTenantIdFromDB = async (authUser: JwtPayload, id: string) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid tenant or tenancy ID");
+  }
+
+  const tenancy = await Tenancy.findOne({
+    $or: [{ _id: new Types.ObjectId(id) }, { tenant: new Types.ObjectId(id) }],
+    isDeleted: { $ne: true },
+  }).sort({ createdAt: -1 });
+
+  if (!tenancy) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Tenant / Tenancy not found");
+  }
+
+  if (authUser.role === USER_ROLES.LANDLORD) {
+    const landlordId = (tenancy.landlord as any)?._id
+      ? (tenancy.landlord as any)._id.toString()
+      : tenancy.landlord?.toString();
+
+    if (landlordId !== authUser.id) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        "You do not have permission to view notes for this tenant",
+      );
+    }
+  } else if (authUser.role === USER_ROLES.TENANT) {
+    const tenantId = (tenancy.tenant as any)?._id
+      ? (tenancy.tenant as any)._id.toString()
+      : tenancy.tenant?.toString();
+
+    if (tenantId !== authUser.id) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        "You do not have permission to view these notes",
+      );
+    }
+  }
+
+  return tenancy.notes || [];
+};
+
+// 10. Update Specific Note of a Tenant
+const updateNoteInTenantToDB = async (
+  authUser: JwtPayload,
+  id: string,
+  noteId: string,
+  payload: { notes?: string; note?: string },
+) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid tenant or tenancy ID");
+  }
+  if (!mongoose.Types.ObjectId.isValid(noteId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid note ID");
+  }
+
+  const tenancy = await Tenancy.findOne({
+    $or: [{ _id: new Types.ObjectId(id) }, { tenant: new Types.ObjectId(id) }],
+    isDeleted: { $ne: true },
+  }).sort({ createdAt: -1 });
+
+  if (!tenancy) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Tenant / Tenancy not found");
+  }
+
+  if (authUser.role === USER_ROLES.LANDLORD) {
+    const landlordId = (tenancy.landlord as any)?._id
+      ? (tenancy.landlord as any)._id.toString()
+      : tenancy.landlord?.toString();
+
+    if (landlordId !== authUser.id) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        "You do not have permission to update notes for this tenant",
+      );
+    }
+  }
+
+  const noteItem = (tenancy.notes as any)?.id(noteId);
+  if (!noteItem) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Note not found");
+  }
+
+  const noteText = payload.notes || payload.note;
+  if (noteText !== undefined) {
+    if (!noteText.trim()) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, "Note text cannot be empty");
+    }
+    noteItem.notes = noteText.trim();
+  }
+
+  await tenancy.save();
+  return noteItem;
+};
+
+// 11. Delete Specific Note of a Tenant
+const deleteNoteFromTenantToDB = async (
+  authUser: JwtPayload,
+  id: string,
+  noteId: string,
+) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid tenant or tenancy ID");
+  }
+  if (!mongoose.Types.ObjectId.isValid(noteId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid note ID");
+  }
+
+  const tenancy = await Tenancy.findOne({
+    $or: [{ _id: new Types.ObjectId(id) }, { tenant: new Types.ObjectId(id) }],
+    isDeleted: { $ne: true },
+  }).sort({ createdAt: -1 });
+
+  if (!tenancy) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Tenant / Tenancy not found");
+  }
+
+  if (authUser.role === USER_ROLES.LANDLORD) {
+    const landlordId = (tenancy.landlord as any)?._id
+      ? (tenancy.landlord as any)._id.toString()
+      : tenancy.landlord?.toString();
+
+    if (landlordId !== authUser.id) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        "You do not have permission to delete notes for this tenant",
+      );
+    }
+  }
+
+  const noteItem = (tenancy.notes as any)?.id(noteId);
+  if (!noteItem) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Note not found");
+  }
+
+  if (typeof noteItem.deleteOne === "function") {
+    noteItem.deleteOne();
+  } else {
+    (tenancy.notes as any).pull({ _id: noteId });
+  }
+
+  await tenancy.save();
+  return { message: "Note deleted successfully" };
+};
+
 export const TenantService = {
   inviteTenantToDB,
   getAllTenantsFromDB,
@@ -1014,4 +1204,8 @@ export const TenantService = {
   resendInvitationEmail,
   removeTenantFromDB,
   getTenantHomeDashboardFromDB,
+  addNoteToTenantToDB,
+  getNotesByTenantIdFromDB,
+  updateNoteInTenantToDB,
+  deleteNoteFromTenantToDB,
 };

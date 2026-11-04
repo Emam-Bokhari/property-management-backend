@@ -76,4 +76,34 @@ router.post(
   TenantController.resendInvitation,
 );
 
+// 6. Tenant Notes Operations
+router
+  .route("/:id/notes")
+  .post(
+    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    validateRequest(TenantValidation.addTenantNoteZodSchema),
+    TenantController.addNoteToTenant,
+  )
+  .get(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+      USER_ROLES.TENANT,
+    ),
+    TenantController.getNotesByTenantId,
+  );
+
+router
+  .route("/:id/notes/:noteId")
+  .patch(
+    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    validateRequest(TenantValidation.updateTenantNoteZodSchema),
+    TenantController.updateNoteInTenant,
+  )
+  .delete(
+    auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    TenantController.deleteNoteFromTenant,
+  );
+
 export const TenantRoutes = router;

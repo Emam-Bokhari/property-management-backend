@@ -145,6 +145,82 @@ const getTenantHomeDashboard = catchAsync(
   },
 );
 
+const addNoteToTenant = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await TenantService.addNoteToTenantToDB(
+    req.user,
+    req.params.id,
+    req.body,
+  );
+
+  sendResponse(res, {
+    statusCode: StatusCodes.CREATED,
+    success: true,
+    message: "Note added to tenant successfully",
+    data: result,
+  });
+});
+
+const getNotesByTenantId = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await TenantService.getNotesByTenantIdFromDB(
+    req.user,
+    req.params.id,
+  );
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Tenant notes retrieved successfully",
+    data: result,
+  });
+});
+
+const updateNoteInTenant = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await TenantService.updateNoteInTenantToDB(
+    req.user,
+    req.params.id,
+    req.params.noteId,
+    req.body,
+  );
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Tenant note updated successfully",
+    data: result,
+  });
+});
+
+const deleteNoteFromTenant = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await TenantService.deleteNoteFromTenantToDB(
+    req.user,
+    req.params.id,
+    req.params.noteId,
+  );
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: result.message || "Tenant note deleted successfully",
+    data: result,
+  });
+});
+
 export const TenantController = {
   inviteTenant,
   getAllTenants,
@@ -154,4 +230,8 @@ export const TenantController = {
   resendInvitation,
   removeTenant,
   getTenantHomeDashboard,
+  addNoteToTenant,
+  getNotesByTenantId,
+  updateNoteInTenant,
+  deleteNoteFromTenant,
 };

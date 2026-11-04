@@ -55,8 +55,34 @@ const resendInviteZodSchema = z.object({
     .optional(),
 });
 
+const addTenantNoteZodSchema = z.object({
+  body: z
+    .object({
+      notes: z.string().optional(),
+      note: z.string().optional(),
+    })
+    .refine((data) => !!(data.notes?.trim() || data.note?.trim()), {
+      message: "Note content is required",
+      path: ["notes"],
+    }),
+});
+
+const updateTenantNoteZodSchema = z.object({
+  body: z
+    .object({
+      notes: z.string().optional(),
+      note: z.string().optional(),
+    })
+    .refine((data) => !!(data.notes?.trim() || data.note?.trim()), {
+      message: "Note content is required",
+      path: ["notes"],
+    }),
+});
+
 export const TenantValidation = {
   inviteTenantZodSchema,
   updateTenancyZodSchema,
   resendInviteZodSchema,
+  addTenantNoteZodSchema,
+  updateTenantNoteZodSchema,
 };

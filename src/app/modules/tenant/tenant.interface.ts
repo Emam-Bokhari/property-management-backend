@@ -2,6 +2,14 @@ import { Types } from "mongoose";
 import { ISoftDeleteModel } from "../../../types/softDelete";
 import { DEPOSIT_PROTECTION_SCHEME, TENANCY_STATUS } from "./tenant.constant";
 
+export type TTenantNote = {
+  _id?: Types.ObjectId | string;
+  notes: string;
+  note?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
 export type ITenancy = {
   _id?: Types.ObjectId | string;
   landlord: Types.ObjectId;
@@ -18,6 +26,7 @@ export type ITenancy = {
   personalMessage?: string;
   status: TENANCY_STATUS;
   invitedAt: Date;
+  notes?: TTenantNote[];
   isDeleted?: boolean;
   deletedAt?: Date | null;
 };
