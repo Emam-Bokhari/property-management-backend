@@ -16,6 +16,7 @@ import { STATUS, USER_ROLES } from "../../../enums/user";
 import { notificationHelper } from "../../builder/pushNotification";
 import { NOTIFICATION_TYPE } from "../notification/notification.constant";
 import unlinkFile from "../../../shared/unlinkFile";
+import { logAnnouncementDispatch } from "./announcement.logger";
 
 // Helper: resolve target tenant IDs for a property / flats
 const resolveTargetTenants = async (
@@ -199,6 +200,17 @@ const createAnnouncementToDB = async (
       console.error("Announcement push notification error:", notificationError);
     }
   }
+
+  // Log clean terminal summary of targeted property, flats, and recipients
+  await logAnnouncementDispatch({
+    announcementId: result._id,
+    title: result.title,
+    propertyId: payload.property,
+    visibilityScope: payload.visibilityScope || VISIBILITY_SCOPE.ENTIRE_PROPERTY,
+    selectedFlatIds: payload.flats,
+    landlordId: userId,
+    recipientIds,
+  });
 
   return await result.populate([
     {

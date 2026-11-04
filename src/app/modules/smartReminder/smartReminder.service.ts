@@ -159,12 +159,23 @@ const getAllSmartRemindersFromDB = async (
     filter.landlord = new Types.ObjectId(userId);
   }
 
-  // Filter by property dropdown (e.g. from "All Properties")
-  if (
-    query.property &&
-    mongoose.Types.ObjectId.isValid(String(query.property))
-  ) {
-    filter.property = new Types.ObjectId(String(query.property));
+  // Filter by property dropdown or query params (supports propertyId or property)
+  const targetProperty = (query.propertyId || query.property) as
+    | string
+    | undefined;
+  if (targetProperty) {
+    const propStr = String(targetProperty).trim();
+    if (
+      propStr &&
+      propStr !== "all" &&
+      propStr !== "null" &&
+      propStr !== "undefined"
+    ) {
+      if (!mongoose.Types.ObjectId.isValid(propStr)) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid property ID");
+      }
+      filter.property = new Types.ObjectId(propStr);
+    }
   }
 
   const now = new Date();
@@ -202,10 +213,11 @@ const getAllSmartRemindersFromDB = async (
     filter.status = REMINDER_STATUS.COMPLETED;
   }
 
-  // Remove tab from query copy so QueryBuilder filter() doesn't fail
+  // Remove tab, property and propertyId from query copy so QueryBuilder filter() doesn't fail
   const queryCopy = { ...query };
   delete queryCopy.tab;
   delete queryCopy.property;
+  delete queryCopy.propertyId;
 
   const baseQuery = SmartReminder.find(filter).populate([
     {
@@ -257,11 +269,22 @@ const getSmartReminderSummaryFromDB = async (
   if (userRole === USER_ROLES.LANDLORD) {
     filter.landlord = new Types.ObjectId(userId);
   }
-  if (
-    query.property &&
-    mongoose.Types.ObjectId.isValid(String(query.property))
-  ) {
-    filter.property = new Types.ObjectId(String(query.property));
+  const targetSummaryProperty = (query.propertyId || query.property) as
+    | string
+    | undefined;
+  if (targetSummaryProperty) {
+    const propStr = String(targetSummaryProperty).trim();
+    if (
+      propStr &&
+      propStr !== "all" &&
+      propStr !== "null" &&
+      propStr !== "undefined"
+    ) {
+      if (!mongoose.Types.ObjectId.isValid(propStr)) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid property ID");
+      }
+      filter.property = new Types.ObjectId(propStr);
+    }
   }
 
   const now = new Date();
