@@ -13,46 +13,127 @@ import {
   inventoryRoomSearchableFields,
 } from "./inventory.constant";
 import unlinkFile from "../../../shared/unlinkFile";
+import { User } from "../user/user.model";
+import { Tenancy } from "../tenant/tenant.model";
+import { TENANCY_STATUS } from "../tenant/tenant.constant";
 
 // Helper: verify if authenticated user has permission to manage room/item
-const verifyLandlordOrAdmin = (user: JwtPayload, ownerLandlordId: any) => {
+const verifyLandlordOrAdmin = async (
+  user: JwtPayload,
+  ownerLandlordId?: any,
+  flatId?: string | Types.ObjectId,
+  propertyId?: string | Types.ObjectId,
+) => {
   if (user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.SUPER_ADMIN) {
     return true;
   }
+  const userId = user.id || (user as any).userId;
+
+  // 1. Direct ownerLandlordId match
   const landlordStr = ownerLandlordId?._id
     ? ownerLandlordId._id.toString()
     : ownerLandlordId?.toString();
-  if (landlordStr !== user.id) {
-    throw new ApiError(
-      StatusCodes.FORBIDDEN,
-      "You do not have permission to perform this action",
-    );
+  if (landlordStr && landlordStr === userId) {
+    return true;
   }
-  return true;
+
+  // 2. Check flat's landlord if flatId is given
+  if (flatId && mongoose.Types.ObjectId.isValid(flatId.toString())) {
+    const flatDoc = await Flat.findById(flatId).select("landlord property");
+    const flatLandlordId = (flatDoc?.landlord as any)?._id
+      ? (flatDoc?.landlord as any)._id.toString()
+      : flatDoc?.landlord?.toString();
+    if (flatLandlordId && flatLandlordId === userId) {
+      return true;
+    }
+    if (flatDoc?.property && !propertyId) {
+      propertyId = flatDoc.property;
+    }
+  }
+
+  // 3. Check property's landlord if propertyId is given
+  if (propertyId && mongoose.Types.ObjectId.isValid(propertyId.toString())) {
+    const propDoc = await Property.findById(propertyId).select("landlord");
+    const propLandlordId = (propDoc?.landlord as any)?._id
+      ? (propDoc?.landlord as any)._id.toString()
+      : propDoc?.landlord?.toString();
+    if (propLandlordId && propLandlordId === userId) {
+      return true;
+    }
+  }
+
+  throw new ApiError(
+    StatusCodes.FORBIDDEN,
+    "You do not have permission to perform this action",
+  );
 };
 
-// Helper: check if a tenant belongs to a given flat
+// Helper: check if a tenant belongs specifically to a given flat
 const verifyTenantBelongsToFlat = async (
   tenantUserId: string,
   flatId: string | Types.ObjectId,
 ) => {
-  const flatDoc = await Flat.findOne({
-    _id: flatId,
-    $or: [
-      { tenant: new Types.ObjectId(tenantUserId) },
-      { tenants: new Types.ObjectId(tenantUserId) },
-    ],
-    isDeleted: { $ne: true },
-  });
-
-  if (!flatDoc) {
-    throw new ApiError(
-      StatusCodes.FORBIDDEN,
-      "You do not have access to this flat's inventory",
-    );
+  const tenantUser = await User.findById(tenantUserId);
+  if (!tenantUser || (tenantUser as any).isDeleted) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Tenant account not found");
   }
 
-  return flatDoc;
+  const tenantObjId = mongoose.Types.ObjectId.isValid(tenantUserId)
+    ? new Types.ObjectId(tenantUserId)
+    : null;
+  const flatObjId = new Types.ObjectId(flatId.toString());
+
+  // 1. Direct flat assignment on tenant User profile
+  if (tenantUser.flat && tenantUser.flat.toString() === flatId.toString()) {
+    const flatDoc = await Flat.findOne({
+      _id: flatObjId,
+      isDeleted: { $ne: true },
+    });
+    if (flatDoc) return flatDoc;
+  }
+
+  // 2. Tenancy document linking tenant specifically to this flat
+  if (tenantObjId) {
+    const hasTenancy = await Tenancy.exists({
+      flat: flatObjId,
+      $or: [
+        { tenant: tenantObjId },
+        { tenant: tenantUserId.toString() },
+        ...(tenantUser.email
+          ? [{ email: tenantUser.email.toLowerCase() }]
+          : []),
+      ],
+      status: { $ne: TENANCY_STATUS.TERMINATED },
+      isDeleted: { $ne: true },
+    });
+    if (hasTenancy) {
+      const flatDoc = await Flat.findOne({
+        _id: flatObjId,
+        isDeleted: { $ne: true },
+      });
+      if (flatDoc) return flatDoc;
+    }
+  }
+
+  // 3. Flat assigned to tenant in Flat document
+  if (tenantObjId) {
+    const flatDoc = await Flat.findOne({
+      _id: flatObjId,
+      $or: [
+        { tenant: tenantObjId },
+        { tenants: tenantObjId },
+        { tenant: tenantUserId.toString() },
+        { tenants: tenantUserId.toString() },
+      ],
+      isDeleted: { $ne: true },
+    });
+    if (flatDoc) return flatDoc;
+  }
+
+  throw new ApiError(
+    StatusCodes.FORBIDDEN,
+    "You do not have access to this flat's rooms or inventory",
+  );
 };
 
 // ======================== ROOM SERVICES ========================
@@ -90,7 +171,12 @@ const createRoomToDB = async (
   }
 
   // Ownership check
-  verifyLandlordOrAdmin(user, propertyDoc.landlord);
+  await verifyLandlordOrAdmin(
+    user,
+    propertyDoc.landlord,
+    payload.flat,
+    payload.property,
+  );
 
   payload.landlord = propertyDoc.landlord || new Types.ObjectId(user.id);
 
@@ -219,7 +305,12 @@ const getSingleRoomFromDB = async (user: JwtPayload, roomId: string) => {
   if (user.role === USER_ROLES.TENANT) {
     await verifyTenantBelongsToFlat(user.id, (room.flat as any)._id);
   } else if (user.role === USER_ROLES.LANDLORD) {
-    verifyLandlordOrAdmin(user, room.landlord);
+    await verifyLandlordOrAdmin(
+      user,
+      room.landlord,
+      (room.flat as any)?._id || room.flat,
+      (room.property as any)?._id || room.property,
+    );
   }
 
   const itemsCount = await InventoryItem.countDocuments({
@@ -247,7 +338,7 @@ const getRoomsByFlatIdFromDB = async (user: JwtPayload, flatId: string) => {
   if (user.role === USER_ROLES.TENANT) {
     await verifyTenantBelongsToFlat(user.id, flatId);
   } else if (user.role === USER_ROLES.LANDLORD) {
-    verifyLandlordOrAdmin(user, flat.landlord);
+    await verifyLandlordOrAdmin(user, flat.landlord, flatId, flat.property);
   }
 
   const rooms = await InventoryRoom.find({
@@ -293,7 +384,7 @@ const updateRoomInDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Room not found");
   }
 
-  verifyLandlordOrAdmin(user, room.landlord);
+  await verifyLandlordOrAdmin(user, room.landlord, room.flat, room.property);
 
   const updatedRoom = await InventoryRoom.findByIdAndUpdate(roomId, payload, {
     new: true,
@@ -326,7 +417,7 @@ const deleteRoomFromDB = async (user: JwtPayload, roomId: string) => {
     throw new ApiError(StatusCodes.NOT_FOUND, "Room not found");
   }
 
-  verifyLandlordOrAdmin(user, room.landlord);
+  await verifyLandlordOrAdmin(user, room.landlord, room.flat, room.property);
 
   // Soft delete room
   const deletedRoom = await (room as any).softDelete();
@@ -360,7 +451,12 @@ const createItemToDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Room not found");
   }
 
-  verifyLandlordOrAdmin(user, roomDoc.landlord);
+  await verifyLandlordOrAdmin(
+    user,
+    roomDoc.landlord,
+    roomDoc.flat,
+    roomDoc.property,
+  );
 
   payload.flat = roomDoc.flat;
   payload.property = roomDoc.property;
@@ -394,7 +490,7 @@ const getItemsByRoomFromDB = async (
   if (user.role === USER_ROLES.TENANT) {
     await verifyTenantBelongsToFlat(user.id, room.flat);
   } else if (user.role === USER_ROLES.LANDLORD) {
-    verifyLandlordOrAdmin(user, room.landlord);
+    await verifyLandlordOrAdmin(user, room.landlord, room.flat, room.property);
   }
 
   const filter: Record<string, any> = {
@@ -450,7 +546,7 @@ const getSingleItemFromDB = async (user: JwtPayload, itemId: string) => {
   if (user.role === USER_ROLES.TENANT) {
     await verifyTenantBelongsToFlat(user.id, item.flat);
   } else if (user.role === USER_ROLES.LANDLORD) {
-    verifyLandlordOrAdmin(user, item.landlord);
+    await verifyLandlordOrAdmin(user, item.landlord, item.flat, item.property);
   }
 
   return item;
@@ -475,7 +571,7 @@ const updateItemInDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Item not found");
   }
 
-  verifyLandlordOrAdmin(user, item.landlord);
+  await verifyLandlordOrAdmin(user, item.landlord, item.flat, item.property);
 
   // If new photo was uploaded and replaced old photo
   if (
@@ -515,7 +611,7 @@ const deleteItemFromDB = async (user: JwtPayload, itemId: string) => {
     throw new ApiError(StatusCodes.NOT_FOUND, "Item not found");
   }
 
-  verifyLandlordOrAdmin(user, item.landlord);
+  await verifyLandlordOrAdmin(user, item.landlord, item.flat, item.property);
 
   if (item.itemPhotos && item.itemPhotos.length > 0) {
     for (const p of item.itemPhotos) {

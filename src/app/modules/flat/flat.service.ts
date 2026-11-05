@@ -19,6 +19,7 @@ import {
 import { flatSearchableFields } from "./flat.constant";
 import { USER_ROLES } from "../../../enums/user";
 import unlinkFile from "../../../shared/unlinkFile";
+import { User } from "../user/user.model";
 import { Tenancy } from "../tenant/tenant.model";
 import { TENANCY_STATUS } from "../tenant/tenant.constant";
 
@@ -64,8 +65,12 @@ const singleFlatPopulateOptions = [
 ];
 
 // Helper: check if authenticated user is the landlord or admin of this flat
-const checkFlatOwnership = (user: JwtPayload, flat: any) => {
-  if (user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.SUPER_ADMIN) {
+const checkFlatOwnership = async (user: any, flat: any) => {
+  const userRole = user?.role;
+  const userId =
+    typeof user === "string" ? user : (user?.id || user?.userId || user?._id);
+
+  if (userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.SUPER_ADMIN) {
     return true;
   }
 
@@ -73,44 +78,116 @@ const checkFlatOwnership = (user: JwtPayload, flat: any) => {
     ? flat.landlord._id.toString()
     : flat.landlord?.toString();
 
-  if (landlordId !== user.id) {
-    throw new ApiError(
-      StatusCodes.FORBIDDEN,
-      "You do not have permission to manage this flat",
-    );
-  }
-
-  return true;
-};
-
-// Helper: check if authenticated user can view this flat (Landlord, Admin, Super Admin, or assigned Tenant)
-const checkFlatViewAccess = (user: JwtPayload, flat: any) => {
-  if (user.role === USER_ROLES.ADMIN || user.role === USER_ROLES.SUPER_ADMIN) {
+  // 1. Direct landlord on flat
+  if (landlordId && landlordId === userId) {
     return true;
   }
 
-  if (user.role === USER_ROLES.LANDLORD) {
-    return checkFlatOwnership(user, flat);
+  // 2. Landlord of the property containing this flat
+  if (flat.property) {
+    const propertyId = flat.property?._id
+      ? flat.property._id.toString()
+      : flat.property?.toString();
+
+    if (mongoose.Types.ObjectId.isValid(propertyId)) {
+      const prop = await Property.findById(propertyId).select("landlord");
+      const propLandlordId = (prop?.landlord as any)?._id
+        ? (prop?.landlord as any)._id.toString()
+        : prop?.landlord?.toString();
+
+      if (propLandlordId && propLandlordId === userId) {
+        return true;
+      }
+    }
   }
 
-  if (user.role === USER_ROLES.TENANT) {
-    const isTenant =
-      (flat.tenant &&
-        ((flat.tenant as any)?._id
-          ? (flat.tenant as any)._id.toString()
-          : flat.tenant.toString()) === user.id) ||
-      (Array.isArray(flat.tenants) &&
-        flat.tenants.some(
-          (t: any) => (t?._id ? t._id.toString() : t.toString()) === user.id,
-        ));
+  throw new ApiError(
+    StatusCodes.FORBIDDEN,
+    "You do not have permission to manage this flat",
+  );
+};
 
-    if (!isTenant) {
+// Helper: check if a tenant is legitimately assigned to this specific flat
+const verifyTenantBelongsToFlat = async (
+  userId: string,
+  flatId: string | Types.ObjectId,
+): Promise<boolean> => {
+  const tenantUser = await User.findById(userId);
+  if (!tenantUser || (tenantUser as any).isDeleted) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Tenant account not found");
+  }
+
+  const tenantObjId = mongoose.Types.ObjectId.isValid(userId)
+    ? new Types.ObjectId(userId)
+    : null;
+  const flatObjId = new Types.ObjectId(flatId.toString());
+
+  // 1. Direct flat assignment on tenant User profile
+  if (tenantUser.flat && tenantUser.flat.toString() === flatId.toString()) {
+    return true;
+  }
+
+  // 2. Tenancy document linking tenant specifically to this flat
+  if (tenantObjId) {
+    const hasTenancy = await Tenancy.exists({
+      flat: flatObjId,
+      $or: [
+        { tenant: tenantObjId },
+        { tenant: userId.toString() },
+        ...(tenantUser.email
+          ? [{ email: tenantUser.email.toLowerCase() }]
+          : []),
+      ],
+      status: { $ne: TENANCY_STATUS.TERMINATED },
+      isDeleted: { $ne: true },
+    });
+    if (hasTenancy) return true;
+  }
+
+  // 3. Flat assigned to tenant in Flat document
+  if (tenantObjId) {
+    const hasFlat = await Flat.exists({
+      _id: flatObjId,
+      $or: [
+        { tenant: tenantObjId },
+        { tenants: tenantObjId },
+        { tenant: userId.toString() },
+        { tenants: userId.toString() },
+      ],
+      isDeleted: { $ne: true },
+    });
+    if (hasFlat) return true;
+  }
+
+  return false;
+};
+
+// Helper: check if authenticated user can view this flat (Landlord of property/flat, Admin, or assigned Tenant of this specific flat)
+const checkFlatViewAccess = async (user: any, flat: any) => {
+  const userRole = user?.role;
+  const userId =
+    typeof user === "string" ? user : (user?.id || user?.userId || user?._id);
+
+  if (!userId) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  if (userRole === USER_ROLES.ADMIN || userRole === USER_ROLES.SUPER_ADMIN) {
+    return true;
+  }
+
+  if (userRole === USER_ROLES.LANDLORD) {
+    return await checkFlatOwnership(user, flat);
+  }
+
+  if (userRole === USER_ROLES.TENANT) {
+    const hasAccess = await verifyTenantBelongsToFlat(userId, flat._id);
+    if (!hasAccess) {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
         "You do not have permission to view this flat",
       );
     }
-
     return true;
   }
 
@@ -223,7 +300,7 @@ const getSingleFlatFromDB = async (user: JwtPayload, id: string) => {
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatViewAccess(user, flat);
+  await checkFlatViewAccess(user, flat);
 
   const flatObj = (flat as any).toObject ? (flat as any).toObject() : flat;
   delete flatObj.tenants;
@@ -246,7 +323,7 @@ const updateFlatToDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatOwnership(user, isExistFlat);
+  await checkFlatOwnership(user, isExistFlat);
 
   delete (payload as any).landlord;
 
@@ -308,7 +385,7 @@ const deleteFlatFromDB = async (user: JwtPayload, id: string) => {
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatOwnership(user, isExistFlat);
+  await checkFlatOwnership(user, isExistFlat);
 
   const result = await Flat.softDeleteById(id);
   if (!result) {
@@ -334,7 +411,7 @@ const addKeyToFlatToDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatOwnership(user, flat);
+  await checkFlatOwnership(user, flat);
 
   flat.key = flat.key || [];
   flat.key.push(payload as any);
@@ -362,7 +439,7 @@ const updateKeyInFlatToDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatOwnership(user, flat);
+  await checkFlatOwnership(user, flat);
 
   const keyItem = (flat.key as any)?.id(keyId);
   if (!keyItem) {
@@ -393,7 +470,7 @@ const deleteKeyFromFlatToDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatOwnership(user, flat);
+  await checkFlatOwnership(user, flat);
 
   const keyItem = (flat.key as any)?.id(keyId);
   if (!keyItem) {
@@ -422,7 +499,7 @@ const upsertGasToDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatOwnership(user, flat);
+  await checkFlatOwnership(user, flat);
 
   if (
     payload.meterPhoto &&
@@ -457,7 +534,7 @@ const upsertElectricityToDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatOwnership(user, flat);
+  await checkFlatOwnership(user, flat);
 
   if (
     payload.meterPhoto &&
@@ -492,7 +569,7 @@ const upsertWaterToDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatOwnership(user, flat);
+  await checkFlatOwnership(user, flat);
 
   if (
     payload.meterPhoto &&
@@ -527,7 +604,7 @@ const upsertWifiToDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatOwnership(user, flat);
+  await checkFlatOwnership(user, flat);
 
   if (
     payload.routerPhoto &&
@@ -563,7 +640,7 @@ const addSafetyAlarmToDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatOwnership(user, flat);
+  await checkFlatOwnership(user, flat);
 
   flat.safetyAlarms = flat.safetyAlarms || [];
   flat.safetyAlarms.push(payload as any);
@@ -591,7 +668,7 @@ const updateSafetyAlarmToDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatOwnership(user, flat);
+  await checkFlatOwnership(user, flat);
 
   const alarmItem = (flat.safetyAlarms as any)?.id(alarmId);
   if (!alarmItem) {
@@ -630,7 +707,7 @@ const deleteSafetyAlarmFromDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatOwnership(user, flat);
+  await checkFlatOwnership(user, flat);
 
   const alarmItem = (flat.safetyAlarms as any)?.id(alarmId);
   if (!alarmItem) {
@@ -663,7 +740,7 @@ const addApplianceToDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatOwnership(user, flat);
+  await checkFlatOwnership(user, flat);
 
   flat.appliances = flat.appliances || [];
   flat.appliances.push(payload as any);
@@ -691,7 +768,7 @@ const updateApplianceToDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatOwnership(user, flat);
+  await checkFlatOwnership(user, flat);
 
   const applianceItem = (flat.appliances as any)?.id(applianceId);
   if (!applianceItem) {
@@ -730,7 +807,7 @@ const deleteApplianceFromDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatOwnership(user, flat);
+  await checkFlatOwnership(user, flat);
 
   const applianceItem = (flat.appliances as any)?.id(applianceId);
   if (!applianceItem) {
@@ -758,7 +835,7 @@ const getKeysByFlatIdFromDB = async (user: JwtPayload, flatId: string) => {
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatViewAccess(user, flat);
+  await checkFlatViewAccess(user, flat);
 
   return flat.key || [];
 };
@@ -777,7 +854,7 @@ const getSafetyAlarmsByFlatIdFromDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatViewAccess(user, flat);
+  await checkFlatViewAccess(user, flat);
 
   return flat.safetyAlarms || [];
 };
@@ -796,7 +873,7 @@ const getAppliancesByFlatIdFromDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatViewAccess(user, flat);
+  await checkFlatViewAccess(user, flat);
 
   return flat.appliances || [];
 };
@@ -815,7 +892,7 @@ const getUtilitiesByFlatIdFromDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatViewAccess(user, flat);
+  await checkFlatViewAccess(user, flat);
 
   return {
     wifi: flat.wifi || null,
@@ -834,7 +911,7 @@ const getGasByFlatIdFromDB = async (user: JwtPayload, flatId: string) => {
   if (!flat) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
-  checkFlatViewAccess(user, flat);
+  await checkFlatViewAccess(user, flat);
   return flat.gas || null;
 };
 
@@ -850,7 +927,7 @@ const getElectricityByFlatIdFromDB = async (
   if (!flat) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
-  checkFlatViewAccess(user, flat);
+  await checkFlatViewAccess(user, flat);
   return flat.electricity || null;
 };
 
@@ -863,7 +940,7 @@ const getWaterByFlatIdFromDB = async (user: JwtPayload, flatId: string) => {
   if (!flat) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
-  checkFlatViewAccess(user, flat);
+  await checkFlatViewAccess(user, flat);
   return flat.water || null;
 };
 
@@ -876,7 +953,7 @@ const getWifiByFlatIdFromDB = async (user: JwtPayload, flatId: string) => {
   if (!flat) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
-  checkFlatViewAccess(user, flat);
+  await checkFlatViewAccess(user, flat);
   return flat.wifi || null;
 };
 
@@ -905,7 +982,7 @@ const getTenantsByFlatIdFromDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatViewAccess(user, flat);
+  await checkFlatViewAccess(user, flat);
 
   const tenancies = await Tenancy.find({
     flat: flatId,
@@ -971,7 +1048,7 @@ const updateFlatPhotosToDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatOwnership(user, isExistFlat);
+  await checkFlatOwnership(user, isExistFlat);
 
   const photos = Array.isArray(payload.flatPhotos)
     ? payload.flatPhotos
@@ -1008,7 +1085,7 @@ const deleteFlatPhotoFromDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
   }
 
-  checkFlatOwnership(user, isExistFlat);
+  await checkFlatOwnership(user, isExistFlat);
 
   if (payload?.photoUrl) {
     unlinkFile(payload.photoUrl);
