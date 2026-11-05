@@ -19,7 +19,10 @@ router.post(
     USER_ROLES.SUPER_ADMIN,
   ),
   fileUploadHandler(),
-  parseFileData({ fieldName: "attachments", mode: "multiple" }),
+  parseFileData(
+    { fieldName: "attachments", mode: "multiple" },
+    { fieldName: "attachment", mode: "multiple" },
+  ),
   validateRequest(MaintenanceValidation.createMaintenanceZodSchema),
   MaintenanceController.createMaintenance,
 );
@@ -149,7 +152,10 @@ router
   .patch(
     auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
     fileUploadHandler(),
-    parseFileData({ fieldName: "attachments", mode: "multiple" }),
+    parseFileData(
+    { fieldName: "attachments", mode: "multiple" },
+    { fieldName: "attachment", mode: "multiple" },
+  ),
     validateRequest(MaintenanceValidation.updateMaintenanceZodSchema),
     MaintenanceController.updateMaintenance,
   )

@@ -40,7 +40,7 @@ const optionalAuth =
         );
       }
 
-      const user = await User.isExistUserById(verifyUser.id);
+      const user = await User.isExistUserById(verifyUser.id || verifyUser.userId);
 
       if (!user) {
         throw new ApiError(StatusCodes.NOT_FOUND, "This user is not found !!");
@@ -58,7 +58,10 @@ const optionalAuth =
       }
 
       // Attach database role to verified user info
+      const currentUserId = (user as any)?._id?.toString() || (user as any)?.id || verifyUser.id;
       verifyUser.role = user.role;
+      verifyUser.id = currentUserId;
+      verifyUser.userId = currentUserId;
 
       if (roles.length && !roles.includes(verifyUser?.role)) {
         throw new ApiError(

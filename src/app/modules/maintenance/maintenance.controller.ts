@@ -5,16 +5,47 @@ import sendResponse from "../../../shared/sendResponse";
 import ApiError from "../../../errors/ApiErrors";
 import { MaintenanceService } from "./maintenance.service";
 
+// Helper to normalize attachments from string, JSON string, array, or aliased fields
+const normalizeAttachments = (body: Record<string, any>): string[] => {
+  let raw =
+    body.attachments ??
+    body.attachment ??
+    body.images ??
+    body.image ??
+    body.photos;
+
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+      try {
+        raw = JSON.parse(trimmed);
+      } catch {
+        raw = trimmed.length > 0 ? [trimmed] : [];
+      }
+    } else if (trimmed.length > 0) {
+      raw = [trimmed];
+    } else {
+      raw = [];
+    }
+  }
+
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item: any) => (typeof item === "string" ? item.trim() : item))
+      .filter((item: any) => typeof item === "string" && item.length > 0);
+  } else if (raw && typeof raw === "string" && raw.trim().length > 0) {
+    return [raw.trim()];
+  }
+  return [];
+};
+
 // 1. Create Maintenance Issue (Tenant or Landlord)
 const createMaintenance = catchAsync(async (req: Request, res: Response) => {
   if (!req.user) {
     throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
   }
 
-  // Normalize attachments array if single string was passed or parsed
-  if (req.body.attachments && !Array.isArray(req.body.attachments)) {
-    req.body.attachments = [req.body.attachments];
-  }
+  req.body.attachments = normalizeAttachments(req.body);
 
   const result = await MaintenanceService.createMaintenanceIssueIntoDB(
     req.user,
@@ -221,8 +252,14 @@ const updateMaintenance = catchAsync(async (req: Request, res: Response) => {
     throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
   }
 
-  if (req.body.attachments && !Array.isArray(req.body.attachments)) {
-    req.body.attachments = [req.body.attachments];
+  if (
+    req.body.attachments !== undefined ||
+    req.body.attachment !== undefined ||
+    req.body.images !== undefined ||
+    req.body.image !== undefined ||
+    req.body.photos !== undefined
+  ) {
+    req.body.attachments = normalizeAttachments(req.body);
   }
 
   const result = await MaintenanceService.updateMaintenanceIntoDB(

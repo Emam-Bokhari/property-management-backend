@@ -24,6 +24,10 @@ export type TMaintenance = {
   priority: MAINTENANCE_PRIORITY;
   description: string;
   attachments?: string[];
+  attachment?: string[] | string;
+  images?: string[] | string;
+  image?: string[] | string;
+  photos?: string[] | string;
 
   // Location details
   locationType: MAINTENANCE_LOCATION_TYPE;
@@ -96,6 +100,10 @@ export type TCreateMaintenancePayload = {
   priority?: MAINTENANCE_PRIORITY;
   description: string;
   attachments?: string[];
+  attachment?: string[] | string;
+  images?: string[] | string;
+  image?: string[] | string;
+  photos?: string[] | string;
   locationType?: MAINTENANCE_LOCATION_TYPE;
   communalArea?: string;
   locationInProperty?: string;

@@ -120,6 +120,16 @@ const formatTimeAgo = (date?: Date | string | null): string => {
   return `${diffInWeeks}w ago`;
 };
 
+
+// Helper to extract authenticated user id reliably
+const getUserId = (authUser: JwtPayload): string => {
+  return (
+    authUser.userId ||
+    authUser.id ||
+    (authUser as any)._id
+  )?.toString() || "";
+};
+
 // Enhance maintenance object with UI friendly metadata
 const enhanceMaintenanceData = (item: any) => {
   const plain = item?.toObject ? item.toObject() : { ...item };
@@ -138,6 +148,10 @@ const createMaintenanceIssueIntoDB = async (
   authUser: JwtPayload,
   payload: TCreateMaintenancePayload,
 ) => {
+  const userId = getUserId(authUser);
+  if (!userId) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
   // Validate issueType exists
   if (!mongoose.Types.ObjectId.isValid(payload.issueType)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid issue type ID");
@@ -157,11 +171,11 @@ const createMaintenanceIssueIntoDB = async (
   // Handle Tenant creation flow
   if (authUser.role === USER_ROLES.TENANT) {
     requesterRole = MAINTENANCE_REQUESTER.TENANT;
-    tenantId = new Types.ObjectId(authUser.userId);
+    tenantId = new Types.ObjectId(userId);
 
     // Auto-detect property, flat, and landlord from Tenant's active tenancy
     let tenancy = await Tenancy.findOne({
-      tenant: authUser.userId,
+      tenant: new Types.ObjectId(userId),
       isDeleted: false,
       status: TENANCY_STATUS.ACTIVE,
     });
@@ -169,7 +183,7 @@ const createMaintenanceIssueIntoDB = async (
     if (!tenancy) {
       // Fallback to any latest tenancy
       tenancy = await Tenancy.findOne({
-        tenant: authUser.userId,
+        tenant: new Types.ObjectId(userId),
         isDeleted: false,
       }).sort({ createdAt: -1 });
     }
@@ -180,7 +194,7 @@ const createMaintenanceIssueIntoDB = async (
       landlordId = tenancy.landlord as Types.ObjectId;
     } else {
       // Check user record for flat / property
-      const tenantUser = await User.findById(authUser.userId);
+      const tenantUser = await User.findById(userId);
       if (tenantUser?.property && tenantUser?.flat) {
         propertyId = tenantUser.property as Types.ObjectId;
         flatId = tenantUser.flat as Types.ObjectId;
@@ -215,7 +229,7 @@ const createMaintenanceIssueIntoDB = async (
   } else {
     // Landlord / Admin creation flow
     requesterRole = MAINTENANCE_REQUESTER.LANDLORD;
-    landlordId = new Types.ObjectId(authUser.userId);
+    landlordId = new Types.ObjectId(userId);
 
     if (
       !payload.property ||
@@ -234,7 +248,7 @@ const createMaintenanceIssueIntoDB = async (
     }
 
     // Verify ownership if not admin
-    const currentUserId = (authUser.userId || authUser.id)?.toString();
+    const currentUserId = userId;
     if (
       authUser.role === USER_ROLES.LANDLORD &&
       prop.landlord?.toString() !== currentUserId
@@ -294,12 +308,35 @@ const createMaintenanceIssueIntoDB = async (
     }
   }
 
-  // Parse attachments
+  // Parse attachments (support attachments, attachment, images, image, photos)
   let attachments: string[] = [];
-  if (Array.isArray(payload.attachments)) {
-    attachments = payload.attachments;
-  } else if (typeof payload.attachments === "string" && payload.attachments) {
-    attachments = [payload.attachments];
+  const rawAttachments =
+    payload.attachments ??
+    payload.attachment ??
+    (payload as any).images ??
+    (payload as any).image ??
+    (payload as any).photos;
+
+  if (Array.isArray(rawAttachments)) {
+    attachments = rawAttachments
+      .map((item) => (typeof item === "string" ? item.trim() : item))
+      .filter((item) => typeof item === "string" && item.length > 0);
+  } else if (typeof rawAttachments === "string" && rawAttachments.trim()) {
+    const trimmed = rawAttachments.trim();
+    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          attachments = parsed
+            .map((item) => (typeof item === "string" ? item.trim() : item))
+            .filter((item) => typeof item === "string" && item.length > 0);
+        }
+      } catch {
+        attachments = [trimmed];
+      }
+    } else {
+      attachments = [trimmed];
+    }
   }
 
   const maintenanceData = {
@@ -315,7 +352,7 @@ const createMaintenanceIssueIntoDB = async (
     locationInProperty: payload.locationInProperty,
     property: propertyId,
     flat: flatId,
-    requestedBy: new Types.ObjectId(authUser.userId),
+    requestedBy: new Types.ObjectId(userId),
     requesterRole,
     landlord: landlordId,
     tenant: tenantId,
@@ -339,7 +376,7 @@ const createMaintenanceIssueIntoDB = async (
       // Notify Landlord about new maintenance issue (maintenanceUpdates)
       await sendNotifications({
         receiver: landlordId,
-        sender: authUser.userId,
+        sender: userId,
         type: NOTIFICATION_TYPE.MAINTENANCE_UPDATE,
         title: "New Maintenance Request",
         text: `Tenant reported an issue: "${createdIssue.issueTitle}" for ${propertyTitle}.`,
@@ -350,7 +387,7 @@ const createMaintenanceIssueIntoDB = async (
       // Notify Tenant that landlord scheduled maintenance (maintenanceUpdates)
       await sendNotifications({
         receiver: tenantId,
-        sender: authUser.userId,
+        sender: userId,
         type: NOTIFICATION_TYPE.MAINTENANCE_UPDATE,
         title: "Maintenance Issue Logged",
         text: `Maintenance has been scheduled for "${createdIssue.issueTitle}" at ${propertyTitle}.`,
@@ -373,12 +410,13 @@ const getAllMaintenanceFromDB = async (
   authUser: JwtPayload,
   query: Record<string, unknown>,
 ) => {
+  const userId = getUserId(authUser);
   const queryCopy = { ...query };
   const filter: Record<string, any> = { isDeleted: { $ne: true } };
 
   // Role Scoping
   if (authUser.role === USER_ROLES.LANDLORD) {
-    filter.landlord = new Types.ObjectId(authUser.userId);
+    filter.landlord = new Types.ObjectId(userId);
 
     // Tab filtering for Landlord
     if (queryCopy.tab === "tenant_reports") {
@@ -388,10 +426,10 @@ const getAllMaintenanceFromDB = async (
     }
   } else if (authUser.role === USER_ROLES.TENANT) {
     // Tenant view
-    filter.tenant = new Types.ObjectId(authUser.userId);
+    filter.tenant = new Types.ObjectId(userId);
   } else if (authUser.role === USER_ROLES.CONTRACTOR) {
     // Contractor view
-    filter.contractor = new Types.ObjectId(authUser.userId);
+    filter.contractor = new Types.ObjectId(userId);
 
     if (queryCopy.tab === "pending") {
       filter.status = {
@@ -468,7 +506,7 @@ const getAllMaintenanceFromDB = async (
   // Tab summary counts for Landlord
   let summary: Record<string, number> | undefined;
   if (authUser.role === USER_ROLES.LANDLORD) {
-    const landlordId = new Types.ObjectId(authUser.userId);
+    const landlordId = new Types.ObjectId(userId);
     const [allCount, tenantReportsCount, myLogsCount] = await Promise.all([
       Maintenance.countDocuments({ landlord: landlordId, isDeleted: false }),
       Maintenance.countDocuments({
@@ -488,7 +526,7 @@ const getAllMaintenanceFromDB = async (
       myLogs: myLogsCount,
     };
   } else if (authUser.role === USER_ROLES.CONTRACTOR) {
-    const contractorId = new Types.ObjectId(authUser.userId);
+    const contractorId = new Types.ObjectId(userId);
     const [
       allCount,
       pendingCount,
@@ -551,6 +589,7 @@ const getAllMaintenanceFromDB = async (
 
 // 3. Get Single Maintenance Issue
 const getSingleMaintenanceFromDB = async (authUser: JwtPayload, id: string) => {
+  const userId = getUserId(authUser);
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid maintenance issue ID");
   }
@@ -563,7 +602,7 @@ const getSingleMaintenanceFromDB = async (authUser: JwtPayload, id: string) => {
   // Access control
   if (
     authUser.role === USER_ROLES.LANDLORD &&
-    issue.landlord._id?.toString() !== authUser.userId
+    issue.landlord._id?.toString() !== userId && issue.landlord.toString() !== userId
   ) {
     throw new ApiError(
       StatusCodes.FORBIDDEN,
@@ -573,8 +612,10 @@ const getSingleMaintenanceFromDB = async (authUser: JwtPayload, id: string) => {
 
   if (
     authUser.role === USER_ROLES.TENANT &&
-    issue.tenant?._id?.toString() !== authUser.userId &&
-    issue.requestedBy?._id?.toString() !== authUser.userId
+    issue.tenant?._id?.toString() !== userId &&
+    issue.tenant?.toString() !== userId &&
+    issue.requestedBy?._id?.toString() !== userId &&
+    issue.requestedBy?.toString() !== userId
   ) {
     throw new ApiError(
       StatusCodes.FORBIDDEN,
@@ -584,7 +625,7 @@ const getSingleMaintenanceFromDB = async (authUser: JwtPayload, id: string) => {
 
   if (
     authUser.role === USER_ROLES.CONTRACTOR &&
-    issue.contractor?._id?.toString() !== authUser.userId
+    issue.contractor?._id?.toString() !== userId && issue.contractor?.toString() !== userId
   ) {
     throw new ApiError(
       StatusCodes.FORBIDDEN,
@@ -600,6 +641,7 @@ const getSuggestedContractorsFromDB = async (
   authUser: JwtPayload,
   id: string,
 ) => {
+  const userId = getUserId(authUser);
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid maintenance issue ID");
   }
@@ -611,7 +653,7 @@ const getSuggestedContractorsFromDB = async (
 
   if (
     authUser.role === USER_ROLES.LANDLORD &&
-    issue.landlord.toString() !== authUser.userId
+    issue.landlord.toString() !== userId && (issue.landlord as any)._id?.toString() !== userId
   ) {
     throw new ApiError(
       StatusCodes.FORBIDDEN,
@@ -711,6 +753,7 @@ const assignContractorIntoDB = async (
   id: string,
   payload: TAssignContractorPayload,
 ) => {
+  const userId = getUserId(authUser);
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid maintenance issue ID");
   }
@@ -726,7 +769,7 @@ const assignContractorIntoDB = async (
 
   if (
     authUser.role === USER_ROLES.LANDLORD &&
-    issue.landlord.toString() !== authUser.userId
+    issue.landlord.toString() !== userId
   ) {
     throw new ApiError(
       StatusCodes.FORBIDDEN,
@@ -755,7 +798,7 @@ const assignContractorIntoDB = async (
     // 1. Notify contractor about job assignment
     await sendNotifications({
       receiver: payload.contractor,
-      sender: authUser.userId,
+      sender: userId,
       type: NOTIFICATION_TYPE.JOB_UPDATE,
       title: "New Maintenance Job Assigned",
       text: `You have been assigned to maintenance job "${issue.issueTitle}".`,
@@ -767,7 +810,7 @@ const assignContractorIntoDB = async (
     if (issue.tenant) {
       await sendNotifications({
         receiver: issue.tenant,
-        sender: authUser.userId,
+        sender: userId,
         type: NOTIFICATION_TYPE.MAINTENANCE_UPDATE,
         title: "Maintenance Contractor Assigned",
         text: `A contractor has been assigned to your maintenance request "${issue.issueTitle}".`,
@@ -793,6 +836,7 @@ const contractorScheduleVisitIntoDB = async (
   id: string,
   payload: TScheduleVisitPayload,
 ) => {
+  const userId = getUserId(authUser);
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid maintenance issue ID");
   }
@@ -802,7 +846,7 @@ const contractorScheduleVisitIntoDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Maintenance issue not found");
   }
 
-  if (issue.contractor?.toString() !== authUser.userId) {
+  if (issue.contractor?.toString() !== userId) {
     throw new ApiError(
       StatusCodes.FORBIDDEN,
       "You are not the assigned contractor for this job",
@@ -827,7 +871,7 @@ const contractorScheduleVisitIntoDB = async (
     if (issue.tenant) {
       await sendNotifications({
         receiver: issue.tenant,
-        sender: authUser.userId,
+        sender: userId,
         type: NOTIFICATION_TYPE.MAINTENANCE_UPDATE,
         title: "Maintenance Visit Scheduled",
         text: `Contractor visit for "${issue.issueTitle}" is confirmed for ${formattedDate} at ${timeSlot}.`,
@@ -839,7 +883,7 @@ const contractorScheduleVisitIntoDB = async (
     if (issue.landlord) {
       await sendNotifications({
         receiver: issue.landlord,
-        sender: authUser.userId,
+        sender: userId,
         type: NOTIFICATION_TYPE.MAINTENANCE_UPDATE,
         title: "Maintenance Visit Scheduled",
         text: `Contractor scheduled a visit for "${issue.issueTitle}" on ${formattedDate} at ${timeSlot}.`,
@@ -858,6 +902,7 @@ const contractorScheduleVisitIntoDB = async (
 
 // 7. Contractor: Reject Job
 const contractorRejectJobIntoDB = async (authUser: JwtPayload, id: string) => {
+  const userId = getUserId(authUser);
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid maintenance issue ID");
   }
@@ -867,7 +912,7 @@ const contractorRejectJobIntoDB = async (authUser: JwtPayload, id: string) => {
     throw new ApiError(StatusCodes.NOT_FOUND, "Maintenance issue not found");
   }
 
-  if (issue.contractor?.toString() !== authUser.userId) {
+  if (issue.contractor?.toString() !== userId) {
     throw new ApiError(
       StatusCodes.FORBIDDEN,
       "You are not the assigned contractor for this job",
@@ -887,6 +932,7 @@ const contractorRejectJobIntoDB = async (authUser: JwtPayload, id: string) => {
 
 // 8. Contractor: Start Job (On-Site Execution)
 const contractorStartJobIntoDB = async (authUser: JwtPayload, id: string) => {
+  const userId = getUserId(authUser);
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid maintenance issue ID");
   }
@@ -896,7 +942,7 @@ const contractorStartJobIntoDB = async (authUser: JwtPayload, id: string) => {
     throw new ApiError(StatusCodes.NOT_FOUND, "Maintenance issue not found");
   }
 
-  if (issue.contractor?.toString() !== authUser.userId) {
+  if (issue.contractor?.toString() !== userId) {
     throw new ApiError(
       StatusCodes.FORBIDDEN,
       "You are not the assigned contractor for this job",
@@ -920,6 +966,7 @@ const contractorSubmitInvoiceIntoDB = async (
   id: string,
   payload: TSubmitInvoicePayload,
 ) => {
+  const userId = getUserId(authUser);
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid maintenance issue ID");
   }
@@ -929,7 +976,7 @@ const contractorSubmitInvoiceIntoDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Maintenance issue not found");
   }
 
-  if (issue.contractor?.toString() !== authUser.userId) {
+  if (issue.contractor?.toString() !== userId) {
     throw new ApiError(
       StatusCodes.FORBIDDEN,
       "You are not the assigned contractor for this job",
@@ -974,7 +1021,7 @@ const contractorSubmitInvoiceIntoDB = async (
     if (issue.landlord) {
       await sendNotifications({
         receiver: issue.landlord,
-        sender: authUser.userId,
+        sender: userId,
         type: NOTIFICATION_TYPE.MAINTENANCE_UPDATE,
         title: "Maintenance Invoice Submitted",
         text: `Contractor has submitted an invoice of ${getCurrencySymbol()}${payload.invoiceAmount} for "${issue.issueTitle}".`,
@@ -1000,6 +1047,7 @@ const cancelMaintenanceIntoDB = async (
   id: string,
   payload: TCancelMaintenancePayload,
 ) => {
+  const userId = getUserId(authUser);
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid maintenance issue ID");
   }
@@ -1012,8 +1060,8 @@ const cancelMaintenanceIntoDB = async (
   // Only Landlord, reporting Tenant, or Admin can cancel
   const isLandlord =
     authUser.role === USER_ROLES.LANDLORD &&
-    issue.landlord.toString() === authUser.userId;
-  const isReporter = issue.requestedBy.toString() === authUser.userId;
+    issue.landlord.toString() === userId;
+  const isReporter = issue.requestedBy.toString() === userId;
   const isAdmin =
     authUser.role === USER_ROLES.ADMIN ||
     authUser.role === USER_ROLES.SUPER_ADMIN;
@@ -1034,7 +1082,7 @@ const cancelMaintenanceIntoDB = async (
 
   issue.status = MAINTENANCE_STATUS.CANCELLED;
   issue.cancelledAt = new Date();
-  issue.cancelledBy = new Types.ObjectId(authUser.userId);
+  issue.cancelledBy = new Types.ObjectId(userId);
   issue.cancellationReason = payload.cancellationReason || "Cancelled by user";
 
   await issue.save();
@@ -1050,6 +1098,7 @@ const updateMaintenanceIntoDB = async (
   id: string,
   payload: Partial<TMaintenance>,
 ) => {
+  const userId = getUserId(authUser);
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid maintenance issue ID");
   }
@@ -1061,7 +1110,7 @@ const updateMaintenanceIntoDB = async (
 
   if (
     authUser.role === USER_ROLES.LANDLORD &&
-    issue.landlord.toString() !== authUser.userId
+    issue.landlord.toString() !== userId
   ) {
     throw new ApiError(
       StatusCodes.FORBIDDEN,
@@ -1079,6 +1128,7 @@ const updateMaintenanceIntoDB = async (
 
 // 12. Delete Maintenance Issue (Soft Delete)
 const deleteMaintenanceFromDB = async (authUser: JwtPayload, id: string) => {
+  const userId = getUserId(authUser);
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid maintenance issue ID");
   }
@@ -1090,7 +1140,7 @@ const deleteMaintenanceFromDB = async (authUser: JwtPayload, id: string) => {
 
   if (
     authUser.role === USER_ROLES.LANDLORD &&
-    issue.landlord.toString() !== authUser.userId
+    issue.landlord.toString() !== userId
   ) {
     throw new ApiError(
       StatusCodes.FORBIDDEN,
@@ -1108,6 +1158,7 @@ const createPaymentSessionIntoDB = async (
   id: string,
   payload: TPayMaintenancePayload,
 ) => {
+  const userId = getUserId(authUser);
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid maintenance issue ID");
   }
@@ -1124,11 +1175,11 @@ const createPaymentSessionIntoDB = async (
 
   const isLandlord =
     authUser.role === USER_ROLES.LANDLORD &&
-    issue.landlord.toString() === authUser.userId;
+    issue.landlord.toString() === userId;
   const isTenant =
     authUser.role === USER_ROLES.TENANT &&
-    (issue.tenant?.toString() === authUser.userId ||
-      issue.requestedBy.toString() === authUser.userId);
+    (issue.tenant?.toString() === userId ||
+      issue.requestedBy.toString() === userId);
   const isAdmin =
     authUser.role === USER_ROLES.ADMIN ||
     authUser.role === USER_ROLES.SUPER_ADMIN;
@@ -1196,7 +1247,7 @@ const createPaymentSessionIntoDB = async (
     metadata: {
       paymentType: "maintenance",
       maintenanceId: issue._id.toString(),
-      payerId: authUser.userId,
+      payerId: userId,
       payerRole: authUser.role,
       contractorId:
         (issue.contractor as any)?._id?.toString() ||
@@ -1226,6 +1277,7 @@ const rejectInvoiceIntoDB = async (
   id: string,
   payload: TRejectInvoicePayload,
 ) => {
+  const userId = getUserId(authUser);
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid maintenance issue ID");
   }
@@ -1237,11 +1289,11 @@ const rejectInvoiceIntoDB = async (
 
   const isLandlord =
     authUser.role === USER_ROLES.LANDLORD &&
-    issue.landlord.toString() === authUser.userId;
+    issue.landlord.toString() === userId;
   const isTenant =
     authUser.role === USER_ROLES.TENANT &&
-    (issue.tenant?.toString() === authUser.userId ||
-      issue.requestedBy.toString() === authUser.userId);
+    (issue.tenant?.toString() === userId ||
+      issue.requestedBy.toString() === userId);
   const isAdmin =
     authUser.role === USER_ROLES.ADMIN ||
     authUser.role === USER_ROLES.SUPER_ADMIN;

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { mapFilesToUrls, mapFileToUrl } from "./fileMapper";
 import ApiError from "../../errors/ApiErrors";
-import { IFolderName } from "./flieUploadHandler";
+import { IFolderName, FILE_CONFIG } from "./flieUploadHandler";
 
 // types
 interface FileFieldConfig {
@@ -52,7 +52,9 @@ const resolveMode = (
     fieldName === "otherDocuments" ||
     fieldName === "documents" ||
     fieldName === "inspectionPhotos" ||
-    fieldName === "itemPhotos"
+    fieldName === "itemPhotos" ||
+    fieldName === "attachments" ||
+    fieldName === "attachment"
   ) {
     return "multiple";
   }
@@ -94,6 +96,11 @@ export const parseFileData = (...fields: FieldInput[]) => {
         "safetyAlarms",
         "appliances",
         "roomChecklist",
+        "attachments",
+        "attachment",
+        "completionPhotos",
+        "certificates",
+        "inspectionPhotos",
       ];
       for (const f of jsonFieldsToParse) {
         if (typeof req.body?.[f] === "string") {
@@ -118,6 +125,20 @@ export const parseFileData = (...fields: FieldInput[]) => {
       }
       if (req.body?.image !== undefined && req.body?.images === undefined) {
         req.body.images = req.body.image;
+      }
+
+      // Alias attachment -> attachments if attachments is not explicitly set in parsedBody or req.body
+      if (
+        parsedBody.attachment !== undefined &&
+        parsedBody.attachments === undefined
+      ) {
+        parsedBody.attachments = parsedBody.attachment;
+      }
+      if (
+        req.body?.attachment !== undefined &&
+        req.body?.attachments === undefined
+      ) {
+        req.body.attachments = req.body.attachment;
       }
 
       const effectiveNormalized =
@@ -156,15 +177,32 @@ export const parseFileData = (...fields: FieldInput[]) => {
           fieldFiles = (files as any)["nidBackPic"];
         }
 
+        // Fallback for attachments / attachment / images / image
+        if (
+          (!fieldFiles || fieldFiles.length === 0) &&
+          (fieldName === "attachments" || fieldName === "attachment")
+        ) {
+          fieldFiles =
+            (files as any)["attachments"] ||
+            (files as any)["attachment"] ||
+            (files as any)["images"] ||
+            (files as any)["image"] ||
+            (files as any)["files"] ||
+            (files as any)["file"];
+        }
+
         if (!fieldFiles || fieldFiles.length === 0) continue;
 
         const resolvedMode = resolveMode(mode, fieldName, fieldFiles);
 
         const targetFolder: IFolderName = files[fieldName]
           ? fieldName
-          : fieldName === "images"
-            ? "image"
-            : (fieldName as IFolderName);
+          : fieldFiles?.[0]?.fieldname &&
+              (fieldFiles[0].fieldname in FILE_CONFIG)
+            ? (fieldFiles[0].fieldname as IFolderName)
+            : fieldName === "images"
+              ? "image"
+              : (fieldName as IFolderName);
 
         if (
           fieldName === "taxDocuments" ||
@@ -277,7 +315,7 @@ export const parseFileData = (...fields: FieldInput[]) => {
         delete parsedBody.uploadedFiles;
       }
 
-      // Normalize single string images in parsedBody / req.body for multiple mode / images / propertyPhotos / floorPlanPhotos / flatPhotos
+      // Normalize single string images in parsedBody / req.body for multiple mode / images / propertyPhotos / floorPlanPhotos / flatPhotos / attachments
       for (const { fieldName, mode } of effectiveNormalized) {
         if (
           fieldName === "images" ||
@@ -288,6 +326,8 @@ export const parseFileData = (...fields: FieldInput[]) => {
           fieldName === "documents" ||
           fieldName === "inspectionPhotos" ||
           fieldName === "itemPhotos" ||
+          fieldName === "attachments" ||
+          fieldName === "attachment" ||
           mode === "multiple"
         ) {
           if (typeof parsedBody[fieldName] === "string") {
@@ -297,6 +337,16 @@ export const parseFileData = (...fields: FieldInput[]) => {
             req.body[fieldName] = [req.body[fieldName] as string];
           }
         }
+      }
+
+      // Synchronize fileData attachments / attachment
+      if (fileData.attachment && !fileData.attachments) {
+        fileData.attachments = Array.isArray(fileData.attachment)
+          ? fileData.attachment
+          : [fileData.attachment];
+      }
+      if (fileData.attachments && !fileData.attachment) {
+        fileData.attachment = fileData.attachments;
       }
 
       // Smart merge string array URLs (e.g. existing images from parsedBody/req.body + newly uploaded files)
@@ -322,6 +372,16 @@ export const parseFileData = (...fields: FieldInput[]) => {
         ...parsedBody,
         ...fileData,
       };
+
+      // Keep attachments / attachment in sync on req.body
+      if (req.body.attachments && !req.body.attachment) {
+        req.body.attachment = req.body.attachments;
+      }
+      if (req.body.attachment && !req.body.attachments) {
+        req.body.attachments = Array.isArray(req.body.attachment)
+          ? req.body.attachment
+          : [req.body.attachment];
+      }
 
       // If council or parking was wrapped inside req.body.council/parking without top-level propertyName (sub-route update)
       if (

@@ -40,7 +40,7 @@ const auth =
         }
 
         //  user check isUserExist or not
-        const user = await User.isExistUserById(verifyUser.id);
+        const user = await User.isExistUserById(verifyUser.id || verifyUser.userId);
         if (!user) {
           throw new ApiError(
             StatusCodes.NOT_FOUND,
@@ -53,7 +53,10 @@ const auth =
         }
 
         // Attach database role to verified user info
+        const currentUserId = (user as any)?._id?.toString() || (user as any)?.id || verifyUser.id;
         verifyUser.role = user.role;
+        verifyUser.id = currentUserId;
+        verifyUser.userId = currentUserId;
 
         //guard user role
         if (roles.length && !roles.includes(verifyUser.role)) {

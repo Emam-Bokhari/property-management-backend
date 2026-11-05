@@ -438,6 +438,20 @@ export const FILE_CONFIG = {
       "application/pdf",
     ]),
   },
+  attachment: {
+    dir: "attachments",
+    maxCount: 15,
+    mimeTypes: new Set([
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/webp",
+      "video/mp4",
+      "video/webm",
+      "video/quicktime",
+      "application/pdf",
+    ]),
+  },
   certificates: {
     dir: "certificate",
     maxCount: 10,

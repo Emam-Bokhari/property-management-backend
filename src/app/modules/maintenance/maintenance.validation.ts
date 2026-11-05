@@ -23,6 +23,9 @@ const createMaintenanceZodSchema = z.object({
       .string({ required_error: "Description is required" })
       .min(1, "Description cannot be empty"),
     attachments: z.union([z.string(), z.array(z.string())]).optional(),
+    attachment: z.union([z.string(), z.array(z.string())]).optional(),
+    images: z.union([z.string(), z.array(z.string())]).optional(),
+    image: z.union([z.string(), z.array(z.string())]).optional(),
     locationType: z
       .nativeEnum(MAINTENANCE_LOCATION_TYPE)
       .optional()
@@ -53,6 +56,9 @@ const updateMaintenanceZodSchema = z.object({
     priority: z.nativeEnum(MAINTENANCE_PRIORITY).optional(),
     description: z.string().min(1, "Description cannot be empty").optional(),
     attachments: z.union([z.string(), z.array(z.string())]).optional(),
+    attachment: z.union([z.string(), z.array(z.string())]).optional(),
+    images: z.union([z.string(), z.array(z.string())]).optional(),
+    image: z.union([z.string(), z.array(z.string())]).optional(),
     locationType: z.nativeEnum(MAINTENANCE_LOCATION_TYPE).optional(),
     communalArea: z.string().optional(),
     locationInProperty: z.string().optional(),
