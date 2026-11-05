@@ -71,7 +71,7 @@ const maintenancePopulate = [
   },
   {
     path: "contractor",
-    select: "name email phone profileImage companyName primaryTrade",
+    select: "name email phone countryCode profileImage companyName primaryTrade",
   },
   {
     path: "cancelledBy",
@@ -633,7 +633,37 @@ const getSingleMaintenanceFromDB = async (authUser: JwtPayload, id: string) => {
     );
   }
 
-  return enhanceMaintenanceData(issue);
+  const enhanced = enhanceMaintenanceData(issue);
+
+  // Ensure contractor phone number is populated in the returned data
+  if (enhanced.contractor) {
+    const contractorUserId =
+      (enhanced.contractor as any)?._id?.toString() ||
+      enhanced.contractor.toString();
+
+    let phone = (enhanced.contractor as any)?.phone || "";
+
+    // If phone is missing on User model, query the Contractor relationship model
+    if (!phone && contractorUserId && mongoose.Types.ObjectId.isValid(contractorUserId)) {
+      const contractorDoc = await Contractor.findOne({
+        $or: [
+          { contractor: new Types.ObjectId(contractorUserId) },
+          { _id: new Types.ObjectId(contractorUserId) },
+        ],
+        isDeleted: false,
+      }).select("phone");
+
+      if (contractorDoc?.phone) {
+        phone = contractorDoc.phone;
+      }
+    }
+
+    if (typeof enhanced.contractor === "object") {
+      enhanced.contractor.phone = phone || "";
+    }
+  }
+
+  return enhanced;
 };
 
 // 4. Get Suggested Contractors for an Issue (Top 3 + Full List)
@@ -654,6 +684,19 @@ const getSuggestedContractorsFromDB = async (
   if (
     authUser.role === USER_ROLES.LANDLORD &&
     issue.landlord.toString() !== userId && (issue.landlord as any)._id?.toString() !== userId
+  ) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      "You do not have permission for this maintenance issue",
+    );
+  }
+
+  if (
+    authUser.role === USER_ROLES.TENANT &&
+    issue.tenant?._id?.toString() !== userId &&
+    issue.tenant?.toString() !== userId &&
+    issue.requestedBy?._id?.toString() !== userId &&
+    issue.requestedBy?.toString() !== userId
   ) {
     throw new ApiError(
       StatusCodes.FORBIDDEN,
@@ -777,13 +820,23 @@ const assignContractorIntoDB = async (
     );
   }
 
-  // Check if target user is valid
-  const contractorUser = await User.findById(payload.contractor);
+  // Check if target user is valid (support both User._id and Contractor._id)
+  let contractorUser = await User.findById(payload.contractor);
+  let resolvedContractorUserId = payload.contractor;
+
+  if (!contractorUser && mongoose.Types.ObjectId.isValid(payload.contractor)) {
+    const contractorDoc = await Contractor.findById(payload.contractor);
+    if (contractorDoc) {
+      resolvedContractorUserId = contractorDoc.contractor.toString();
+      contractorUser = await User.findById(resolvedContractorUserId);
+    }
+  }
+
   if (!contractorUser) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Contractor not found");
   }
 
-  issue.contractor = new Types.ObjectId(payload.contractor);
+  issue.contractor = new Types.ObjectId(resolvedContractorUserId);
   issue.contractorStatus = CONTRACTOR_STATUS.PENDING;
   issue.assignedDate = new Date();
   issue.status = MAINTENANCE_STATUS.ASSIGNED;

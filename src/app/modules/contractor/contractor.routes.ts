@@ -34,6 +34,7 @@ router.get(
   "/",
   auth(
     USER_ROLES.LANDLORD,
+    USER_ROLES.TENANT,
     USER_ROLES.CONTRACTOR,
     USER_ROLES.ADMIN,
     USER_ROLES.SUPER_ADMIN,
@@ -47,6 +48,7 @@ router
   .get(
     auth(
       USER_ROLES.LANDLORD,
+    USER_ROLES.TENANT,
       USER_ROLES.CONTRACTOR,
       USER_ROLES.ADMIN,
       USER_ROLES.SUPER_ADMIN,

@@ -50,7 +50,7 @@ router.get(
 // 4. Suggested Contractors for an Issue (Landlord only)
 router.get(
   "/:id/suggested-contractors",
-  auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  auth(USER_ROLES.LANDLORD, USER_ROLES.TENANT, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
   MaintenanceController.getSuggestedContractors,
 );
 
