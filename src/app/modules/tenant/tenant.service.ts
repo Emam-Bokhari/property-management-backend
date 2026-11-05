@@ -997,11 +997,6 @@ const getTenantHomeDashboardFromDB = async (
     activeTenancy,
     nextRentDue,
     pendingCharges,
-    quickActions,
-    latestAnnouncement,
-    meta: {
-      serverTime: now.toISOString(),
-    },
   };
 };
 

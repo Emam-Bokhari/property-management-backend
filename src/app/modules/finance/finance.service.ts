@@ -24,6 +24,7 @@ import {
 import { Property } from "../property/property.model";
 import { Flat } from "../flat/flat.model";
 import { Tenancy } from "../tenant/tenant.model";
+import { TENANCY_STATUS } from "../tenant/tenant.constant";
 import { notificationHelper } from "../../builder/pushNotification";
 import { NOTIFICATION_TYPE } from "../notification/notification.constant";
 import { USER_ROLES } from "../../../enums/user";
@@ -79,17 +80,70 @@ const formatMonthPeriod = (date: Date): string => {
     "Nov",
     "Dec",
   ];
-  return `${months[date.getMonth()]} ${date.getFullYear()}`;
+  const d = new Date(date);
+  return `${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+};
+
+// Helper: Normalize periodMonth to 1st of month in UTC
+const parsePeriodMonthToDate = (
+  val: string | Date | undefined | null,
+): Date => {
+  if (!val) {
+    const now = new Date();
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  }
+  if (val instanceof Date) {
+    return new Date(Date.UTC(val.getUTCFullYear(), val.getUTCMonth(), 1));
+  }
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    const match = trimmed.match(/^([A-Za-z]+)\s+(\d{4})$/);
+    if (match) {
+      const monthNames = [
+        "jan",
+        "feb",
+        "mar",
+        "apr",
+        "may",
+        "jun",
+        "jul",
+        "aug",
+        "sep",
+        "oct",
+        "nov",
+        "dec",
+      ];
+      const monthPrefix = match[1].toLowerCase().slice(0, 3);
+      const mIdx = monthNames.indexOf(monthPrefix);
+      if (mIdx !== -1) {
+        return new Date(Date.UTC(parseInt(match[2], 10), mIdx, 1));
+      }
+    }
+  }
+  const date = new Date(val);
+  if (isNaN(date.getTime())) {
+    const now = new Date();
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  }
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
 };
 
 // Helper: Synchronize overdue status for pending bills
 const syncBillStatus = (bill: any): string => {
-  if (
-    bill.status === BILL_STATUS.PAID ||
-    bill.status === BILL_STATUS.CANCELLED
-  ) {
+  if (bill.status === BILL_STATUS.CANCELLED) {
     return bill.status;
   }
+  const paidAmount = Number(bill.paidAmount) || 0;
+  const totalAmount = Number(bill.amount) || 0;
+
+  if (paidAmount >= totalAmount && totalAmount > 0) {
+    return BILL_STATUS.PAID;
+  }
+
+  if (paidAmount > 0 && paidAmount < totalAmount) {
+    return BILL_STATUS.PARTIAL;
+  }
+
   const now = new Date();
   const dueDate = new Date(bill.dueDate);
   if (dueDate < now) {
@@ -108,16 +162,30 @@ const syncMonthlyRentBillsForLandlord = async (landlordId: string) => {
   if (!activeTenancies.length) return;
 
   const now = new Date();
-  const currentPeriod = formatMonthPeriod(now);
-  const currentDueDate = new Date(now.getFullYear(), now.getMonth(), 1); // 1st of month
+  const currentPeriodDate = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+  );
+  const nextPeriodDate = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
+  );
+  const currentPeriodString = formatMonthPeriod(currentPeriodDate);
+  const currentDueDate = currentPeriodDate; // 1st of month
 
   for (const tenancy of activeTenancies) {
     // Check if rent bill already exists for this tenant, flat, and period
     const existing = await FinanceBill.findOne({
       tenant: tenancy.tenant,
       flat: tenancy.flat,
-      periodMonth: currentPeriod,
       billType: CHARGE_TYPE.RENT,
+      $or: [
+        { periodMonth: currentPeriodDate },
+        {
+          periodMonth: {
+            $gte: currentPeriodDate,
+            $lt: nextPeriodDate,
+          },
+        },
+      ],
     });
 
     if (!existing) {
@@ -132,9 +200,66 @@ const syncMonthlyRentBillsForLandlord = async (landlordId: string) => {
         whoIsBilled: WHO_IS_BILLED.LEAD_TENANT,
         amount: tenancy.rentAmount || 0,
         dueDate: currentDueDate,
-        periodMonth: currentPeriod,
+        periodMonth: currentPeriodDate,
         invoiceNumber,
-        description: `${currentPeriod} rent`,
+        description: `${currentPeriodString} rent`,
+        status:
+          currentDueDate < now ? BILL_STATUS.OVERDUE : BILL_STATUS.PENDING,
+      });
+    }
+  }
+};
+
+// Helper: Auto-sync / generate monthly rent bills for a tenant's active tenancies
+const syncMonthlyRentBillsForTenant = async (tenantId: string) => {
+  const activeTenancies = await Tenancy.find({
+    tenant: new Types.ObjectId(tenantId),
+    status: "active",
+  }).lean();
+
+  if (!activeTenancies.length) return;
+
+  const now = new Date();
+  const currentPeriodDate = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+  );
+  const nextPeriodDate = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1),
+  );
+  const currentPeriodString = formatMonthPeriod(currentPeriodDate);
+  const currentDueDate = currentPeriodDate; // 1st of month
+
+  for (const tenancy of activeTenancies) {
+    const existing = await FinanceBill.findOne({
+      tenant: tenancy.tenant,
+      flat: tenancy.flat,
+      billType: CHARGE_TYPE.RENT,
+      $or: [
+        { periodMonth: currentPeriodDate },
+        {
+          periodMonth: {
+            $gte: currentPeriodDate,
+            $lt: nextPeriodDate,
+          },
+        },
+      ],
+    });
+
+    if (!existing) {
+      const invoiceNumber = await generateInvoiceNumber();
+      await FinanceBill.create({
+        landlord: tenancy.landlord,
+        property: tenancy.property,
+        flat: tenancy.flat,
+        tenant: tenancy.tenant,
+        billType: CHARGE_TYPE.RENT,
+        billCategory: BILL_CATEGORY.RENT,
+        whoIsBilled: WHO_IS_BILLED.LEAD_TENANT,
+        amount: tenancy.rentAmount || 0,
+        dueDate: currentDueDate,
+        periodMonth: currentPeriodDate,
+        invoiceNumber,
+        description: `${currentPeriodString} rent`,
         status:
           currentDueDate < now ? BILL_STATUS.OVERDUE : BILL_STATUS.PENDING,
       });
@@ -153,7 +278,9 @@ const getLandlordOverviewFromDB = async (
   await syncMonthlyRentBillsForLandlord(landlordId);
 
   const now = new Date();
-  const selectedPeriod = (query.period as string) || formatMonthPeriod(now);
+  const selectedPeriod = query.period
+    ? formatMonthPeriod(parsePeriodMonthToDate(query.period as string))
+    : formatMonthPeriod(now);
 
   // Retrieve all bills for landlord for the current period and overall
   const bills = await FinanceBill.find({
@@ -172,7 +299,11 @@ const getLandlordOverviewFromDB = async (
     let outstandingCount = 0;
 
     billList.forEach((bill) => {
-      const isPeriodMatch = !periodFilter || bill.periodMonth === periodFilter;
+      const billPeriodStr =
+        bill.periodMonth instanceof Date
+          ? formatMonthPeriod(bill.periodMonth)
+          : String(bill.periodMonth || "");
+      const isPeriodMatch = !periodFilter || billPeriodStr === periodFilter;
       const isPaid = bill.status === BILL_STATUS.PAID;
       const dueDate = new Date(bill.dueDate);
       const isOverdue = !isPaid && dueDate < now;
@@ -294,7 +425,15 @@ const getBillsFromDB = async (
 
   // Filter by periodMonth
   if (query.periodMonth) {
-    filter.periodMonth = query.periodMonth;
+    const pDate = parsePeriodMonthToDate(query.periodMonth as string);
+    const nextPDate = new Date(
+      Date.UTC(pDate.getUTCFullYear(), pDate.getUTCMonth() + 1, 1),
+    );
+    filter.$or = [
+      { periodMonth: pDate },
+      { periodMonth: { $gte: pDate, $lt: nextPDate } },
+      { periodMonth: formatMonthPeriod(pDate) },
+    ];
     delete query.periodMonth;
   }
 
@@ -389,7 +528,8 @@ const createChargeIntoDB = async (
   authUser: JwtPayload,
   payload: ICreateChargePayload,
 ) => {
-  const landlordId = authUser.userId || authUser.id;
+  const currentUserId = authUser.userId || authUser.id;
+  const isLandlord = authUser.role === USER_ROLES.LANDLORD;
 
   if (!Types.ObjectId.isValid(payload.property)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid property ID");
@@ -398,27 +538,32 @@ const createChargeIntoDB = async (
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid flat/unit ID");
   }
 
-  // Verify property ownership
+  // Verify property
   const property = await Property.findById(payload.property);
-  if (!property || property.landlord?.toString() !== landlordId) {
+  if (!property) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Property not found");
+  }
+  if (isLandlord && property.landlord?.toString() !== currentUserId) {
     throw new ApiError(
       StatusCodes.FORBIDDEN,
-      "Property not found or does not belong to you",
+      "Property does not belong to you",
     );
   }
 
-  // Verify flat belongs to this property and landlord
+  // Verify flat belongs to this property
   const flat = await Flat.findById(payload.flat);
   if (
     !flat ||
     flat.property.toString() !== payload.property ||
-    flat.landlord?.toString() !== landlordId
+    (isLandlord && flat.landlord?.toString() !== currentUserId)
   ) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
       "Flat does not belong to the selected property",
     );
   }
+
+  const landlordId = property.landlord?.toString() || currentUserId;
 
   // Determine target tenant(s)
   let targetTenantIds: string[] = [];
@@ -468,7 +613,7 @@ const createChargeIntoDB = async (
   }
 
   const dueDate = new Date(payload.dueDate);
-  const periodMonth = formatMonthPeriod(dueDate);
+  const periodDate = parsePeriodMonthToDate(dueDate);
   const createdBills = [];
 
   for (const tenantId of targetTenantIds) {
@@ -483,7 +628,7 @@ const createChargeIntoDB = async (
       whoIsBilled: payload.whoIsBilled,
       amount: payload.amount,
       dueDate,
-      periodMonth,
+      periodMonth: periodDate,
       invoiceNumber,
       description: payload.description || "",
       status: dueDate < new Date() ? BILL_STATUS.OVERDUE : BILL_STATUS.PENDING,
@@ -512,19 +657,25 @@ const createChargeIntoDB = async (
 };
 
 // -------------------------------------------------------------
-// 5. RECORD MANUAL PAYMENT (Landlord) (Screenshot 3)
+// 5. RECORD MANUAL PAYMENT (Landlord / Admin) (Screenshot 3)
 // -------------------------------------------------------------
 const recordPaymentIntoDB = async (
   authUser: JwtPayload,
   payload: IRecordPaymentPayload,
 ) => {
-  const landlordId = authUser.userId || authUser.id;
+  const currentUserId = authUser.userId || authUser.id;
+  const isLandlord = authUser.role === USER_ROLES.LANDLORD;
 
-  const bills = await FinanceBill.find({
+  const filter: Record<string, any> = {
     _id: { $in: payload.billIds.map((id) => new Types.ObjectId(id)) },
-    landlord: new Types.ObjectId(landlordId),
     status: { $ne: BILL_STATUS.CANCELLED },
-  });
+  };
+
+  if (isLandlord) {
+    filter.landlord = new Types.ObjectId(currentUserId);
+  }
+
+  const bills = await FinanceBill.find(filter);
 
   if (!bills.length) {
     throw new ApiError(
@@ -535,25 +686,38 @@ const recordPaymentIntoDB = async (
 
   const paymentDate = new Date(payload.paymentDate);
   const updatedBills = [];
+  let remainingPayment =
+    payload.amountReceived !== undefined ? payload.amountReceived : Infinity;
 
   for (const bill of bills) {
-    bill.status = BILL_STATUS.PAID;
-    bill.paidAmount = bill.amount;
+    const currentPaid = bill.paidAmount || 0;
+    const needed = Math.max(0, bill.amount - currentPaid);
+    let paymentAllocated = needed;
+
+    if (remainingPayment !== Infinity) {
+      paymentAllocated = Math.min(needed, remainingPayment);
+      remainingPayment -= paymentAllocated;
+    }
+
+    const newPaidAmount = currentPaid + paymentAllocated;
+    bill.paidAmount = newPaidAmount;
     bill.paidAt = paymentDate;
     bill.paymentMethod = payload.paymentMethod;
     bill.referenceNumber = payload.referenceNumber || null;
     bill.paymentNotes = payload.notes || null;
     bill.receiptSent = !!payload.receiptSentToTenant;
-    bill.recordedBy = new Types.ObjectId(landlordId);
+    bill.recordedBy = new Types.ObjectId(currentUserId);
+    bill.status =
+      newPaidAmount >= bill.amount ? BILL_STATUS.PAID : BILL_STATUS.PARTIAL;
 
     await bill.save();
     updatedBills.push(bill);
 
     // Send receipt notification if requested
-    if (payload.receiptSentToTenant) {
+    if (payload.receiptSentToTenant && paymentAllocated > 0) {
       notificationHelper.sendToUser(bill.tenant, {
         title: "Rent / Charge Payment Recorded",
-        body: `Payment of ${getCurrencySymbol()}${bill.amount} for invoice ${bill.invoiceNumber} (${bill.periodMonth}) has been recorded by your landlord.`,
+        body: `Payment of ${getCurrencySymbol()}${paymentAllocated} for invoice ${bill.invoiceNumber} (${bill.periodMonth}) has been recorded by your landlord.`,
         type: NOTIFICATION_TYPE.RENT_REMINDER,
         data: {
           preferenceCategory: "rentReminders",
@@ -561,7 +725,7 @@ const recordPaymentIntoDB = async (
           referenceModel: "Bill",
           billId: bill._id.toString(),
           invoiceNumber: bill.invoiceNumber,
-          paidAmount: bill.amount.toString(),
+          paidAmount: paymentAllocated.toString(),
         },
       });
     }
@@ -580,33 +744,74 @@ const recordRentReceivedIntoDB = async (
   authUser: JwtPayload,
   payload: IRecordRentReceivedPayload,
 ) => {
-  const landlordId = authUser.userId || authUser.id;
+  const currentUserId = authUser.userId || authUser.id;
+  const isLandlord = authUser.role === USER_ROLES.LANDLORD;
   const paymentDate = new Date(payload.paymentDate);
-  const periodMonth = payload.periodMonth || formatMonthPeriod(paymentDate);
 
-  // Check if an existing unpaid rent bill exists for this tenant & flat & period
-  let bill = await FinanceBill.findOne({
-    landlord: new Types.ObjectId(landlordId),
+  // Normalize periodMonth to 1st of month Date in UTC
+  const periodDate = parsePeriodMonthToDate(payload.periodMonth || paymentDate);
+  const nextPeriodDate = new Date(
+    Date.UTC(periodDate.getUTCFullYear(), periodDate.getUTCMonth() + 1, 1),
+  );
+  const periodMonthString = formatMonthPeriod(periodDate);
+
+  // Fetch tenancy to know the actual agreed monthly rent
+  const tenancyFilter: Record<string, any> = {
     property: new Types.ObjectId(payload.property),
     flat: new Types.ObjectId(payload.flat),
     tenant: new Types.ObjectId(payload.tenant),
-    periodMonth,
+    status: { $ne: "terminated" },
+  };
+  if (isLandlord) {
+    tenancyFilter.landlord = new Types.ObjectId(currentUserId);
+  }
+
+  const tenancy = await Tenancy.findOne(tenancyFilter).lean();
+  const landlordId = tenancy?.landlord?.toString() || currentUserId;
+  const fullRentAmount = tenancy?.rentAmount || payload.amount;
+
+  // Check if an existing rent bill exists for this tenant & flat & period
+  let bill = await FinanceBill.findOne({
+    property: new Types.ObjectId(payload.property),
+    flat: new Types.ObjectId(payload.flat),
+    tenant: new Types.ObjectId(payload.tenant),
     billType: CHARGE_TYPE.RENT,
     status: { $ne: BILL_STATUS.CANCELLED },
+    $or: [
+      { periodMonth: periodDate },
+      {
+        periodMonth: {
+          $gte: periodDate,
+          $lt: nextPeriodDate,
+        },
+      },
+      { periodMonth: periodMonthString as any },
+    ],
   });
 
   if (bill) {
-    bill.status = BILL_STATUS.PAID;
-    bill.paidAmount = payload.amount;
+    if (bill.amount < fullRentAmount) {
+      bill.amount = fullRentAmount;
+    }
+    let newPaidAmount = payload.amount;
+    if (bill.paidAmount && bill.paidAmount > 0 && payload.amount < bill.amount) {
+      newPaidAmount = Math.min(bill.amount, bill.paidAmount + payload.amount);
+    }
+    bill.paidAmount = newPaidAmount;
     bill.paidAt = paymentDate;
     bill.paymentMethod = payload.paymentMethod;
     bill.referenceNumber = payload.referenceNumber || null;
     bill.paymentNotes = payload.notes || null;
     bill.receiptSent = !!payload.receiptSentToTenant;
-    bill.recordedBy = new Types.ObjectId(landlordId);
+    bill.recordedBy = new Types.ObjectId(currentUserId);
+    bill.periodMonth = periodDate;
+    bill.status =
+      newPaidAmount >= bill.amount ? BILL_STATUS.PAID : BILL_STATUS.PARTIAL;
     await bill.save();
   } else {
     const invoiceNumber = await generateInvoiceNumber();
+    const isFullPayment = payload.amount >= fullRentAmount;
+
     bill = await FinanceBill.create({
       landlord: new Types.ObjectId(landlordId),
       property: new Types.ObjectId(payload.property),
@@ -615,26 +820,26 @@ const recordRentReceivedIntoDB = async (
       billType: CHARGE_TYPE.RENT,
       billCategory: BILL_CATEGORY.RENT,
       whoIsBilled: WHO_IS_BILLED.LEAD_TENANT,
-      amount: payload.amount,
+      amount: fullRentAmount,
       dueDate: paymentDate,
-      periodMonth,
+      periodMonth: periodDate,
       invoiceNumber,
-      description: `${periodMonth} rent`,
-      status: BILL_STATUS.PAID,
+      description: `${periodMonthString} rent`,
+      status: isFullPayment ? BILL_STATUS.PAID : BILL_STATUS.PARTIAL,
       paidAmount: payload.amount,
       paidAt: paymentDate,
       paymentMethod: payload.paymentMethod,
       referenceNumber: payload.referenceNumber || null,
       paymentNotes: payload.notes || null,
       receiptSent: !!payload.receiptSentToTenant,
-      recordedBy: new Types.ObjectId(landlordId),
+      recordedBy: new Types.ObjectId(currentUserId),
     });
   }
 
   if (payload.receiptSentToTenant) {
     notificationHelper.sendToUser(payload.tenant, {
       title: "Rent Receipt Received",
-      body: `Your rent payment of ${getCurrencySymbol()}${payload.amount} for ${periodMonth} has been confirmed. Invoice #${bill.invoiceNumber}.`,
+      body: `Your rent payment of ${getCurrencySymbol()}${payload.amount} for ${periodMonthString} has been confirmed. Invoice #${bill.invoiceNumber}.`,
       type: NOTIFICATION_TYPE.TENANT,
       data: {
         billId: bill._id.toString(),
@@ -651,28 +856,32 @@ const recordRentReceivedIntoDB = async (
 };
 
 // -------------------------------------------------------------
-// 7. UNDO PAYMENT (Landlord) (Screenshot 2)
+// 7. UNDO PAYMENT (Landlord / Admin) (Screenshot 2)
 // -------------------------------------------------------------
 const undoPaymentIntoDB = async (authUser: JwtPayload, id: string) => {
-  const landlordId = authUser.userId || authUser.id;
+  const currentUserId = authUser.userId || authUser.id;
 
   if (!Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid bill ID");
   }
 
-  const bill = await FinanceBill.findOne({
+  const filter: Record<string, any> = {
     _id: new Types.ObjectId(id),
-    landlord: new Types.ObjectId(landlordId),
-  });
+  };
+  if (authUser.role === USER_ROLES.LANDLORD) {
+    filter.landlord = new Types.ObjectId(currentUserId);
+  }
+
+  const bill = await FinanceBill.findOne(filter);
 
   if (!bill) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Bill not found");
   }
 
-  if (bill.status !== BILL_STATUS.PAID) {
+  if (bill.status !== BILL_STATUS.PAID && bill.status !== BILL_STATUS.PARTIAL) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
-      "Only paid bills can have payment undone",
+      "Only paid or partially paid bills can have payment undone",
     );
   }
 
@@ -692,19 +901,23 @@ const undoPaymentIntoDB = async (authUser: JwtPayload, id: string) => {
 };
 
 // -------------------------------------------------------------
-// 8. CANCEL BILL (Landlord) (Screenshot 2)
+// 8. CANCEL BILL (Landlord / Admin) (Screenshot 2)
 // -------------------------------------------------------------
 const cancelBillIntoDB = async (authUser: JwtPayload, id: string) => {
-  const landlordId = authUser.userId || authUser.id;
+  const currentUserId = authUser.userId || authUser.id;
 
   if (!Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid bill ID");
   }
 
-  const bill = await FinanceBill.findOne({
+  const filter: Record<string, any> = {
     _id: new Types.ObjectId(id),
-    landlord: new Types.ObjectId(landlordId),
-  });
+  };
+  if (authUser.role === USER_ROLES.LANDLORD) {
+    filter.landlord = new Types.ObjectId(currentUserId);
+  }
+
+  const bill = await FinanceBill.findOne(filter);
 
   if (!bill) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Bill not found");
@@ -728,15 +941,24 @@ const cancelBillIntoDB = async (authUser: JwtPayload, id: string) => {
 // 9. PAYMENT REMINDER CANDIDATES & SEND (Landlord) (Screenshot 3)
 // -------------------------------------------------------------
 const getReminderCandidatesFromDB = async (authUser: JwtPayload) => {
-  const landlordId = authUser.userId || authUser.id;
+  const currentUserId = authUser.userId || authUser.id;
   const now = new Date();
 
-  const unpaidBills = await FinanceBill.find({
-    landlord: new Types.ObjectId(landlordId),
+  const filter: Record<string, any> = {
     status: {
-      $in: [BILL_STATUS.PENDING, BILL_STATUS.DUE, BILL_STATUS.OVERDUE],
+      $in: [
+        BILL_STATUS.PENDING,
+        BILL_STATUS.DUE,
+        BILL_STATUS.OVERDUE,
+        BILL_STATUS.PARTIAL,
+      ],
     },
-  })
+  };
+  if (authUser.role === USER_ROLES.LANDLORD) {
+    filter.landlord = new Types.ObjectId(currentUserId);
+  }
+
+  const unpaidBills = await FinanceBill.find(filter)
     .populate(billPopulateOptions)
     .lean();
 
@@ -744,7 +966,10 @@ const getReminderCandidatesFromDB = async (authUser: JwtPayload) => {
   const candidateMap = new Map<string, any>();
 
   unpaidBills.forEach((bill: any) => {
-    totalOutstanding += bill.amount;
+    const remainingDue = Math.max(0, bill.amount - (bill.paidAmount || 0));
+    if (remainingDue <= 0) return;
+
+    totalOutstanding += remainingDue;
     const tenantId = bill.tenant?._id?.toString() || bill.tenant?.toString();
     const dueDate = new Date(bill.dueDate);
     const diffTime = now.getTime() - dueDate.getTime();
@@ -764,8 +989,11 @@ const getReminderCandidatesFromDB = async (authUser: JwtPayload) => {
     }
 
     const candidate = candidateMap.get(tenantId);
-    candidate.bills.push(bill);
-    candidate.totalAmountDue += bill.amount;
+    candidate.bills.push({
+      ...bill,
+      dueAmount: remainingDue,
+    });
+    candidate.totalAmountDue += remainingDue;
     if (isOverdue) {
       candidate.isOverdue = true;
       candidate.statusText = `${diffDays} days overdue`;
@@ -831,6 +1059,7 @@ const sendPaymentReminderIntoDB = async (
 // -------------------------------------------------------------
 const getTenantOverviewFromDB = async (authUser: JwtPayload) => {
   const tenantId = authUser.userId || authUser.id;
+  await syncMonthlyRentBillsForTenant(tenantId);
   const now = new Date();
 
   // Active Tenancy details
@@ -848,22 +1077,32 @@ const getTenantOverviewFromDB = async (authUser: JwtPayload) => {
     ])
     .lean();
 
-  // Next Rent Due
-  const nextRentDue = await FinanceBill.findOne({
+  // Next Rent Due: Earliest unpaid or partially paid rent bill
+  const pendingRentBills = await FinanceBill.find({
     tenant: new Types.ObjectId(tenantId),
     billType: CHARGE_TYPE.RENT,
     status: {
-      $in: [BILL_STATUS.PENDING, BILL_STATUS.DUE, BILL_STATUS.OVERDUE],
+      $in: [
+        BILL_STATUS.PENDING,
+        BILL_STATUS.DUE,
+        BILL_STATUS.OVERDUE,
+        BILL_STATUS.PARTIAL,
+      ],
     },
   })
     .sort({ dueDate: 1 })
     .lean();
 
-  // Last Paid Rent
+  const nextRentDue = pendingRentBills.find(
+    (b) => b.amount - (b.paidAmount || 0) > 0,
+  );
+
+  // Last Paid Rent: Most recent payment towards rent
   const lastPaidRent = await FinanceBill.findOne({
     tenant: new Types.ObjectId(tenantId),
     billType: CHARGE_TYPE.RENT,
-    status: BILL_STATUS.PAID,
+    paidAt: { $ne: null },
+    paidAmount: { $gt: 0 },
   })
     .sort({ paidAt: -1 })
     .lean();
@@ -873,13 +1112,49 @@ const getTenantOverviewFromDB = async (authUser: JwtPayload) => {
     tenant: new Types.ObjectId(tenantId),
     billCategory: BILL_CATEGORY.CHARGES,
     status: {
-      $in: [BILL_STATUS.PENDING, BILL_STATUS.DUE, BILL_STATUS.OVERDUE],
+      $in: [
+        BILL_STATUS.PENDING,
+        BILL_STATUS.DUE,
+        BILL_STATUS.OVERDUE,
+        BILL_STATUS.PARTIAL,
+      ],
     },
   })
     .sort({ dueDate: 1 })
     .lean();
 
+  // Calculate balances
+  const rentBalance = pendingRentBills.reduce(
+    (acc, curr) => acc + Math.max(0, curr.amount - (curr.paidAmount || 0)),
+    0,
+  );
+  const outstandingRentCount = pendingRentBills.filter(
+    (b) => b.amount - (b.paidAmount || 0) > 0,
+  ).length;
+
+  const chargesBalance = pendingCharges.reduce(
+    (acc, curr) => acc + Math.max(0, curr.amount - (curr.paidAmount || 0)),
+    0,
+  );
+  const outstandingChargesCount = pendingCharges.filter(
+    (b) => b.amount - (b.paidAmount || 0) > 0,
+  ).length;
+
   return {
+    summary: {
+      rentBalance,
+      chargesBalance,
+      totalDue: rentBalance + chargesBalance,
+      outstandingRentCount,
+      outstandingChargesCount,
+      currency: getCurrencyCode(),
+      currencySymbol: getCurrencySymbol(),
+    },
+    rentBalance,
+    chargesBalance,
+    totalOutstandingBalance: rentBalance + chargesBalance,
+    outstandingRentCount,
+    outstandingChargesCount,
     activeTenancy: tenancy
       ? {
           tenancyId: tenancy._id,
@@ -895,30 +1170,78 @@ const getTenantOverviewFromDB = async (authUser: JwtPayload) => {
     nextRentDue: nextRentDue
       ? {
           billId: nextRentDue._id,
-          amount: nextRentDue.amount,
+          amount: Math.max(
+            0,
+            nextRentDue.amount - (nextRentDue.paidAmount || 0),
+          ),
+          totalAmount: nextRentDue.amount,
+          paidAmount: nextRentDue.paidAmount || 0,
+          dueAmount: Math.max(
+            0,
+            nextRentDue.amount - (nextRentDue.paidAmount || 0),
+          ),
           dueDate: nextRentDue.dueDate,
           periodMonth: nextRentDue.periodMonth,
+          formattedPeriodMonth:
+            nextRentDue.periodMonth instanceof Date
+              ? formatMonthPeriod(nextRentDue.periodMonth)
+              : nextRentDue.periodMonth,
           status:
-            new Date(nextRentDue.dueDate) < now ? "Overdue" : "Payment due",
+            new Date(nextRentDue.dueDate) < now
+              ? (nextRentDue.paidAmount || 0) > 0
+                ? "Partially paid (Overdue)"
+                : "Overdue"
+              : (nextRentDue.paidAmount || 0) > 0
+                ? "Partially paid"
+                : "Payment due",
+          rawStatus: syncBillStatus(nextRentDue),
           invoiceNumber: nextRentDue.invoiceNumber,
         }
       : null,
     lastPaid: lastPaidRent
       ? {
+          billId: lastPaidRent._id,
           amount: lastPaidRent.paidAmount || lastPaidRent.amount,
+          totalBillAmount: lastPaidRent.amount,
           paidAt: lastPaidRent.paidAt,
           periodMonth: lastPaidRent.periodMonth,
+          formattedPeriodMonth:
+            lastPaidRent.periodMonth instanceof Date
+              ? formatMonthPeriod(lastPaidRent.periodMonth)
+              : lastPaidRent.periodMonth,
+          invoiceNumber: lastPaidRent.invoiceNumber,
         }
       : null,
-    pendingCharges: pendingCharges.map((c) => ({
-      billId: c._id,
-      title: c.description || c.billType.replace("_", " "),
-      chargeType: c.billType,
-      amount: c.amount,
-      dueDate: c.dueDate,
-      periodMonth: c.periodMonth,
-      invoiceNumber: c.invoiceNumber,
-    })),
+    pendingCharges: pendingCharges
+      .filter((c) => c.amount - (c.paidAmount || 0) > 0)
+      .map((c) => {
+        const remaining = Math.max(0, c.amount - (c.paidAmount || 0));
+        return {
+          billId: c._id,
+          title: c.description || c.billType.replace("_", " "),
+          chargeType: c.billType,
+          amount: remaining,
+          totalAmount: c.amount,
+          paidAmount: c.paidAmount || 0,
+          dueAmount: remaining,
+          dueDate: c.dueDate,
+          periodMonth: c.periodMonth,
+          formattedPeriodMonth:
+            c.periodMonth instanceof Date
+              ? formatMonthPeriod(c.periodMonth)
+              : c.periodMonth,
+          invoiceNumber: c.invoiceNumber,
+          status:
+            new Date(c.dueDate) < now
+              ? (c.paidAmount || 0) > 0
+                ? "Partially paid (Overdue)"
+                : "Overdue"
+              : (c.paidAmount || 0) > 0
+                ? "Partially paid"
+                : "Payment due",
+          rawStatus: syncBillStatus(c),
+        };
+      }),
   };
 };
 
@@ -930,22 +1253,53 @@ const getTenantTransactionsFromDB = async (
   query: Record<string, unknown>,
 ) => {
   const tenantId = authUser.userId || authUser.id;
+  await syncMonthlyRentBillsForTenant(tenantId);
   const tab = (query.tab as string) || "rent"; // rent | extra_charges | maintenance
+  const now = new Date();
 
   // Outstanding Rent balance
   const unpaidRentBills = await FinanceBill.find({
     tenant: new Types.ObjectId(tenantId),
     billCategory: BILL_CATEGORY.RENT,
     status: {
-      $in: [BILL_STATUS.PENDING, BILL_STATUS.DUE, BILL_STATUS.OVERDUE],
+      $in: [
+        BILL_STATUS.PENDING,
+        BILL_STATUS.DUE,
+        BILL_STATUS.OVERDUE,
+        BILL_STATUS.PARTIAL,
+      ],
     },
   }).lean();
 
   const rentBalance = unpaidRentBills.reduce(
-    (acc, curr) => acc + curr.amount,
+    (acc, curr) => acc + Math.max(0, curr.amount - (curr.paidAmount || 0)),
     0,
   );
-  const outstandingRentCount = unpaidRentBills.length;
+  const outstandingRentCount = unpaidRentBills.filter(
+    (b) => b.amount - (b.paidAmount || 0) > 0,
+  ).length;
+
+  // Outstanding Extra Charges balance
+  const unpaidChargeBills = await FinanceBill.find({
+    tenant: new Types.ObjectId(tenantId),
+    billCategory: BILL_CATEGORY.CHARGES,
+    status: {
+      $in: [
+        BILL_STATUS.PENDING,
+        BILL_STATUS.DUE,
+        BILL_STATUS.OVERDUE,
+        BILL_STATUS.PARTIAL,
+      ],
+    },
+  }).lean();
+
+  const chargesBalance = unpaidChargeBills.reduce(
+    (acc, curr) => acc + Math.max(0, curr.amount - (curr.paidAmount || 0)),
+    0,
+  );
+  const outstandingChargesCount = unpaidChargeBills.filter(
+    (b) => b.amount - (b.paidAmount || 0) > 0,
+  ).length;
 
   if (tab === "maintenance") {
     // Cross-query Maintenance module for maintenance payment transactions
@@ -970,7 +1324,10 @@ const getTenantTransactionsFromDB = async (
 
     return {
       rentBalance,
+      chargesBalance,
+      totalOutstandingBalance: rentBalance + chargesBalance,
       outstandingRentCount,
+      outstandingChargesCount,
       tab,
       meta,
       data: issues.map((iss: any) => ({
@@ -1015,21 +1372,38 @@ const getTenantTransactionsFromDB = async (
 
   const enhanced = bills.map((b: any) => {
     const computed = syncBillStatus(b);
+    const isOverdue =
+      new Date(b.dueDate) < now && computed !== BILL_STATUS.PAID;
+    const dueAmount = Math.max(0, (b.amount || 0) - (b.paidAmount || 0));
+    const formattedPeriodMonth =
+      b.periodMonth instanceof Date
+        ? formatMonthPeriod(b.periodMonth)
+        : b.periodMonth;
+
     return {
       ...b,
+      dueAmount,
+      formattedPeriodMonth,
       status: computed,
       statusLabel:
         computed === BILL_STATUS.PAID
           ? "Paid"
-          : computed === BILL_STATUS.OVERDUE
-            ? "Overdue"
-            : "Due",
+          : computed === BILL_STATUS.PARTIAL
+            ? isOverdue
+              ? "Partially paid (Overdue)"
+              : "Partially paid"
+            : computed === BILL_STATUS.OVERDUE
+              ? "Overdue"
+              : "Due",
     };
   });
 
   return {
     rentBalance,
+    chargesBalance,
+    totalOutstandingBalance: rentBalance + chargesBalance,
     outstandingRentCount,
+    outstandingChargesCount,
     tab,
     meta,
     data: enhanced,
@@ -1275,6 +1649,340 @@ const getLandlordFormOptionsFromDB = async (authUser: JwtPayload) => {
   };
 };
 
+// -------------------------------------------------------------
+// 15. GET TENANT PAYMENTS & HISTORY (Landlord CTA)
+// -------------------------------------------------------------
+const getLandlordTenantPaymentsFromDB = async (
+  authUser: JwtPayload,
+  tenantId: string,
+) => {
+  const landlordId = authUser.userId || authUser.id;
+
+  if (!Types.ObjectId.isValid(tenantId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid tenant ID");
+  }
+
+  // 1. Strict tenancy verification:
+  // Must verify that this tenant belongs to the logged-in landlord (unless admin/super_admin)
+  const tenancyFilter: Record<string, any> = {
+    tenant: new Types.ObjectId(tenantId),
+  };
+
+  if (
+    authUser.role !== USER_ROLES.ADMIN &&
+    authUser.role !== USER_ROLES.SUPER_ADMIN
+  ) {
+    tenancyFilter.landlord = new Types.ObjectId(landlordId);
+  }
+
+  // Prefer active tenancy, fallback to latest tenancy
+  let tenancy = await Tenancy.findOne({
+    ...tenancyFilter,
+    status: TENANCY_STATUS.ACTIVE,
+  })
+    .populate([
+      {
+        path: "property",
+        select: "propertyName streetAddress postCode propertyPhotos",
+      },
+      { path: "flat", select: "unitName floor rentPerMonth flatNumber" },
+      {
+        path: "tenant",
+        select: "name firstName lastName email phone profileImage",
+      },
+      { path: "landlord", select: "name firstName lastName email phone" },
+    ])
+    .lean();
+
+  if (!tenancy) {
+    tenancy = await Tenancy.findOne(tenancyFilter)
+      .populate([
+        {
+          path: "property",
+          select: "propertyName streetAddress postCode propertyPhotos",
+        },
+        { path: "flat", select: "unitName floor rentPerMonth flatNumber" },
+        {
+          path: "tenant",
+          select: "name firstName lastName email phone profileImage",
+        },
+        { path: "landlord", select: "name firstName lastName email phone" },
+      ])
+      .sort({ createdAt: -1 })
+      .lean();
+  }
+
+  if (!tenancy) {
+    throw new ApiError(
+      StatusCodes.NOT_FOUND,
+      "No tenancy record found for this tenant under your management",
+    );
+  }
+
+  const effectiveLandlordId =
+    (tenancy.landlord as any)?._id || tenancy.landlord;
+
+  // Auto-sync monthly rent bills for this landlord if not generated yet
+  await syncMonthlyRentBillsForLandlord(effectiveLandlordId.toString());
+
+  // 2. Fetch all bills for this tenant under this landlord
+  const bills = await FinanceBill.find({
+    tenant: new Types.ObjectId(tenantId),
+    landlord: new Types.ObjectId(effectiveLandlordId),
+    status: { $ne: BILL_STATUS.CANCELLED },
+  })
+    .sort({ dueDate: -1, createdAt: -1 })
+    .lean();
+
+  // Helper date formatter: "Sep 2, 2026"
+  const formatDateDisplay = (d?: Date | string | null): string => {
+    if (!d) return "";
+    const dateObj = new Date(d);
+    if (isNaN(dateObj.getTime())) return "";
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    return `${months[dateObj.getMonth()]} ${dateObj.getDate()}, ${dateObj.getFullYear()}`;
+  };
+
+  const enhancedBills = bills.map((bill: any) => {
+    let totalAmount = Number(bill.amount) || 0;
+    if (
+      bill.billType === CHARGE_TYPE.RENT &&
+      tenancy.rentAmount &&
+      totalAmount < tenancy.rentAmount
+    ) {
+      totalAmount = tenancy.rentAmount;
+    }
+
+    const paidAmount = Number(bill.paidAmount) || 0;
+    const dueAmount = Math.max(0, totalAmount - paidAmount);
+    const computedStatus = syncBillStatus({
+      ...bill,
+      amount: totalAmount,
+      paidAmount,
+    });
+    const isPaid = computedStatus === BILL_STATUS.PAID;
+    const isPartiallyPaid = computedStatus === BILL_STATUS.PARTIAL;
+    const isOverdue =
+      computedStatus === BILL_STATUS.OVERDUE ||
+      (isPartiallyPaid && new Date(bill.dueDate) < new Date());
+
+    const displayType =
+      bill.billType === CHARGE_TYPE.RENT
+        ? "Rent"
+        : bill.billType
+            .split("_")
+            .map(
+              (w: string) =>
+                w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(),
+            )
+            .join(" ");
+
+    const formattedDate = isPaid
+      ? `${formatDateDisplay(bill.paidAt || bill.updatedAt)} · ${displayType}`
+      : isPartiallyPaid
+        ? `${formatDateDisplay(bill.paidAt || bill.dueDate)} · ${displayType} (Partial: Paid ${getCurrencySymbol()}${paidAmount}, Due ${getCurrencySymbol()}${dueAmount})`
+        : `Due ${formatDateDisplay(bill.dueDate)} · ${displayType}`;
+
+    const statusLabel = isPaid
+      ? "Paid"
+      : isPartiallyPaid
+        ? "Partially Paid"
+        : isOverdue
+          ? "Overdue"
+          : "Due";
+
+    return {
+      _id: bill._id,
+      invoiceNumber: bill.invoiceNumber,
+      periodMonth: bill.periodMonth,
+      formattedPeriodMonth:
+        bill.periodMonth instanceof Date
+          ? formatMonthPeriod(bill.periodMonth)
+          : bill.periodMonth,
+      description:
+        bill.description ||
+        `${bill.periodMonth instanceof Date ? formatMonthPeriod(bill.periodMonth) : bill.periodMonth} ${displayType}`,
+      billType: bill.billType,
+      billCategory: bill.billCategory,
+      displayType,
+      amount: totalAmount,
+      paidAmount,
+      dueAmount,
+      dueDate: bill.dueDate,
+      paidAt: bill.paidAt,
+      formattedDate,
+      status: computedStatus,
+      statusLabel,
+      isPaid,
+      isPartiallyPaid,
+      canDownloadReceipt: paidAmount > 0,
+      paymentMethod: bill.paymentMethod || null,
+      referenceNumber: bill.referenceNumber || null,
+      paymentNotes: bill.paymentNotes || null,
+      receiptSent: bill.receiptSent || false,
+    };
+  });
+
+  // 3. Compute Top 4 Summary Cards
+  // (a) Last payment: Most recent bill with paidAmount > 0
+  const paidBills = enhancedBills
+    .filter((b) => b.paidAmount > 0 && b.paidAt)
+    .sort(
+      (a, b) =>
+        new Date(b.paidAt!).getTime() - new Date(a.paidAt!).getTime(),
+    );
+
+  const lastPaymentBill = paidBills[0] || null;
+  const lastPayment = lastPaymentBill
+    ? {
+        amount: lastPaymentBill.paidAmount,
+        date: formatDateDisplay(lastPaymentBill.paidAt),
+        rawDate: lastPaymentBill.paidAt,
+        invoiceNumber: lastPaymentBill.invoiceNumber,
+      }
+    : {
+        amount: 0,
+        date: null,
+        rawDate: null,
+        invoiceNumber: null,
+      };
+
+  // (b) Next due: Earliest bill with dueAmount > 0
+  const pendingDueBills = enhancedBills
+    .filter((b) => b.dueAmount > 0)
+    .sort(
+      (a, b) =>
+        new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
+    );
+
+  const nextDueBill = pendingDueBills[0] || null;
+  const nextDue = nextDueBill
+    ? {
+        amount: nextDueBill.dueAmount,
+        totalBillAmount: nextDueBill.amount,
+        paidAmount: nextDueBill.paidAmount,
+        date: formatDateDisplay(nextDueBill.dueDate),
+        rawDate: nextDueBill.dueDate,
+        billId: nextDueBill._id,
+        invoiceNumber: nextDueBill.invoiceNumber,
+        periodMonth: nextDueBill.periodMonth,
+      }
+    : {
+        amount: 0,
+        totalBillAmount: 0,
+        paidAmount: 0,
+        date: null,
+        rawDate: null,
+        billId: null,
+        invoiceNumber: null,
+        periodMonth: null,
+      };
+
+  // (c) Deposit held
+  const depositHeld = tenancy.securityDeposit || 0;
+
+  // (d) Advance paid
+  const advancePaid = tenancy.advanceRent || 0;
+
+  // 4. Compute STILL DUE (All pending due amounts)
+  const unpaidRentBills = pendingDueBills.filter(
+    (b) => b.billCategory === BILL_CATEGORY.RENT,
+  );
+  const unpaidExtraChargeBills = pendingDueBills.filter(
+    (b) => b.billCategory === BILL_CATEGORY.CHARGES,
+  );
+
+  const stillDueRent = unpaidRentBills.reduce((acc, b) => acc + b.dueAmount, 0);
+  const stillDueExtraCharges = unpaidExtraChargeBills.reduce(
+    (acc, b) => acc + b.dueAmount,
+    0,
+  );
+  const totalStillDue = stillDueRent + stillDueExtraCharges;
+
+  const stillDueBreakdown = pendingDueBills.map((b) => {
+    const bPeriodStr =
+      b.periodMonth instanceof Date
+        ? formatMonthPeriod(b.periodMonth)
+        : b.periodMonth;
+
+    return {
+      billId: b._id,
+      title: b.isPartiallyPaid
+        ? `${bPeriodStr} rent (Remaining)`
+        : b.description || bPeriodStr,
+    category: b.billCategory === BILL_CATEGORY.RENT ? "Rent" : "Extra charges",
+    billType: b.billType,
+    displayType: b.displayType,
+    totalAmount: b.amount,
+    paidAmount: b.paidAmount,
+    amount: b.dueAmount,
+    dueDate: b.dueDate,
+    formattedDueDate: formatDateDisplay(b.dueDate),
+    status: b.status,
+    isPartiallyPaid: b.isPartiallyPaid,
+    };
+  });
+
+  // Flat & Tenant info
+  const flatData = tenancy.flat as any;
+  const unitName = flatData?.unitName || flatData?.flatNumber || "N/A";
+
+  const tenantUser = tenancy.tenant as any;
+  const tenantName =
+    tenantUser?.name ||
+    `${tenantUser?.firstName || ""} ${tenantUser?.lastName || ""}`.trim() ||
+    "Tenant";
+
+  return {
+    summary: {
+      lastPayment,
+      nextDue,
+      depositHeld,
+      advancePaid,
+      currency: getCurrencyCode(),
+      currencySymbol: getCurrencySymbol(),
+    },
+    tenancyDetails: {
+      tenancyId: tenancy._id,
+      tenantId: tenantUser?._id || tenancy.tenant,
+      tenantName,
+      tenantEmail: tenantUser?.email || tenancy.email,
+      tenantPhone: tenantUser?.phone || null,
+      tenantAvatar: tenantUser?.profileImage || null,
+      propertyId: (tenancy.property as any)?._id || tenancy.property,
+      propertyName: (tenancy.property as any)?.propertyName || "",
+      propertyAddress:
+        `${(tenancy.property as any)?.streetAddress || ""} ${(tenancy.property as any)?.postCode || ""}`.trim(),
+      flatId: flatData?._id || tenancy.flat,
+      unitName,
+      rentAmount: tenancy.rentAmount || 0,
+      leaseStartDate: tenancy.leaseStartDate,
+      leaseEndDate: tenancy.leaseEndDate,
+      status: tenancy.status,
+    },
+    stillDue: {
+      total: totalStillDue,
+      rent: stillDueRent,
+      extraCharges: stillDueExtraCharges,
+      breakdown: stillDueBreakdown,
+    },
+    monthlyHistory: enhancedBills,
+  };
+};
+
 export const FinanceService = {
   getLandlordOverviewFromDB,
   getBillsFromDB,
@@ -1291,4 +1999,5 @@ export const FinanceService = {
   createStripeCheckoutSessionIntoDB,
   handleStripePaymentSuccess,
   getLandlordFormOptionsFromDB,
+  getLandlordTenantPaymentsFromDB,
 };

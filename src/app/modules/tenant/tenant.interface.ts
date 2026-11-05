@@ -164,9 +164,4 @@ export interface ITenantHomeDashboardData {
   activeTenancy: IActiveTenancyCard | null;
   nextRentDue: INextRentDueCard | null;
   pendingCharges: IPendingChargesSection;
-  quickActions: ITenantQuickAction[];
-  latestAnnouncement: IBuildingAnnouncementBanner | null;
-  meta: {
-    serverTime: string;
-  };
 }

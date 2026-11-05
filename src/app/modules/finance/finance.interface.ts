@@ -19,7 +19,7 @@ export type IFinanceBill = {
   whoIsBilled: WHO_IS_BILLED;
   amount: number;
   dueDate: Date;
-  periodMonth: string; // e.g., "Jul 2026", "Sept 2026"
+  periodMonth: Date; // 1st of month in UTC, e.g., 2026-11-01T00:00:00.000Z
   invoiceNumber: string; // e.g., "INV-2026-1045"
   description?: string;
   status: BILL_STATUS;
@@ -65,7 +65,7 @@ export type IRecordRentReceivedPayload = {
   flat: string;
   tenant: string;
   amount: number;
-  periodMonth?: string;
+  periodMonth?: string | Date;
   paymentDate: string | Date;
   paymentMethod: PAYMENT_METHOD;
   referenceNumber?: string;

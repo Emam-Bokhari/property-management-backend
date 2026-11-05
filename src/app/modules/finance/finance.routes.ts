@@ -49,6 +49,13 @@ router.post(
   FinanceController.recordRentReceived,
 );
 
+// 5.1. Tenant Payment History for Landlord (Screenshot view)
+router.get(
+  "/tenant-payments/:tenantId",
+  auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  FinanceController.getTenantPayments,
+);
+
 // 6. Payment Reminder Candidates (Overdue & Due soon list with checkboxes)
 router.get(
   "/reminders/candidates",

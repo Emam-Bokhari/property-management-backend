@@ -261,6 +261,25 @@ const getLandlordFormOptions = catchAsync(
   },
 );
 
+// 15. Get Single Tenant Payments & History (Landlord CTA)
+const getTenantPayments = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await FinanceService.getLandlordTenantPaymentsFromDB(
+    req.user,
+    req.params.tenantId,
+  );
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Tenant payment history retrieved successfully",
+    data: result,
+  });
+});
+
 export const FinanceController = {
   getLandlordOverview,
   getBills,
@@ -276,4 +295,5 @@ export const FinanceController = {
   getTenantTransactions,
   createStripeCheckoutSession,
   getLandlordFormOptions,
+  getTenantPayments,
 };

@@ -66,7 +66,7 @@ const recordRentReceivedZodSchema = z.object({
     amount: z.coerce
       .number({ required_error: "Amount is required" })
       .positive("Amount must be greater than zero"),
-    periodMonth: z.string().optional(),
+    periodMonth: z.union([z.string(), z.date()]).optional(),
     paymentDate: z.string({ required_error: "Payment date is required" }),
     paymentMethod: z.enum(
       [

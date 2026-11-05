@@ -264,11 +264,40 @@ const getAllAnnouncementsFromDB = async (
   return { data, meta };
 };
 
-// 3. Get Announcements for Tenant (Recipients)
+// 3. Get Announcements for Tenant (Recipients) / Current User
 const getMyAnnouncementsForTenantFromDB = async (
   user: JwtPayload,
   query: Record<string, unknown>,
 ) => {
+  if (user.role === USER_ROLES.LANDLORD) {
+    const baseQuery = Announcement.find({
+      landlord: new Types.ObjectId(user.id),
+      isDeleted: false,
+    }).populate([
+      {
+        path: "property",
+        select: "propertyName streetAddress postCode propertyPhotos landlord",
+      },
+      { path: "flats", select: "unitName floor rentPerMonth" },
+      {
+        path: "landlord",
+        select: "name email role profileImage phone companyName",
+      },
+      { path: "recipients", select: "name email role profileImage" },
+    ]);
+
+    const queryBuilder = new QueryBuilder(baseQuery, query)
+      .search(announcementSearchableFields)
+      .filter()
+      .sort()
+      .paginate();
+
+    const data = await queryBuilder.modelQuery;
+    const meta = await queryBuilder.countTotal();
+
+    return { data, meta };
+  }
+
   const tenantUser = await User.findById(user.id).select("property flat");
 
   const flats = await Flat.find({
@@ -391,15 +420,19 @@ const getSingleAnnouncementFromDB = async (
         isDeleted: false,
       }).select("_id property");
 
+      const announcementPropertyId = (announcement.property as any)?._id
+        ? (announcement.property as any)._id.toString()
+        : announcement.property?.toString();
+
       const propertyMatch =
-        (tenantUser?.property &&
-          tenantUser.property.toString() ===
-            announcement.property.toString()) ||
-        flatDocs.some(
-          (f) =>
-            f.property &&
-            f.property.toString() === announcement.property.toString(),
-        );
+        Boolean(announcementPropertyId) &&
+        ((tenantUser?.property &&
+          tenantUser.property.toString() === announcementPropertyId) ||
+          flatDocs.some(
+            (f) =>
+              f.property &&
+              f.property.toString() === announcementPropertyId,
+          ));
 
       const flatMatch =
         announcement.flats &&
@@ -605,11 +638,19 @@ const getPropertyFlatsForAnnouncementFromDB = async (
   return flatListWithStatus;
 };
 
+const getMySingleAnnouncementFromDB = async (
+  user: JwtPayload,
+  id: string,
+): Promise<TAnnouncement | null> => {
+  return await getSingleAnnouncementFromDB(user, id);
+};
+
 export const AnnouncementService = {
   createAnnouncementToDB,
   getAllAnnouncementsFromDB,
   getMyAnnouncementsForTenantFromDB,
   getSingleAnnouncementFromDB,
+  getMySingleAnnouncementFromDB,
   updateAnnouncementToDB,
   deleteAnnouncementFromDB,
   getPropertyFlatsForAnnouncementFromDB,

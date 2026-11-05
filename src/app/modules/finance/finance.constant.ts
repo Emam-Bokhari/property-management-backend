@@ -26,6 +26,7 @@ export enum BILL_STATUS {
   PENDING = "pending",
   DUE = "due",
   OVERDUE = "overdue",
+  PARTIAL = "partial",
   PAID = "paid",
   CANCELLED = "cancelled",
 }

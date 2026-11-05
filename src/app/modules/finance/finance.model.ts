@@ -64,9 +64,8 @@ const financeBillSchema = new Schema<IFinanceBill, FinanceBillModel>(
       index: true,
     },
     periodMonth: {
-      type: String,
+      type: Date,
       required: true,
-      trim: true,
       index: true,
     },
     invoiceNumber: {

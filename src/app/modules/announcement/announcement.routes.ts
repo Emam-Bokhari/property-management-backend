@@ -14,8 +14,24 @@ const router = express.Router();
 // 1. Get announcements for the authenticated tenant / recipient
 router.get(
   "/my-announcements",
-  auth(USER_ROLES.TENANT, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  auth(
+    USER_ROLES.TENANT,
+    USER_ROLES.LANDLORD,
+    USER_ROLES.ADMIN,
+    USER_ROLES.SUPER_ADMIN,
+  ),
   AnnouncementController.getMyAnnouncements,
+);
+
+router.get(
+  "/my-announcements/:id",
+  auth(
+    USER_ROLES.TENANT,
+    USER_ROLES.LANDLORD,
+    USER_ROLES.ADMIN,
+    USER_ROLES.SUPER_ADMIN,
+  ),
+  AnnouncementController.getMySingleAnnouncement,
 );
 
 // 2. Get flats for a property with tenant vacancy/active status (for Create Announcement screen)

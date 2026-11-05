@@ -64,6 +64,28 @@ const getMyAnnouncements = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getMySingleAnnouncement = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    const { id } = req.params;
+    if (!user) {
+      throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+    }
+
+    const result = await AnnouncementService.getMySingleAnnouncementFromDB(
+      user,
+      id,
+    );
+
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      message: "Announcement retrieved successfully",
+      data: result,
+    });
+  },
+);
+
 const getSingleAnnouncement = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
@@ -151,6 +173,7 @@ export const AnnouncementController = {
   createAnnouncement,
   getAllAnnouncements,
   getMyAnnouncements,
+  getMySingleAnnouncement,
   getSingleAnnouncement,
   updateAnnouncement,
   deleteAnnouncement,
