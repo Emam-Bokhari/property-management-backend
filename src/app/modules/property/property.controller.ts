@@ -108,6 +108,54 @@ const updateParking = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getCouncil = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  if (!req.user) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await PropertyService.getCouncilFromDB(req.user, id);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Property council details retrieved successfully",
+    data: result,
+  });
+});
+
+const getParking = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  if (!req.user) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await PropertyService.getParkingFromDB(req.user, id);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Property parking details retrieved successfully",
+    data: result,
+  });
+});
+
+const getCouncilAndParking = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  if (!req.user) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await PropertyService.getCouncilAndParkingFromDB(req.user, id);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Property council and parking details retrieved successfully",
+    data: result,
+  });
+});
+
 const updateCompliance = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user?.id;
   const { id } = req.params;
@@ -324,7 +372,10 @@ export const PropertyController = {
   getSingleProperty,
   updateProperty,
   updateCouncil,
+  getCouncil,
   updateParking,
+  getParking,
+  getCouncilAndParking,
   updateCompliance,
   getCompliance,
   deleteCompliance,

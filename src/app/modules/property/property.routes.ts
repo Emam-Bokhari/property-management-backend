@@ -65,6 +65,15 @@ router
 
 router
   .route("/:id/council")
+  .get(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+      USER_ROLES.TENANT,
+    ),
+    PropertyController.getCouncil,
+  )
   .patch(
     auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
     fileUploadHandler(),
@@ -75,12 +84,45 @@ router
 
 router
   .route("/:id/parking")
+  .get(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+      USER_ROLES.TENANT,
+    ),
+    PropertyController.getParking,
+  )
   .patch(
     auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
     fileUploadHandler(),
     parseFileData({ fieldName: "parkingPhoto", mode: "single" }),
     validateRequest(PropertyValidation.updateParkingZodSchema),
     PropertyController.updateParking,
+  );
+
+router
+  .route("/:id/council-parking")
+  .get(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+      USER_ROLES.TENANT,
+    ),
+    PropertyController.getCouncilAndParking,
+  );
+
+router
+  .route("/:id/council-and-parking")
+  .get(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+      USER_ROLES.TENANT,
+    ),
+    PropertyController.getCouncilAndParking,
   );
 
 router

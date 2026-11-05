@@ -81,19 +81,43 @@ const getAllPropertiesFromDB = async (
     if (tenantUser?.property) {
       tenantPropertyIds.push(new Types.ObjectId(tenantUser.property));
     }
-    const assignedFlats = await Flat.find({
-      $or: [
-        { tenant: new Types.ObjectId(userId) },
-        { tenants: new Types.ObjectId(userId) },
-      ],
-      isDeleted: { $ne: true },
-    }).select("property");
+    const [assignedFlats, tenancies] = await Promise.all([
+      Flat.find({
+        $or: [
+          { tenant: new Types.ObjectId(userId) },
+          { tenants: new Types.ObjectId(userId) },
+          { tenant: userId.toString() },
+          { tenants: userId.toString() },
+        ],
+        isDeleted: { $ne: true },
+      }).select("property"),
+      Tenancy.find({
+        $or: [
+          { tenant: new Types.ObjectId(userId) },
+          { tenant: userId.toString() },
+          ...(tenantUser?.email
+            ? [{ email: tenantUser.email.toLowerCase() }]
+            : []),
+        ],
+        status: { $ne: TENANCY_STATUS.TERMINATED },
+        isDeleted: { $ne: true },
+      }).select("property"),
+    ]);
+
     for (const f of assignedFlats) {
       if (
         f.property &&
         !tenantPropertyIds.some((p) => p.toString() === f.property.toString())
       ) {
         tenantPropertyIds.push(f.property);
+      }
+    }
+    for (const t of tenancies) {
+      if (
+        t.property &&
+        !tenantPropertyIds.some((p) => p.toString() === t.property.toString())
+      ) {
+        tenantPropertyIds.push(t.property);
       }
     }
     scopeFilter._id = { $in: tenantPropertyIds };
@@ -273,10 +297,84 @@ const getAllPropertiesFromDB = async (
   };
 };
 
+// Helper: Verify if a tenant is legitimately associated with the given property
+const verifyTenantPropertyAccess = async (
+  userId: string,
+  propertyId: string,
+): Promise<boolean> => {
+  const tenantUser = await User.findById(userId);
+  if (!tenantUser || (tenantUser as any).isDeleted) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Tenant account not found");
+  }
+
+  const tenantObjId = mongoose.Types.ObjectId.isValid(userId)
+    ? new Types.ObjectId(userId)
+    : null;
+  const propObjId = new Types.ObjectId(propertyId);
+
+  // 1. Direct property assignment on tenant User profile
+  if (
+    tenantUser.property &&
+    tenantUser.property.toString() === propertyId.toString()
+  ) {
+    return true;
+  }
+
+  // 2. Direct flat assignment on tenant User profile that belongs to this property
+  if (tenantUser.flat) {
+    const isFlatInProperty = await Flat.exists({
+      _id: tenantUser.flat,
+      property: propObjId,
+      isDeleted: { $ne: true },
+    });
+    if (isFlatInProperty) return true;
+  }
+
+  // 3. Tenancy document linking tenant to this property
+  if (tenantObjId) {
+    const hasTenancyInProperty = await Tenancy.exists({
+      property: propObjId,
+      $or: [
+        { tenant: tenantObjId },
+        { tenant: userId.toString() },
+        ...(tenantUser.email
+          ? [{ email: tenantUser.email.toLowerCase() }]
+          : []),
+      ],
+      status: { $ne: TENANCY_STATUS.TERMINATED },
+      isDeleted: { $ne: true },
+    });
+    if (hasTenancyInProperty) return true;
+  }
+
+  // 4. Flat assigned to tenant in this property
+  if (tenantObjId) {
+    const hasFlatInProperty = await Flat.exists({
+      property: propObjId,
+      $or: [
+        { tenant: tenantObjId },
+        { tenants: tenantObjId },
+        { tenant: userId.toString() },
+        { tenants: userId.toString() },
+      ],
+      isDeleted: { $ne: true },
+    });
+    if (hasFlatInProperty) return true;
+  }
+
+  return false;
+};
+
 // Get single property by ID (SaaS: landlord or assigned tenant only)
 const getSinglePropertyFromDB = async (user: any, id: string) => {
-  const userId = typeof user === "string" ? user : user.id;
-  const userRole = typeof user === "string" ? USER_ROLES.LANDLORD : user.role;
+  const userId =
+    typeof user === "string" ? user : (user?.id || user?.userId || user?._id);
+  const userRole =
+    typeof user === "string" ? USER_ROLES.LANDLORD : (user?.role || USER_ROLES.LANDLORD);
+
+  if (!userId) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid property ID");
@@ -305,18 +403,8 @@ const getSinglePropertyFromDB = async (user: any, id: string) => {
       );
     }
   } else if (userRole === USER_ROLES.TENANT) {
-    const tenantUser = await User.findById(userId);
-    const isDirectProperty = tenantUser?.property?.toString() === id.toString();
-    const hasFlatInProperty = await Flat.exists({
-      property: new Types.ObjectId(id),
-      $or: [
-        { tenant: new Types.ObjectId(userId) },
-        { tenants: new Types.ObjectId(userId) },
-      ],
-      isDeleted: { $ne: true },
-    });
-
-    if (!isDirectProperty && !hasFlatInProperty) {
+    const hasAccess = await verifyTenantPropertyAccess(userId.toString(), id);
+    if (!hasAccess) {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
         "You do not have access to this property",
@@ -668,6 +756,82 @@ const updateParkingToDB = async (
   return updatedProperty;
 };
 
+// Get Council & Parking Details by Property ID (Owner / strictly assigned tenants of this property only)
+const getCouncilAndParkingFromDB = async (user: any, id: string) => {
+  const userId =
+    typeof user === "string" ? user : (user?.id || user?.userId || user?._id);
+  const userRole =
+    typeof user === "string" ? USER_ROLES.LANDLORD : (user?.role || USER_ROLES.LANDLORD);
+
+  if (!userId) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid property ID");
+  }
+
+  const property = await Property.findById(id).select(
+    "council parking landlord propertyName isDeleted",
+  );
+  if (!property || (property as any).isDeleted) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Property not found");
+  }
+
+  if (userRole === USER_ROLES.LANDLORD) {
+    const landlordId = (property.landlord as any)?._id
+      ? (property.landlord as any)._id.toString()
+      : property.landlord?.toString();
+
+    if (landlordId !== userId.toString()) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        "You do not have permission to access this property",
+      );
+    }
+  } else if (userRole === USER_ROLES.TENANT) {
+    const hasAccess = await verifyTenantPropertyAccess(userId.toString(), id);
+    if (!hasAccess) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        "You do not have access to this property",
+      );
+    }
+  } else if (
+    userRole !== USER_ROLES.ADMIN &&
+    userRole !== USER_ROLES.SUPER_ADMIN
+  ) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      "You do not have permission to access this property",
+    );
+  }
+
+  return {
+    propertyName: property.propertyName,
+    council: property.council || null,
+    parking: property.parking || null,
+  };
+};
+
+// Get Council Details by Property ID
+const getCouncilFromDB = async (user: any, id: string) => {
+  const result = await getCouncilAndParkingFromDB(user, id);
+  return {
+    propertyName: result.propertyName,
+    council: result.council,
+  };
+};
+
+// Get Parking Details by Property ID
+const getParkingFromDB = async (user: any, id: string) => {
+  const result = await getCouncilAndParkingFromDB(user, id);
+  return {
+    propertyName: result.propertyName,
+    parking: result.parking,
+  };
+};
+
 // Update/Upload Compliance Document by Property ID
 const updateComplianceToDB = async (
   userId: string,
@@ -843,8 +1007,14 @@ const getComplianceFromDB = async (
   id: string,
   query?: { complianceType?: string },
 ) => {
-  const userId = typeof user === "string" ? user : user.id;
-  const userRole = typeof user === "string" ? USER_ROLES.LANDLORD : user.role;
+  const userId =
+    typeof user === "string" ? user : (user?.id || user?.userId || user?._id);
+  const userRole =
+    typeof user === "string" ? USER_ROLES.LANDLORD : (user?.role || USER_ROLES.LANDLORD);
+
+  if (!userId) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid property ID");
@@ -869,18 +1039,8 @@ const getComplianceFromDB = async (
       );
     }
   } else if (userRole === USER_ROLES.TENANT) {
-    const tenantUser = await User.findById(userId);
-    const isDirectProperty = tenantUser?.property?.toString() === id.toString();
-    const hasFlatInProperty = await Flat.exists({
-      property: new Types.ObjectId(id),
-      $or: [
-        { tenant: new Types.ObjectId(userId) },
-        { tenants: new Types.ObjectId(userId) },
-      ],
-      isDeleted: { $ne: true },
-    });
-
-    if (!isDirectProperty && !hasFlatInProperty) {
+    const hasAccess = await verifyTenantPropertyAccess(userId.toString(), id);
+    if (!hasAccess) {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
         "You do not have access to this property",
@@ -1025,8 +1185,14 @@ const deleteFloorPlanFromDB = async (
 
 // Get House Rules by Property ID
 const getHouseRulesFromDB = async (user: any, id: string) => {
-  const userId = typeof user === "string" ? user : user.id;
-  const userRole = typeof user === "string" ? USER_ROLES.LANDLORD : user.role;
+  const userId =
+    typeof user === "string" ? user : (user?.id || user?.userId || user?._id);
+  const userRole =
+    typeof user === "string" ? USER_ROLES.LANDLORD : (user?.role || USER_ROLES.LANDLORD);
+
+  if (!userId) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid property ID");
@@ -1051,23 +1217,21 @@ const getHouseRulesFromDB = async (user: any, id: string) => {
       );
     }
   } else if (userRole === USER_ROLES.TENANT) {
-    const tenantUser = await User.findById(userId);
-    const isDirectProperty = tenantUser?.property?.toString() === id.toString();
-    const hasFlatInProperty = await Flat.exists({
-      property: new Types.ObjectId(id),
-      $or: [
-        { tenant: new Types.ObjectId(userId) },
-        { tenants: new Types.ObjectId(userId) },
-      ],
-      isDeleted: { $ne: true },
-    });
-
-    if (!isDirectProperty && !hasFlatInProperty) {
+    const hasAccess = await verifyTenantPropertyAccess(userId.toString(), id);
+    if (!hasAccess) {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
         "You do not have access to this property",
       );
     }
+  } else if (
+    userRole !== USER_ROLES.ADMIN &&
+    userRole !== USER_ROLES.SUPER_ADMIN
+  ) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      "You do not have permission to view house rules",
+    );
   }
 
   return {
@@ -1219,6 +1383,9 @@ export const PropertyService = {
   updatePropertyToDB,
   updateCouncilToDB,
   updateParkingToDB,
+  getCouncilAndParkingFromDB,
+  getCouncilFromDB,
+  getParkingFromDB,
   updateComplianceToDB,
   getComplianceFromDB,
   deleteComplianceFromDB,
