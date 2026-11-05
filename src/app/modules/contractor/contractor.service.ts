@@ -5,6 +5,8 @@ import ApiError from "../../../errors/ApiErrors";
 import QueryBuilder from "../../builder/queryBuilder";
 import { Contractor } from "./contractor.model";
 import { Property } from "../property/property.model";
+import { Tenancy } from "../tenant/tenant.model";
+import { Flat } from "../flat/flat.model";
 import { User } from "../user/user.model";
 import { Review } from "../review/review.model";
 import { USER_ROLES, STATUS } from "../../../enums/user";
@@ -231,17 +233,160 @@ const inviteContractorToDB = async (
   return result;
 };
 
-// 2. Get All Contractors (Landlord / Contractor / Admin - SaaS Multi-tenant isolated)
+
+// Helper: Get all landlord IDs for properties/tenancies the tenant is associated with
+const getTenantLandlordIds = async (
+  tenantUserId: string,
+): Promise<Types.ObjectId[]> => {
+  const landlordIdsSet = new Set<string>();
+
+  // 1. From Tenancy collection
+  const tenancies = await Tenancy.find({
+    $or: [
+      { tenant: new Types.ObjectId(tenantUserId) },
+      { tenant: tenantUserId },
+    ],
+    isDeleted: { $ne: true },
+  }).select("landlord property");
+
+  for (const t of tenancies) {
+    if (t.landlord) {
+      landlordIdsSet.add(t.landlord.toString());
+    }
+  }
+
+  // 2. From User profile direct property or flat assignment
+  const tenantUser = await User.findById(tenantUserId).select("property flat email");
+  if (tenantUser?.property) {
+    const prop = await Property.findById(tenantUser.property).select("landlord");
+    if (prop?.landlord) {
+      landlordIdsSet.add(prop.landlord.toString());
+    }
+  }
+
+  if (tenantUser?.flat) {
+    const flat = await Flat.findById(tenantUser.flat).select("property");
+    if (flat?.property) {
+      const prop = await Property.findById(flat.property).select("landlord");
+      if (prop?.landlord) {
+        landlordIdsSet.add(prop.landlord.toString());
+      }
+    }
+  }
+
+  // 3. Fallback by tenant email if tenancy was registered under email
+  if (tenantUser?.email) {
+    const emailTenancies = await Tenancy.find({
+      email: tenantUser.email.toLowerCase(),
+      isDeleted: { $ne: true },
+    }).select("landlord property");
+    for (const t of emailTenancies) {
+      if (t.landlord) {
+        landlordIdsSet.add(t.landlord.toString());
+      }
+    }
+  }
+
+  return Array.from(landlordIdsSet).map((id) => new Types.ObjectId(id));
+};
+
+// Helper: Verify if a tenant is legitimately associated with the given property
+const verifyTenantPropertyAccess = async (
+  tenantUserId: string,
+  propertyId: string,
+): Promise<boolean> => {
+  if (!mongoose.Types.ObjectId.isValid(propertyId)) return false;
+  const propObjId = new Types.ObjectId(propertyId);
+  const tenantUser = await User.findById(tenantUserId).select("property flat email");
+  if (!tenantUser || (tenantUser as any).isDeleted) return false;
+
+  // 1. Direct property assignment
+  if (
+    tenantUser.property &&
+    tenantUser.property.toString() === propertyId.toString()
+  ) {
+    return true;
+  }
+
+  // 2. Direct flat assignment in property
+  if (tenantUser.flat) {
+    const isFlatInProperty = await Flat.exists({
+      _id: tenantUser.flat,
+      property: propObjId,
+      isDeleted: { $ne: true },
+    });
+    if (isFlatInProperty) return true;
+  }
+
+  // 3. Tenancy document
+  const hasTenancy = await Tenancy.exists({
+    property: propObjId,
+    isDeleted: { $ne: true },
+    $or: [
+      { tenant: new Types.ObjectId(tenantUserId) },
+      { tenant: tenantUserId },
+      ...(tenantUser.email ? [{ email: tenantUser.email.toLowerCase() }] : []),
+    ],
+  });
+
+  return !!hasTenancy;
+};
+
+// 2. Get All Contractors (Landlord / Contractor / Tenant / Admin - SaaS Multi-tenant isolated)
 const getAllContractorsFromDB = async (
   authUser: JwtPayload,
   query: Record<string, unknown>,
 ) => {
+  const currentUserId = (authUser.userId || authUser.id)?.toString();
   const filter: Record<string, any> = {};
 
   if (authUser.role === USER_ROLES.LANDLORD) {
-    filter.landlord = new Types.ObjectId(authUser.id);
+    filter.landlord = new Types.ObjectId(currentUserId);
   } else if (authUser.role === USER_ROLES.CONTRACTOR) {
-    filter.contractor = new Types.ObjectId(authUser.id);
+    filter.contractor = new Types.ObjectId(currentUserId);
+  } else if (authUser.role === USER_ROLES.TENANT) {
+    // If tenant requested contractors for a specific property (?property=...)
+    if (query.property) {
+      const propStr = String(query.property).trim();
+      if (propStr !== "all" && propStr !== "ALL" && propStr !== "") {
+        if (!mongoose.Types.ObjectId.isValid(propStr)) {
+          throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid property ID");
+        }
+        const hasAccess = await verifyTenantPropertyAccess(currentUserId, propStr);
+        if (!hasAccess) {
+          throw new ApiError(
+            StatusCodes.FORBIDDEN,
+            "You do not have access to this property",
+          );
+        }
+        const propDoc = await Property.findById(propStr).select("landlord");
+        if (propDoc?.landlord) {
+          filter.landlord = propDoc.landlord;
+        } else {
+          return {
+            meta: { page: 1, limit: 10, total: 0, totalPage: 0 },
+            data: [],
+          };
+        }
+      }
+    } else {
+      // Find all landlords for this tenant's rented properties/tenancies
+      const tenantLandlordIds = await getTenantLandlordIds(currentUserId);
+      if (tenantLandlordIds.length === 0) {
+        return {
+          meta: { page: 1, limit: 10, total: 0, totalPage: 0 },
+          data: [],
+        };
+      }
+      filter.landlord =
+        tenantLandlordIds.length === 1
+          ? tenantLandlordIds[0]
+          : { $in: tenantLandlordIds };
+    }
+
+    if (!query.status) {
+      filter.status = CONTRACTOR_RELATION_STATUS.ACTIVE;
+    }
   }
 
   // Filter by property if requested:
@@ -254,7 +399,7 @@ const getAllContractorsFromDB = async (
         if (authUser.role === USER_ROLES.LANDLORD) {
           const propertyDoc = await Property.findOne({
             _id: new Types.ObjectId(propStr),
-            landlord: new Types.ObjectId(authUser.id),
+            landlord: new Types.ObjectId(currentUserId),
           });
           if (!propertyDoc) {
             return {
@@ -338,6 +483,7 @@ const getAllContractorsFromDB = async (
 
 // 3. Get Single Contractor (SaaS scoped)
 const getSingleContractorFromDB = async (authUser: JwtPayload, id: string) => {
+  const currentUserId = (authUser.userId || authUser.id)?.toString();
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid contractor ID");
   }
@@ -355,7 +501,7 @@ const getSingleContractorFromDB = async (authUser: JwtPayload, id: string) => {
       ? (contractor.landlord as any)._id.toString()
       : contractor.landlord?.toString();
 
-    if (landlordId !== authUser.id) {
+    if (landlordId !== currentUserId) {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
         "You do not have permission to view this contractor",
@@ -366,7 +512,23 @@ const getSingleContractorFromDB = async (authUser: JwtPayload, id: string) => {
       ? (contractor.contractor as any)._id.toString()
       : contractor.contractor?.toString();
 
-    if (contractorId !== authUser.id) {
+    if (contractorId !== currentUserId) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        "You do not have permission to view this contractor",
+      );
+    }
+  } else if (authUser.role === USER_ROLES.TENANT) {
+    const landlordId = (contractor.landlord as any)?._id
+      ? (contractor.landlord as any)._id.toString()
+      : contractor.landlord?.toString();
+
+    const tenantLandlordIds = await getTenantLandlordIds(currentUserId);
+    const hasPermission = tenantLandlordIds.some(
+      (lid) => lid.toString() === landlordId,
+    );
+
+    if (!hasPermission) {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
         "You do not have permission to view this contractor",
