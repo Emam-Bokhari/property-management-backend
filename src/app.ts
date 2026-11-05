@@ -30,7 +30,8 @@ app.use(
       "http://10.10.26.174:5173",
       "https://api.jaganaecuador.com",
       "https://dashboard.jaganaecuador.com",
-      "http://10.10.26.174:3000"
+      "http://10.10.26.174:3000",
+      "http://2.25.113.130:4174"
     ],
     credentials: true,
   }),

@@ -216,7 +216,7 @@ const getTenantTransactions = catchAsync(
       success: true,
       message: "Tenant transactions retrieved successfully",
       meta: result.meta,
-      data: result,
+      data: result.data,
     });
   },
 );
