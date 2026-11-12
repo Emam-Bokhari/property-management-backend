@@ -18,20 +18,22 @@ import {
   ICreateChargePayload,
   ICreateStripeCheckoutPayload,
   IRecordPaymentPayload,
-  IRecordRentReceivedPayload,
   ISendReminderPayload,
 } from "./finance.interface";
 import { Property } from "../property/property.model";
 import { Flat } from "../flat/flat.model";
 import { Tenancy } from "../tenant/tenant.model";
+import { User } from "../user/user.model";
 import { TENANCY_STATUS } from "../tenant/tenant.constant";
 import { notificationHelper } from "../../builder/pushNotification";
 import { NOTIFICATION_TYPE } from "../notification/notification.constant";
 import { USER_ROLES } from "../../../enums/user";
 import {
+  formatCurrency,
   getCurrencyCode,
   getCurrencySymbol,
 } from "../../../helpers/currencyHelper";
+import { escapeRegex } from "../../../helpers/searchHelper";
 import { Maintenance } from "../maintenance/maintenance.model";
 import { MAINTENANCE_STATUS } from "../maintenance/maintenance.constant";
 
@@ -39,11 +41,11 @@ import { MAINTENANCE_STATUS } from "../maintenance/maintenance.constant";
 const billPopulateOptions = [
   {
     path: "tenant",
-    select: "firstName lastName email phone role profileImage",
+    select: "name email phone role profileImage",
   },
   {
     path: "landlord",
-    select: "firstName lastName email phone role profileImage companyName",
+    select: "name email phone role profileImage companyName",
   },
   {
     path: "property",
@@ -83,6 +85,73 @@ const formatMonthPeriod = (date: Date): string => {
   ];
   const d = new Date(date);
   return `${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+};
+
+// Helper: Format display date (e.g., "Jul 1, 2026")
+const formatDateUTC = (d?: Date | string | null): string => {
+  if (!d) return "";
+  const dateObj = new Date(d);
+  if (isNaN(dateObj.getTime())) return "";
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  return `${months[dateObj.getUTCMonth()]} ${dateObj.getUTCDate()}, ${dateObj.getUTCFullYear()}`;
+};
+
+// Helper: Format charge/bill type label (e.g., "Rent", "Repair")
+const formatDisplayBillType = (billType?: string): string => {
+  switch (billType) {
+    case CHARGE_TYPE.RENT:
+      return "Rent";
+    case CHARGE_TYPE.REPAIR_CHARGE:
+      return "Repair";
+    case CHARGE_TYPE.UTILITY_CHARGE:
+      return "Utility";
+    case CHARGE_TYPE.SERVICE_CHARGE:
+      return "Service";
+    case CHARGE_TYPE.PENALTY:
+      return "Penalty";
+    case CHARGE_TYPE.CUSTOM_CHARGE:
+      return "Custom";
+    default:
+      return billType
+        ? billType
+            .split("_")
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+            .join(" ")
+        : "Charge";
+  }
+};
+
+// Helper: Payment method display label
+const getPaymentMethodLabel = (method?: string | null): string | null => {
+  switch (method) {
+    case PAYMENT_METHOD.BANK_TRANSFER:
+      return "Bank transfer";
+    case PAYMENT_METHOD.CASH:
+      return "Cash";
+    case PAYMENT_METHOD.CHEQUE:
+      return "Cheque";
+    case PAYMENT_METHOD.DIRECT_DEBIT:
+      return "Direct debit";
+    case PAYMENT_METHOD.STRIPE:
+      return "Stripe";
+    case PAYMENT_METHOD.OTHER:
+      return "Other";
+    default:
+      return null;
+  }
 };
 
 // Helper: Normalize periodMonth to 1st of month in UTC
@@ -365,6 +434,122 @@ const getLandlordOverviewFromDB = async (
   };
 };
 
+// Helper: Format bill document into rich UI-ready transaction/bill object
+const formatBillItemForDisplay = (bill: any, now: Date = new Date()) => {
+  const computedStatus = syncBillStatus(bill);
+  const totalAmount = Number(bill.amount) || 0;
+  const paidAmount = Number(bill.paidAmount) || 0;
+  const dueAmount = Math.max(0, totalAmount - paidAmount);
+  const isPaid = computedStatus === BILL_STATUS.PAID;
+  const isPartiallyPaid = computedStatus === BILL_STATUS.PARTIAL;
+  const isOverdue =
+    computedStatus === BILL_STATUS.OVERDUE ||
+    (!isPaid && new Date(bill.dueDate) < now);
+
+  const displayType = formatDisplayBillType(bill.billType);
+  const formattedPeriodMonth = bill.periodMonth
+    ? formatMonthPeriod(parsePeriodMonthToDate(bill.periodMonth))
+    : "";
+  const formattedDueDate = formatDateUTC(bill.dueDate);
+  const paidDateSource = bill.paidAt || (isPaid ? bill.updatedAt : null);
+  const formattedPaidDate = paidDateSource ? formatDateUTC(paidDateSource) : null;
+
+  const unitName = bill.flat?.unitName || "N/A";
+  const propertyTitle =
+    bill.property?.streetAddress || bill.property?.propertyName || "Property";
+  const tenantName = bill.tenant?.name || "Tenant";
+
+  const statusLabel = isPaid
+    ? "Paid"
+    : isPartiallyPaid
+      ? isOverdue
+        ? "Partially paid (Overdue)"
+        : "Partially paid"
+      : isOverdue
+        ? "Overdue"
+        : "Due";
+
+  const displayAmount = isPaid ? paidAmount || totalAmount : dueAmount;
+  const paymentSource =
+    bill.paymentMethod === PAYMENT_METHOD.STRIPE
+      ? "stripe"
+      : bill.paymentMethod
+        ? "manual"
+        : null;
+
+  return {
+    ...bill,
+    status: computedStatus,
+    statusLabel,
+    isPaid,
+    isPartiallyPaid,
+    isOverdue,
+    displayType,
+    amount: totalAmount,
+    paidAmount,
+    dueAmount,
+    displayAmount,
+    formattedAmount: formatCurrency(displayAmount),
+    formattedTotalAmount: formatCurrency(totalAmount),
+    formattedPaidAmount: formatCurrency(paidAmount),
+    formattedDueAmount: formatCurrency(dueAmount),
+    formattedPeriodMonth,
+    formattedDueDate,
+    formattedPaidDate,
+    tenantName,
+    unitName,
+    propertyTitle,
+    subtitle: `${unitName} · ${propertyTitle} · ${formattedPeriodMonth}`,
+    dateLine: isPaid
+      ? `${formattedPaidDate || formattedDueDate} · ${displayType}`
+      : `Due ${formattedDueDate} · ${displayType}`,
+    paymentSource,
+    paymentMethodLabel: getPaymentMethodLabel(bill.paymentMethod),
+  };
+};
+
+// Helper: Build search filter across FinanceBill + populated Tenant/Property/Flat
+const buildFinanceSearchCondition = async (
+  searchTerm: string,
+): Promise<Record<string, any> | null> => {
+  const trimmed = searchTerm.trim();
+  if (!trimmed) return null;
+
+  const regex = new RegExp(escapeRegex(trimmed), "i");
+  const [matchingUsers, matchingProperties, matchingFlats] = await Promise.all([
+    User.find({ $or: [{ name: regex }, { email: regex }] })
+      .select("_id")
+      .lean(),
+    Property.find({
+      $or: [{ propertyName: regex }, { streetAddress: regex }, { postCode: regex }],
+    })
+      .select("_id")
+      .lean(),
+    Flat.find({ unitName: regex }).select("_id").lean(),
+  ]);
+
+  const orConditions: Record<string, any>[] = financeSearchableFields
+    .filter((f) => f !== "periodMonth")
+    .map((field) => ({ [field]: regex }));
+
+  if (matchingUsers.length > 0) {
+    orConditions.push({ tenant: { $in: matchingUsers.map((u) => u._id) } });
+  }
+  if (matchingProperties.length > 0) {
+    orConditions.push({
+      property: { $in: matchingProperties.map((p) => p._id) },
+    });
+  }
+  if (matchingFlats.length > 0) {
+    orConditions.push({ flat: { $in: matchingFlats.map((f) => f._id) } });
+  }
+  if (Types.ObjectId.isValid(trimmed)) {
+    orConditions.push({ _id: new Types.ObjectId(trimmed) });
+  }
+
+  return { $or: orConditions };
+};
+
 // -------------------------------------------------------------
 // 2. GET BILLS / TRANSACTION HISTORY (Landlord & Tenant) (Screenshots 1, 2, 4)
 // -------------------------------------------------------------
@@ -372,76 +557,111 @@ const getBillsFromDB = async (
   authUser: JwtPayload,
   query: Record<string, unknown>,
 ) => {
+  const queryCopy = { ...query };
   const filter: Record<string, any> = {};
+  const andConditions: Record<string, any>[] = [];
   const currentUserId = authUser.userId || authUser.id;
 
   if (authUser.role === USER_ROLES.LANDLORD) {
+    await syncMonthlyRentBillsForLandlord(currentUserId);
     filter.landlord = new Types.ObjectId(currentUserId);
   } else if (authUser.role === USER_ROLES.TENANT) {
+    await syncMonthlyRentBillsForTenant(currentUserId);
     filter.tenant = new Types.ObjectId(currentUserId);
   }
 
-  // Filter by outstanding vs paid tab
-  if (query.filter_type === "outstanding") {
+  // Filter by outstanding vs paid tab (supports both filter_type and tab)
+  const tabFilter = String(
+    queryCopy.filter_type || queryCopy.tab || "",
+  )
+    .trim()
+    .toLowerCase();
+  delete queryCopy.filter_type;
+  delete queryCopy.tab;
+
+  if (tabFilter === "outstanding") {
     filter.status = {
-      $in: [BILL_STATUS.PENDING, BILL_STATUS.DUE, BILL_STATUS.OVERDUE],
+      $in: [
+        BILL_STATUS.PENDING,
+        BILL_STATUS.DUE,
+        BILL_STATUS.OVERDUE,
+        BILL_STATUS.PARTIAL,
+      ],
     };
-    delete query.filter_type;
-  } else if (query.filter_type === "paid") {
+  } else if (tabFilter === "paid") {
     filter.status = BILL_STATUS.PAID;
-    delete query.filter_type;
-  } else if (query.status) {
-    filter.status = query.status;
-    delete query.status;
+  } else if (queryCopy.status) {
+    filter.status = queryCopy.status;
+    delete queryCopy.status;
+  } else {
+    filter.status = { $ne: BILL_STATUS.CANCELLED };
   }
 
   // Filter by category: all | rent | charges
-  if (query.category === "rent") {
+  if (queryCopy.category === "rent") {
     filter.billCategory = BILL_CATEGORY.RENT;
-    delete query.category;
-  } else if (query.category === "charges") {
+    delete queryCopy.category;
+  } else if (queryCopy.category === "charges") {
     filter.billCategory = BILL_CATEGORY.CHARGES;
-    delete query.category;
-  } else if (query.category === "all") {
-    delete query.category;
+    delete queryCopy.category;
+  } else if (queryCopy.category === "all") {
+    delete queryCopy.category;
   }
 
   // Filter by property
-  if (query.property && Types.ObjectId.isValid(query.property as string)) {
-    filter.property = new Types.ObjectId(query.property as string);
-    delete query.property;
+  if (
+    queryCopy.property &&
+    Types.ObjectId.isValid(queryCopy.property as string)
+  ) {
+    filter.property = new Types.ObjectId(queryCopy.property as string);
+    delete queryCopy.property;
   }
 
   // Filter by flat
-  if (query.flat && Types.ObjectId.isValid(query.flat as string)) {
-    filter.flat = new Types.ObjectId(query.flat as string);
-    delete query.flat;
+  if (queryCopy.flat && Types.ObjectId.isValid(queryCopy.flat as string)) {
+    filter.flat = new Types.ObjectId(queryCopy.flat as string);
+    delete queryCopy.flat;
   }
 
   // Filter by tenant
-  if (query.tenant && Types.ObjectId.isValid(query.tenant as string)) {
-    filter.tenant = new Types.ObjectId(query.tenant as string);
-    delete query.tenant;
+  if (queryCopy.tenant && Types.ObjectId.isValid(queryCopy.tenant as string)) {
+    filter.tenant = new Types.ObjectId(queryCopy.tenant as string);
+    delete queryCopy.tenant;
   }
 
   // Filter by periodMonth
-  if (query.periodMonth) {
-    const pDate = parsePeriodMonthToDate(query.periodMonth as string);
+  if (queryCopy.periodMonth) {
+    const pDate = parsePeriodMonthToDate(queryCopy.periodMonth as string);
     const nextPDate = new Date(
       Date.UTC(pDate.getUTCFullYear(), pDate.getUTCMonth() + 1, 1),
     );
-    filter.$or = [
-      { periodMonth: pDate },
-      { periodMonth: { $gte: pDate, $lt: nextPDate } },
-      { periodMonth: formatMonthPeriod(pDate) },
-    ];
-    delete query.periodMonth;
+    andConditions.push({
+      $or: [
+        { periodMonth: pDate },
+        { periodMonth: { $gte: pDate, $lt: nextPDate } },
+        { periodMonth: formatMonthPeriod(pDate) },
+      ],
+    });
+    delete queryCopy.periodMonth;
+  }
+
+  if (queryCopy.searchTerm) {
+    const searchCond = await buildFinanceSearchCondition(
+      String(queryCopy.searchTerm),
+    );
+    if (searchCond) {
+      andConditions.push(searchCond);
+    }
+    delete queryCopy.searchTerm;
+  }
+
+  if (andConditions.length > 0) {
+    filter.$and = andConditions;
   }
 
   const baseQuery = FinanceBill.find(filter).populate(billPopulateOptions);
 
-  const queryBuilder = new QueryBuilder(baseQuery, query)
-    .search(financeSearchableFields)
+  const queryBuilder = new QueryBuilder(baseQuery, queryCopy)
     .filter()
     .sort()
     .paginate()
@@ -452,31 +672,445 @@ const getBillsFromDB = async (
     queryBuilder.countTotal(),
   ]);
 
-  // Synchronize dynamic status for response
-  const enhancedBills = bills.map((bill: any) => {
-    const computedStatus = syncBillStatus(bill);
-    return {
-      ...bill,
-      status: computedStatus,
-      statusLabel:
-        computedStatus === BILL_STATUS.PAID
-          ? "Paid"
-          : computedStatus === BILL_STATUS.OVERDUE
-            ? "Overdue"
-            : "Due",
-      displayType:
-        bill.billType === CHARGE_TYPE.RENT
-          ? "Rent"
-          : bill.billType
-              .split("_")
-              .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
-              .join(" "),
-    };
-  });
+  const now = new Date();
+  const enhancedBills = bills.map((bill: any) =>
+    formatBillItemForDisplay(bill, now),
+  );
 
   return {
     meta,
     data: enhancedBills,
+  };
+};
+
+// -------------------------------------------------------------
+// 2.1 LANDLORD TRANSACTION HISTORY (Screenshot 2: Outstanding | Paid)
+// -------------------------------------------------------------
+const getLandlordTransactionsFromDB = async (
+  authUser: JwtPayload,
+  query: Record<string, unknown>,
+) => {
+  const currentUserId = authUser.userId || authUser.id;
+  const isLandlord = authUser.role === USER_ROLES.LANDLORD;
+
+  if (isLandlord) {
+    await syncMonthlyRentBillsForLandlord(currentUserId);
+  }
+
+  const rawTab = String(query.tab || query.filter_type || "outstanding")
+    .trim()
+    .toLowerCase();
+  const tab: "outstanding" | "paid" = rawTab === "paid" ? "paid" : "outstanding";
+
+  const scopeFilter: Record<string, any> = {
+    status: { $ne: BILL_STATUS.CANCELLED },
+  };
+  const andConditions: Record<string, any>[] = [];
+
+  if (isLandlord) {
+    scopeFilter.landlord = new Types.ObjectId(currentUserId);
+  }
+
+  if (query.category === "rent") {
+    scopeFilter.billCategory = BILL_CATEGORY.RENT;
+  } else if (query.category === "charges") {
+    scopeFilter.billCategory = BILL_CATEGORY.CHARGES;
+  }
+
+  if (query.property && Types.ObjectId.isValid(query.property as string)) {
+    scopeFilter.property = new Types.ObjectId(query.property as string);
+  }
+
+  if (query.flat && Types.ObjectId.isValid(query.flat as string)) {
+    scopeFilter.flat = new Types.ObjectId(query.flat as string);
+  }
+
+  if (query.tenant && Types.ObjectId.isValid(query.tenant as string)) {
+    scopeFilter.tenant = new Types.ObjectId(query.tenant as string);
+  }
+
+  if (query.paymentMethod) {
+    scopeFilter.paymentMethod = String(query.paymentMethod).trim().toLowerCase();
+  }
+
+  if (query.paymentSource === "stripe") {
+    scopeFilter.paymentMethod = PAYMENT_METHOD.STRIPE;
+  } else if (query.paymentSource === "manual") {
+    scopeFilter.paymentMethod = {
+      $in: [
+        PAYMENT_METHOD.BANK_TRANSFER,
+        PAYMENT_METHOD.CASH,
+        PAYMENT_METHOD.CHEQUE,
+        PAYMENT_METHOD.DIRECT_DEBIT,
+        PAYMENT_METHOD.OTHER,
+      ],
+    };
+  }
+
+  if (query.periodMonth) {
+    const pDate = parsePeriodMonthToDate(query.periodMonth as string);
+    const nextPDate = new Date(
+      Date.UTC(pDate.getUTCFullYear(), pDate.getUTCMonth() + 1, 1),
+    );
+    andConditions.push({
+      $or: [
+        { periodMonth: pDate },
+        { periodMonth: { $gte: pDate, $lt: nextPDate } },
+        { periodMonth: formatMonthPeriod(pDate) },
+      ],
+    });
+  }
+
+  if (query.searchTerm) {
+    const searchCond = await buildFinanceSearchCondition(
+      String(query.searchTerm),
+    );
+    if (searchCond) {
+      andConditions.push(searchCond);
+    }
+  }
+
+  if (andConditions.length > 0) {
+    scopeFilter.$and = andConditions;
+  }
+
+  const allScopedBills = await FinanceBill.find(scopeFilter)
+    .populate(billPopulateOptions)
+    .lean();
+
+  const now = new Date();
+  const formattedAll = allScopedBills.map((b: any) =>
+    formatBillItemForDisplay(b, now),
+  );
+
+  const outstandingItems = formattedAll.filter(
+    (b) => !b.isPaid && b.dueAmount > 0,
+  );
+  const paidItems = formattedAll.filter((b) => b.isPaid);
+
+  const totalOutstanding = outstandingItems.reduce(
+    (sum, b) => sum + b.dueAmount,
+    0,
+  );
+  const totalPaid = paidItems.reduce(
+    (sum, b) => sum + (b.paidAmount || b.amount),
+    0,
+  );
+  const overdueCount = outstandingItems.filter((b) => b.isOverdue).length;
+
+  const summary = {
+    tab,
+    outstandingCount: outstandingItems.length,
+    paidCount: paidItems.length,
+    overdueCount,
+    totalOutstanding,
+    formattedTotalOutstanding: formatCurrency(totalOutstanding),
+    totalPaid,
+    formattedTotalPaid: formatCurrency(totalPaid),
+    currency: getCurrencyCode(),
+    currencySymbol: getCurrencySymbol(),
+  };
+
+  let activeList = tab === "paid" ? paidItems : outstandingItems;
+
+  if (tab === "paid") {
+    activeList = [...activeList].sort((a, b) => {
+      const aTime = new Date(a.paidAt || a.updatedAt || a.createdAt).getTime();
+      const bTime = new Date(b.paidAt || b.updatedAt || b.createdAt).getTime();
+      return bTime - aTime;
+    });
+  } else {
+    activeList = [...activeList].sort((a, b) => {
+      if (a.isOverdue !== b.isOverdue) {
+        return a.isOverdue ? -1 : 1;
+      }
+      return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
+    });
+  }
+
+  const page = Math.max(1, Number(query.page) || 1);
+  const limit = Math.max(1, Number(query.limit) || 20);
+  const total = activeList.length;
+  const totalPage = Math.ceil(total / limit) || 1;
+  const startIndex = (page - 1) * limit;
+  const paginatedTransactions = activeList.slice(startIndex, startIndex + limit);
+
+  return {
+    meta: {
+      page,
+      limit,
+      total,
+      totalPage,
+    },
+    data: {
+      tab,
+      summary,
+      transactions: paginatedTransactions,
+    },
+  };
+};
+
+// -------------------------------------------------------------
+// 2.2 GET RECORD PAYMENT SCREEN DATA (Screenshot 1)
+// -------------------------------------------------------------
+const getRecordPaymentDataFromDB = async (
+  authUser: JwtPayload,
+  query: Record<string, unknown>,
+) => {
+  const currentUserId = authUser.userId || authUser.id;
+  const isLandlord = authUser.role === USER_ROLES.LANDLORD;
+
+  if (isLandlord) {
+    await syncMonthlyRentBillsForLandlord(currentUserId);
+  }
+
+  const baseFilter: Record<string, any> = {
+    status: { $nin: [BILL_STATUS.PAID, BILL_STATUS.CANCELLED] },
+  };
+  if (isLandlord) {
+    baseFilter.landlord = new Types.ObjectId(currentUserId);
+  }
+
+  const [allUnpaidRaw, landlordProperties, landlordFlats] = await Promise.all([
+    FinanceBill.find(baseFilter)
+      .populate(billPopulateOptions)
+      .sort({ dueDate: 1, createdAt: 1 })
+      .lean(),
+    Property.find(
+      isLandlord ? { landlord: new Types.ObjectId(currentUserId) } : {},
+    )
+      .select("propertyName streetAddress postCode")
+      .lean(),
+    Flat.find(
+      isLandlord ? { landlord: new Types.ObjectId(currentUserId) } : {},
+    )
+      .select("unitName floor property rentPerMonth")
+      .lean(),
+  ]);
+
+  const now = new Date();
+  const allUnpaidFormatted = allUnpaidRaw
+    .map((b: any) => formatBillItemForDisplay(b, now))
+    .filter((b) => b.dueAmount > 0);
+
+  const overallOutstanding = allUnpaidFormatted.reduce(
+    (sum, b) => sum + b.dueAmount,
+    0,
+  );
+
+  // Build per-property and per-flat counts for dropdowns
+  const propStatsMap = new Map<
+    string,
+    { dueCount: number; outstandingAmount: number }
+  >();
+  const flatStatsMap = new Map<
+    string,
+    { dueCount: number; outstandingAmount: number }
+  >();
+
+  allUnpaidFormatted.forEach((b) => {
+    const pId = b.property?._id?.toString();
+    if (pId) {
+      const prev = propStatsMap.get(pId) || { dueCount: 0, outstandingAmount: 0 };
+      propStatsMap.set(pId, {
+        dueCount: prev.dueCount + 1,
+        outstandingAmount: prev.outstandingAmount + b.dueAmount,
+      });
+    }
+    const fId = b.flat?._id?.toString();
+    if (fId) {
+      const prev = flatStatsMap.get(fId) || { dueCount: 0, outstandingAmount: 0 };
+      flatStatsMap.set(fId, {
+        dueCount: prev.dueCount + 1,
+        outstandingAmount: prev.outstandingAmount + b.dueAmount,
+      });
+    }
+  });
+
+  // Apply optional filters for the displayed grouped list
+  let filteredBills = allUnpaidFormatted;
+
+  if (query.property && Types.ObjectId.isValid(query.property as string)) {
+    const pId = String(query.property);
+    filteredBills = filteredBills.filter(
+      (b) => b.property?._id?.toString() === pId,
+    );
+  }
+
+  if (query.flat && Types.ObjectId.isValid(query.flat as string)) {
+    const fId = String(query.flat);
+    filteredBills = filteredBills.filter(
+      (b) => b.flat?._id?.toString() === fId,
+    );
+  }
+
+  if (query.tenant && Types.ObjectId.isValid(query.tenant as string)) {
+    const tId = String(query.tenant);
+    filteredBills = filteredBills.filter(
+      (b) => b.tenant?._id?.toString() === tId,
+    );
+  }
+
+  if (query.category === "rent") {
+    filteredBills = filteredBills.filter(
+      (b) => b.billCategory === BILL_CATEGORY.RENT,
+    );
+  } else if (query.category === "charges") {
+    filteredBills = filteredBills.filter(
+      (b) => b.billCategory === BILL_CATEGORY.CHARGES,
+    );
+  }
+
+  if (query.status === "overdue") {
+    filteredBills = filteredBills.filter((b) => b.isOverdue);
+  } else if (query.status === "due") {
+    filteredBills = filteredBills.filter((b) => !b.isOverdue);
+  }
+
+  if (query.searchTerm) {
+    const term = String(query.searchTerm).trim().toLowerCase();
+    filteredBills = filteredBills.filter(
+      (b) =>
+        b.tenantName.toLowerCase().includes(term) ||
+        b.propertyTitle.toLowerCase().includes(term) ||
+        b.unitName.toLowerCase().includes(term) ||
+        (b.invoiceNumber || "").toLowerCase().includes(term) ||
+        (b.description || "").toLowerCase().includes(term),
+    );
+  }
+
+  const totalOutstanding = filteredBills.reduce(
+    (sum, b) => sum + b.dueAmount,
+    0,
+  );
+
+  // Group bills by Property (Screenshot 1)
+  const groupedMap = new Map<string, any>();
+  filteredBills.forEach((b) => {
+    const prop = b.property;
+    const propId = prop?._id?.toString() || "unknown";
+    if (!groupedMap.has(propId)) {
+      groupedMap.set(propId, {
+        propertyId: prop?._id || null,
+        propertyName: prop?.propertyName || "",
+        streetAddress: prop?.streetAddress || "",
+        postCode: prop?.postCode || "",
+        title: b.propertyTitle,
+        dueCount: 0,
+        dueLabel: "0 due",
+        totalOutstanding: 0,
+        formattedTotalOutstanding: formatCurrency(0),
+        bills: [],
+      });
+    }
+
+    const group = groupedMap.get(propId);
+    const descPart =
+      b.description && b.description.trim()
+        ? b.description.trim()
+        : `${b.formattedPeriodMonth} ${b.displayType.toLowerCase()}`.trim();
+
+    group.bills.push({
+      _id: b._id,
+      billId: b._id,
+      invoiceNumber: b.invoiceNumber,
+      tenant: b.tenant,
+      tenantName: b.tenantName,
+      flat: b.flat,
+      unitName: b.unitName,
+      property: b.property,
+      billType: b.billType,
+      billCategory: b.billCategory,
+      displayType: b.displayType,
+      periodMonth: b.periodMonth,
+      formattedPeriodMonth: b.formattedPeriodMonth,
+      description: b.description,
+      dueDate: b.dueDate,
+      formattedDueDate: b.formattedDueDate,
+      subtitle: `${b.unitName} · ${descPart} · Due ${b.formattedDueDate}`,
+      amount: b.amount,
+      paidAmount: b.paidAmount,
+      dueAmount: b.dueAmount,
+      formattedAmount: formatCurrency(b.dueAmount),
+      status: b.status,
+      statusLabel: b.statusLabel,
+      isOverdue: b.isOverdue,
+      isPartiallyPaid: b.isPartiallyPaid,
+    });
+    group.dueCount += 1;
+    group.dueLabel = `${group.dueCount} due`;
+    group.totalOutstanding += b.dueAmount;
+    group.formattedTotalOutstanding = formatCurrency(group.totalOutstanding);
+  });
+
+  const selectedPropertyFilter =
+    query.property && Types.ObjectId.isValid(query.property as string)
+      ? String(query.property)
+      : null;
+
+  return {
+    summary: {
+      selectedAmount: 0,
+      selectedCount: 0,
+      totalOutstanding,
+      formattedTotalOutstanding: formatCurrency(totalOutstanding),
+      totalDueCount: filteredBills.length,
+      overallOutstanding,
+      formattedOverallOutstanding: formatCurrency(overallOutstanding),
+      overallDueCount: allUnpaidFormatted.length,
+      currency: getCurrencyCode(),
+      currencySymbol: getCurrencySymbol(),
+    },
+    filterOptions: {
+      properties: landlordProperties.map((p: any) => {
+        const stats = propStatsMap.get(p._id.toString()) || {
+          dueCount: 0,
+          outstandingAmount: 0,
+        };
+        return {
+          _id: p._id,
+          propertyName: p.propertyName,
+          streetAddress: p.streetAddress,
+          postCode: p.postCode,
+          title: p.streetAddress || p.propertyName,
+          dueCount: stats.dueCount,
+          outstandingAmount: stats.outstandingAmount,
+        };
+      }),
+      flats: landlordFlats
+        .filter(
+          (f: any) =>
+            !selectedPropertyFilter ||
+            f.property?.toString() === selectedPropertyFilter,
+        )
+        .map((f: any) => {
+          const stats = flatStatsMap.get(f._id.toString()) || {
+            dueCount: 0,
+            outstandingAmount: 0,
+          };
+          return {
+            _id: f._id,
+            unitName: f.unitName,
+            floor: f.floor,
+            property: f.property,
+            dueCount: stats.dueCount,
+            outstandingAmount: stats.outstandingAmount,
+          };
+        }),
+      categories: [
+        { label: "All", value: "all" },
+        { label: "Rent", value: "rent" },
+        { label: "Charges", value: "charges" },
+      ],
+      paymentMethods: [
+        { label: "Bank transfer", value: PAYMENT_METHOD.BANK_TRANSFER },
+        { label: "Cash", value: PAYMENT_METHOD.CASH },
+        { label: "Cheque", value: PAYMENT_METHOD.CHEQUE },
+        { label: "Direct debit", value: PAYMENT_METHOD.DIRECT_DEBIT },
+        { label: "Other", value: PAYMENT_METHOD.OTHER },
+      ],
+    },
+    groupedBills: Array.from(groupedMap.values()),
   };
 };
 
@@ -658,7 +1292,7 @@ const createChargeIntoDB = async (
 };
 
 // -------------------------------------------------------------
-// 5. RECORD MANUAL PAYMENT (Landlord / Admin) (Screenshot 3)
+// 5. RECORD PAYMENT (Unified Manual Payment for Bills or Direct Rent) (Screenshot 1)
 // -------------------------------------------------------------
 const recordPaymentIntoDB = async (
   authUser: JwtPayload,
@@ -666,97 +1300,151 @@ const recordPaymentIntoDB = async (
 ) => {
   const currentUserId = authUser.userId || authUser.id;
   const isLandlord = authUser.role === USER_ROLES.LANDLORD;
+  const paymentDate = new Date(payload.paymentDate);
 
-  const filter: Record<string, any> = {
-    _id: { $in: payload.billIds.map((id) => new Types.ObjectId(id)) },
-    status: { $ne: BILL_STATUS.CANCELLED },
-  };
-
-  if (isLandlord) {
-    filter.landlord = new Types.ObjectId(currentUserId);
+  if (isNaN(paymentDate.getTime())) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid payment date");
   }
 
-  const bills = await FinanceBill.find(filter);
+  // Mode 1: Bill IDs selected (Screenshot 1 primary flow)
+  if (payload.billIds && payload.billIds.length > 0) {
+    const invalidId = payload.billIds.find((id) => !Types.ObjectId.isValid(id));
+    if (invalidId) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, `Invalid bill ID: ${invalidId}`);
+    }
 
-  if (!bills.length) {
+    const filter: Record<string, any> = {
+      _id: { $in: payload.billIds.map((id) => new Types.ObjectId(id)) },
+      status: { $ne: BILL_STATUS.CANCELLED },
+    };
+
+    if (isLandlord) {
+      filter.landlord = new Types.ObjectId(currentUserId);
+    }
+
+    const bills = await FinanceBill.find(filter).sort({ dueDate: 1 });
+
+    if (!bills.length) {
+      throw new ApiError(
+        StatusCodes.NOT_FOUND,
+        "No valid unpaid bills found for the provided IDs",
+      );
+    }
+
+    const unpaidBills = bills.filter(
+      (b) => b.status !== BILL_STATUS.PAID && (b.paidAmount || 0) < b.amount,
+    );
+
+    if (!unpaidBills.length) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        "Selected bill(s) are already fully paid",
+      );
+    }
+
+    const updatedBillIds: Types.ObjectId[] = [];
+    let totalRecordedAmount = 0;
+    let remainingPayment =
+      payload.amountReceived !== undefined ? payload.amountReceived : Infinity;
+
+    for (const bill of unpaidBills) {
+      const currentPaid = bill.paidAmount || 0;
+      const needed = Math.max(0, bill.amount - currentPaid);
+      let paymentAllocated = needed;
+
+      if (remainingPayment !== Infinity) {
+        paymentAllocated = Math.min(needed, remainingPayment);
+        remainingPayment -= paymentAllocated;
+      }
+
+      if (paymentAllocated <= 0) {
+        continue;
+      }
+
+      const newPaidAmount = currentPaid + paymentAllocated;
+      bill.paidAmount = newPaidAmount;
+      bill.paidAt = paymentDate;
+      bill.paymentMethod = payload.paymentMethod;
+      bill.referenceNumber = payload.referenceNumber || null;
+      bill.paymentNotes = payload.notes || null;
+      bill.receiptSent = !!payload.receiptSentToTenant;
+      bill.recordedBy = new Types.ObjectId(currentUserId);
+      bill.status =
+        newPaidAmount >= bill.amount ? BILL_STATUS.PAID : BILL_STATUS.PARTIAL;
+
+      await bill.save();
+      updatedBillIds.push(bill._id as Types.ObjectId);
+      totalRecordedAmount += paymentAllocated;
+
+      if (payload.receiptSentToTenant) {
+        const periodLabel = bill.periodMonth
+          ? formatMonthPeriod(parsePeriodMonthToDate(bill.periodMonth))
+          : "";
+        notificationHelper.sendToUser(bill.tenant, {
+          title: "Rent / Charge Payment Recorded",
+          body: `Payment of ${getCurrencySymbol()}${paymentAllocated} for invoice ${bill.invoiceNumber}${periodLabel ? ` (${periodLabel})` : ""} has been recorded by your landlord.`,
+          type: NOTIFICATION_TYPE.RENT_REMINDER,
+          data: {
+            preferenceCategory: "rentReminders",
+            referenceId: bill._id.toString(),
+            referenceModel: "Bill",
+            billId: bill._id.toString(),
+            invoiceNumber: bill.invoiceNumber,
+            paidAmount: paymentAllocated.toString(),
+          },
+        });
+      }
+    }
+
+    const populatedBills = await FinanceBill.find({
+      _id: { $in: updatedBillIds },
+    })
+      .populate(billPopulateOptions)
+      .lean();
+
+    const now = new Date();
+    return {
+      recordedCount: populatedBills.length,
+      totalRecordedAmount,
+      formattedTotalRecordedAmount: formatCurrency(totalRecordedAmount),
+      bills: populatedBills.map((b: any) => formatBillItemForDisplay(b, now)),
+    };
+  }
+
+  // Mode 2: Direct payment by property + flat + tenant + amount
+  const paymentAmount = payload.amount ?? payload.amountReceived ?? 0;
+  if (
+    !payload.property ||
+    !Types.ObjectId.isValid(payload.property) ||
+    !payload.flat ||
+    !Types.ObjectId.isValid(payload.flat) ||
+    !payload.tenant ||
+    !Types.ObjectId.isValid(payload.tenant) ||
+    paymentAmount <= 0
+  ) {
     throw new ApiError(
-      StatusCodes.NOT_FOUND,
-      "No valid unpaid bills found for the provided IDs",
+      StatusCodes.BAD_REQUEST,
+      "Valid billIds or property, flat, tenant, and positive amount are required",
     );
   }
 
-  const paymentDate = new Date(payload.paymentDate);
-  const updatedBills = [];
-  let remainingPayment =
-    payload.amountReceived !== undefined ? payload.amountReceived : Infinity;
-
-  for (const bill of bills) {
-    const currentPaid = bill.paidAmount || 0;
-    const needed = Math.max(0, bill.amount - currentPaid);
-    let paymentAllocated = needed;
-
-    if (remainingPayment !== Infinity) {
-      paymentAllocated = Math.min(needed, remainingPayment);
-      remainingPayment -= paymentAllocated;
-    }
-
-    const newPaidAmount = currentPaid + paymentAllocated;
-    bill.paidAmount = newPaidAmount;
-    bill.paidAt = paymentDate;
-    bill.paymentMethod = payload.paymentMethod;
-    bill.referenceNumber = payload.referenceNumber || null;
-    bill.paymentNotes = payload.notes || null;
-    bill.receiptSent = !!payload.receiptSentToTenant;
-    bill.recordedBy = new Types.ObjectId(currentUserId);
-    bill.status =
-      newPaidAmount >= bill.amount ? BILL_STATUS.PAID : BILL_STATUS.PARTIAL;
-
-    await bill.save();
-    updatedBills.push(bill);
-
-    // Send receipt notification if requested
-    if (payload.receiptSentToTenant && paymentAllocated > 0) {
-      notificationHelper.sendToUser(bill.tenant, {
-        title: "Rent / Charge Payment Recorded",
-        body: `Payment of ${getCurrencySymbol()}${paymentAllocated} for invoice ${bill.invoiceNumber} (${bill.periodMonth}) has been recorded by your landlord.`,
-        type: NOTIFICATION_TYPE.RENT_REMINDER,
-        data: {
-          preferenceCategory: "rentReminders",
-          referenceId: bill._id.toString(),
-          referenceModel: "Bill",
-          billId: bill._id.toString(),
-          invoiceNumber: bill.invoiceNumber,
-          paidAmount: paymentAllocated.toString(),
-        },
-      });
-    }
+  const property = await Property.findById(payload.property).lean();
+  if (!property) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Property not found");
+  }
+  if (isLandlord && property.landlord?.toString() !== currentUserId) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      "Property does not belong to you",
+    );
   }
 
-  return {
-    recordedCount: updatedBills.length,
-    bills: updatedBills,
-  };
-};
-
-// -------------------------------------------------------------
-// 6. RECORD RENT RECEIVED DIRECTLY (Landlord CTA Button)
-// -------------------------------------------------------------
-const recordRentReceivedIntoDB = async (
-  authUser: JwtPayload,
-  payload: IRecordRentReceivedPayload,
-) => {
-  const currentUserId = authUser.userId || authUser.id;
-  const isLandlord = authUser.role === USER_ROLES.LANDLORD;
-  const paymentDate = new Date(payload.paymentDate);
-
-  // Normalize periodMonth to 1st of month Date in UTC
   const periodDate = parsePeriodMonthToDate(payload.periodMonth || paymentDate);
   const nextPeriodDate = new Date(
     Date.UTC(periodDate.getUTCFullYear(), periodDate.getUTCMonth() + 1, 1),
   );
   const periodMonthString = formatMonthPeriod(periodDate);
 
-  // Fetch tenancy to know the actual agreed monthly rent
   const tenancyFilter: Record<string, any> = {
     property: new Types.ObjectId(payload.property),
     flat: new Types.ObjectId(payload.flat),
@@ -768,10 +1456,12 @@ const recordRentReceivedIntoDB = async (
   }
 
   const tenancy = await Tenancy.findOne(tenancyFilter).lean();
-  const landlordId = tenancy?.landlord?.toString() || currentUserId;
-  const fullRentAmount = tenancy?.rentAmount || payload.amount;
+  const landlordId =
+    tenancy?.landlord?.toString() ||
+    property.landlord?.toString() ||
+    currentUserId;
+  const fullRentAmount = tenancy?.rentAmount || paymentAmount;
 
-  // Check if an existing rent bill exists for this tenant & flat & period
   let bill = await FinanceBill.findOne({
     property: new Types.ObjectId(payload.property),
     flat: new Types.ObjectId(payload.flat),
@@ -794,9 +1484,9 @@ const recordRentReceivedIntoDB = async (
     if (bill.amount < fullRentAmount) {
       bill.amount = fullRentAmount;
     }
-    let newPaidAmount = payload.amount;
-    if (bill.paidAmount && bill.paidAmount > 0 && payload.amount < bill.amount) {
-      newPaidAmount = Math.min(bill.amount, bill.paidAmount + payload.amount);
+    let newPaidAmount = paymentAmount;
+    if (bill.paidAmount && bill.paidAmount > 0 && paymentAmount < bill.amount) {
+      newPaidAmount = Math.min(bill.amount, bill.paidAmount + paymentAmount);
     }
     bill.paidAmount = newPaidAmount;
     bill.paidAt = paymentDate;
@@ -811,7 +1501,7 @@ const recordRentReceivedIntoDB = async (
     await bill.save();
   } else {
     const invoiceNumber = await generateInvoiceNumber();
-    const isFullPayment = payload.amount >= fullRentAmount;
+    const isFullPayment = paymentAmount >= fullRentAmount;
 
     bill = await FinanceBill.create({
       landlord: new Types.ObjectId(landlordId),
@@ -827,7 +1517,7 @@ const recordRentReceivedIntoDB = async (
       invoiceNumber,
       description: `${periodMonthString} rent`,
       status: isFullPayment ? BILL_STATUS.PAID : BILL_STATUS.PARTIAL,
-      paidAmount: payload.amount,
+      paidAmount: paymentAmount,
       paidAt: paymentDate,
       paymentMethod: payload.paymentMethod,
       referenceNumber: payload.referenceNumber || null,
@@ -840,20 +1530,30 @@ const recordRentReceivedIntoDB = async (
   if (payload.receiptSentToTenant) {
     notificationHelper.sendToUser(payload.tenant, {
       title: "Rent Receipt Received",
-      body: `Your rent payment of ${getCurrencySymbol()}${payload.amount} for ${periodMonthString} has been confirmed. Invoice #${bill.invoiceNumber}.`,
+      body: `Your rent payment of ${getCurrencySymbol()}${paymentAmount} for ${periodMonthString} has been confirmed. Invoice #${bill.invoiceNumber}.`,
       type: NOTIFICATION_TYPE.TENANT,
       data: {
         billId: bill._id.toString(),
         invoiceNumber: bill.invoiceNumber,
-        amount: payload.amount.toString(),
+        amount: paymentAmount.toString(),
       },
     });
   }
 
-  const populated = await FinanceBill.findById(bill._id).populate(
-    billPopulateOptions,
-  );
-  return populated;
+  const populated = await FinanceBill.findById(bill._id)
+    .populate(billPopulateOptions)
+    .lean();
+
+  const formattedBill = populated
+    ? formatBillItemForDisplay(populated, new Date())
+    : populated;
+
+  return {
+    recordedCount: 1,
+    totalRecordedAmount: paymentAmount,
+    formattedTotalRecordedAmount: formatCurrency(paymentAmount),
+    bills: formattedBill ? [formattedBill] : [],
+  };
 };
 
 // -------------------------------------------------------------
@@ -1793,10 +2493,24 @@ const createStripeCheckoutSessionIntoDB = async (
     `${clientBaseUrl}/finance/payment-cancel?bill_id=${bill._id}`;
 
   const currency = getCurrencyCode();
+  const formattedPeriod = bill.periodMonth
+    ? formatMonthPeriod(parsePeriodMonthToDate(bill.periodMonth))
+    : "";
+  const remainingAmount = Math.max(
+    0,
+    Number(bill.amount || 0) - Number(bill.paidAmount || 0),
+  );
+  if (remainingAmount <= 0) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "This bill has no remaining balance to pay",
+    );
+  }
+
   const billTitle =
     bill.billType === CHARGE_TYPE.RENT
-      ? `${bill.periodMonth} Rent`
-      : `${bill.billType.replace("_", " ")} - ${bill.description || bill.periodMonth}`;
+      ? `${formattedPeriod} Rent`
+      : `${formatDisplayBillType(bill.billType)} - ${bill.description || formattedPeriod}`;
 
   const session = await stripe.checkout.sessions.create({
     line_items: [
@@ -1807,7 +2521,7 @@ const createStripeCheckoutSessionIntoDB = async (
             name: billTitle,
             description: `Invoice: ${bill.invoiceNumber} | Flat: ${(bill.flat as any)?.unitName || "N/A"}`,
           },
-          unit_amount: Math.round(bill.amount * 100),
+          unit_amount: Math.round(remainingAmount * 100),
         },
         quantity: 1,
       },
@@ -1822,7 +2536,7 @@ const createStripeCheckoutSessionIntoDB = async (
       payerId: currentUserId,
       payerRole: authUser.role,
       invoiceNumber: bill.invoiceNumber,
-      amount: bill.amount.toString(),
+      amount: remainingAmount.toString(),
     },
   });
 
@@ -1832,7 +2546,7 @@ const createStripeCheckoutSessionIntoDB = async (
   return {
     paymentUrl: session.url,
     sessionId: session.id,
-    amount: bill.amount,
+    amount: remainingAmount,
     currency,
     invoiceNumber: bill.invoiceNumber,
   };
@@ -1929,8 +2643,8 @@ const getLandlordFormOptionsFromDB = async (authUser: JwtPayload) => {
   })
     .select("unitName floor floorNote property rentPerMonth tenant tenants")
     .populate([
-      { path: "tenant", select: "firstName lastName email phone" },
-      { path: "tenants", select: "firstName lastName email phone" },
+      { path: "tenant", select: "name email phone profileImage" },
+      { path: "tenants", select: "name email phone profileImage" },
     ])
     .lean();
 
@@ -1940,9 +2654,9 @@ const getLandlordFormOptionsFromDB = async (authUser: JwtPayload) => {
     status: "active",
   })
     .populate([
-      { path: "tenant", select: "firstName lastName email phone" },
+      { path: "tenant", select: "name email phone profileImage" },
       { path: "flat", select: "unitName" },
-      { path: "property", select: "propertyName" },
+      { path: "property", select: "propertyName streetAddress postCode" },
     ])
     .lean();
 
@@ -2311,10 +3025,11 @@ const getLandlordTenantPaymentsFromDB = async (
 export const FinanceService = {
   getLandlordOverviewFromDB,
   getBillsFromDB,
+  getLandlordTransactionsFromDB,
+  getRecordPaymentDataFromDB,
   getSingleBillFromDB,
   createChargeIntoDB,
   recordPaymentIntoDB,
-  recordRentReceivedIntoDB,
   undoPaymentIntoDB,
   cancelBillIntoDB,
   getReminderCandidatesFromDB,

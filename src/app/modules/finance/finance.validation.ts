@@ -32,57 +32,77 @@ const createChargeZodSchema = z.object({
   }),
 });
 
-const recordPaymentZodSchema = z.object({
-  body: z.object({
-    billIds: z
-      .array(z.string())
-      .min(1, "At least one bill ID must be selected"),
-    paymentDate: z.string({ required_error: "Payment date is required" }),
-    paymentMethod: z.enum(
-      [
-        PAYMENT_METHOD.BANK_TRANSFER,
-        PAYMENT_METHOD.CASH,
-        PAYMENT_METHOD.CHEQUE,
-        PAYMENT_METHOD.DIRECT_DEBIT,
-        PAYMENT_METHOD.STRIPE,
-        PAYMENT_METHOD.OTHER,
-      ],
-      { required_error: "Payment method is required" },
-    ),
-    referenceNumber: z.string().optional(),
-    amountReceived: z.coerce
-      .number({ required_error: "Amount received is required" })
-      .positive("Amount received must be greater than zero"),
-    notes: z.string().optional(),
-    receiptSentToTenant: z.boolean().optional().default(false),
-  }),
-});
+const normalizePaymentMethod = (val: unknown) => {
+  if (typeof val === "string") {
+    return val.trim().toLowerCase().replace(/\s+/g, "_");
+  }
+  return val;
+};
 
-const recordRentReceivedZodSchema = z.object({
-  body: z.object({
-    property: z.string({ required_error: "Property is required" }),
-    flat: z.string({ required_error: "Flat/Unit is required" }),
-    tenant: z.string({ required_error: "Tenant is required" }),
-    amount: z.coerce
-      .number({ required_error: "Amount is required" })
-      .positive("Amount must be greater than zero"),
-    periodMonth: z.union([z.string(), z.date()]).optional(),
-    paymentDate: z.string({ required_error: "Payment date is required" }),
-    paymentMethod: z.enum(
-      [
-        PAYMENT_METHOD.BANK_TRANSFER,
-        PAYMENT_METHOD.CASH,
-        PAYMENT_METHOD.CHEQUE,
-        PAYMENT_METHOD.DIRECT_DEBIT,
-        PAYMENT_METHOD.STRIPE,
-        PAYMENT_METHOD.OTHER,
-      ],
-      { required_error: "Payment method is required" },
-    ),
-    referenceNumber: z.string().optional(),
-    notes: z.string().optional(),
-    receiptSentToTenant: z.boolean().optional().default(false),
-  }),
+const recordPaymentZodSchema = z.object({
+  body: z.preprocess(
+    (val) => {
+      if (val && typeof val === "object" && !Array.isArray(val)) {
+        const obj = { ...(val as Record<string, unknown>) };
+        if (!obj.paymentDate && obj.paymentReceivedOn) {
+          obj.paymentDate = obj.paymentReceivedOn;
+        }
+        return obj;
+      }
+      return val;
+    },
+    z
+      .object({
+        billIds: z.array(z.string()).optional(),
+        property: z.string().optional(),
+        flat: z.string().optional(),
+        tenant: z.string().optional(),
+        amount: z.coerce
+          .number()
+          .positive("Amount must be greater than zero")
+          .optional(),
+        amountReceived: z.coerce
+          .number()
+          .positive("Amount received must be greater than zero")
+          .optional(),
+        periodMonth: z.union([z.string(), z.date()]).optional(),
+        paymentDate: z.union([
+          z.string({ required_error: "Payment date is required" }).min(1, "Payment date is required"),
+          z.date(),
+        ]),
+        paymentMethod: z.preprocess(
+          normalizePaymentMethod,
+          z.enum(
+            [
+              PAYMENT_METHOD.BANK_TRANSFER,
+              PAYMENT_METHOD.CASH,
+              PAYMENT_METHOD.CHEQUE,
+              PAYMENT_METHOD.DIRECT_DEBIT,
+              PAYMENT_METHOD.STRIPE,
+              PAYMENT_METHOD.OTHER,
+            ],
+            { required_error: "Payment method is required" },
+          ),
+        ),
+        referenceNumber: z.string().optional(),
+        notes: z.string().optional(),
+        receiptSentToTenant: z.boolean().optional().default(false),
+      })
+      .refine(
+        (data) =>
+          (Array.isArray(data.billIds) && data.billIds.length > 0) ||
+          Boolean(
+            data.property &&
+              data.flat &&
+              data.tenant &&
+              (data.amount !== undefined || data.amountReceived !== undefined),
+          ),
+        {
+          message:
+            "At least one bill ID must be selected, or property, flat, tenant, and amount must be provided",
+        },
+      ),
+  ),
 });
 
 const sendReminderZodSchema = z.object({
@@ -103,7 +123,6 @@ const stripeCheckoutZodSchema = z.object({
 export const FinanceValidation = {
   createChargeZodSchema,
   recordPaymentZodSchema,
-  recordRentReceivedZodSchema,
   sendReminderZodSchema,
   stripeCheckoutZodSchema,
 };

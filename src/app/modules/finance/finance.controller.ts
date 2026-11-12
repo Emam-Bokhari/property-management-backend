@@ -41,6 +41,49 @@ const getBills = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// 2.1 Landlord Transaction History (Outstanding | Paid tabs)
+const getLandlordTransactions = catchAsync(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+    }
+
+    const result = await FinanceService.getLandlordTransactionsFromDB(
+      req.user,
+      req.query,
+    );
+
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      message: "Transaction history retrieved successfully",
+      meta: result.meta,
+      data: result.data,
+    });
+  },
+);
+
+// 2.2 Get Record Payment Screen Data (Unpaid bills grouped by property)
+const getRecordPaymentData = catchAsync(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+    }
+
+    const result = await FinanceService.getRecordPaymentDataFromDB(
+      req.user,
+      req.query,
+    );
+
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      message: "Record payment data retrieved successfully",
+      data: result,
+    });
+  },
+);
+
 // 3. Get Single Bill Detail
 const getSingleBill = catchAsync(async (req: Request, res: Response) => {
   if (!req.user) {
@@ -76,7 +119,7 @@ const createCharge = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// 5. Record Manual Payment (Landlord)
+// 5. Record Manual Payment (Unified - Landlord / Admin)
 const recordPayment = catchAsync(async (req: Request, res: Response) => {
   if (!req.user) {
     throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
@@ -88,25 +131,6 @@ const recordPayment = catchAsync(async (req: Request, res: Response) => {
     statusCode: StatusCodes.OK,
     success: true,
     message: "Payment recorded successfully",
-    data: result,
-  });
-});
-
-// 6. Record Rent Received Directly (Landlord)
-const recordRentReceived = catchAsync(async (req: Request, res: Response) => {
-  if (!req.user) {
-    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
-  }
-
-  const result = await FinanceService.recordRentReceivedIntoDB(
-    req.user,
-    req.body,
-  );
-
-  sendResponse(res, {
-    statusCode: StatusCodes.OK,
-    success: true,
-    message: "Rent received recorded successfully",
     data: result,
   });
 });
@@ -283,10 +307,11 @@ const getTenantPayments = catchAsync(async (req: Request, res: Response) => {
 export const FinanceController = {
   getLandlordOverview,
   getBills,
+  getLandlordTransactions,
+  getRecordPaymentData,
   getSingleBill,
   createCharge,
   recordPayment,
-  recordRentReceived,
   undoPayment,
   cancelBill,
   getReminderCandidates,

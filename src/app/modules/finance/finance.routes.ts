@@ -33,7 +33,14 @@ router.post(
   FinanceController.createCharge,
 );
 
-// 4. Record Payment for one or more unpaid bills (Manual)
+// 4. Get Record Payment Screen Data (Unpaid bills grouped by property & filter options)
+router.get(
+  "/record-payment",
+  auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  FinanceController.getRecordPaymentData,
+);
+
+// 5. Record Payment (Unified manual payment for selected bills or direct rent)
 router.post(
   "/record-payment",
   auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
@@ -41,15 +48,14 @@ router.post(
   FinanceController.recordPayment,
 );
 
-// 5. Direct Record Rent Received (Landlord CTA)
-router.post(
-  "/record-rent-received",
+// 5.1. Landlord Transaction History (Outstanding & Paid tabs - manual + Stripe)
+router.get(
+  "/transactions",
   auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
-  validateRequest(FinanceValidation.recordRentReceivedZodSchema),
-  FinanceController.recordRentReceived,
+  FinanceController.getLandlordTransactions,
 );
 
-// 5.1. Tenant Payment History for Landlord (Screenshot view)
+// 5.2. Tenant Payment History for Landlord (Screenshot view)
 router.get(
   "/tenant-payments/:tenantId",
   auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),

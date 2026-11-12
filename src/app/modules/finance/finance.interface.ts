@@ -51,20 +51,12 @@ export type ICreateChargePayload = {
 };
 
 export type IRecordPaymentPayload = {
-  billIds: string[];
-  paymentDate: string | Date;
-  paymentMethod: PAYMENT_METHOD;
-  referenceNumber?: string;
-  amountReceived: number;
-  notes?: string;
-  receiptSentToTenant?: boolean;
-};
-
-export type IRecordRentReceivedPayload = {
-  property: string;
-  flat: string;
-  tenant: string;
-  amount: number;
+  billIds?: string[];
+  property?: string;
+  flat?: string;
+  tenant?: string;
+  amount?: number;
+  amountReceived?: number;
   periodMonth?: string | Date;
   paymentDate: string | Date;
   paymentMethod: PAYMENT_METHOD;
