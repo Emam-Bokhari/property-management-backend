@@ -51,6 +51,57 @@ const getMySubscription = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const previewPlanChange = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.user.id;
+  const { packageId, planType } = req.body;
+
+  const result = await SubscriptionService.previewPlanChange(userId, {
+    packageId,
+    planType,
+  });
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Subscription plan change preview generated successfully",
+    data: result,
+  });
+});
+
+const changeSubscriptionPlan = catchAsync(
+  async (req: Request, res: Response) => {
+    const userId = req.user.id;
+    const { packageId, planType } = req.body;
+
+    const result = await SubscriptionService.changeSubscriptionPlan(userId, {
+      packageId,
+      planType,
+    });
+
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  },
+);
+
+const cancelScheduledPlanChange = catchAsync(
+  async (req: Request, res: Response) => {
+    const userId = req.user.id;
+    const result =
+      await SubscriptionService.cancelScheduledPlanChange(userId);
+
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      message: result.message,
+      data: result.subscription,
+    });
+  },
+);
+
 const cancelSubscription = catchAsync(async (req: Request, res: Response) => {
   const userId = req.user.id;
   const { cancelImmediately } = req.body;
@@ -72,5 +123,8 @@ export const SubscriptionController = {
   createCheckoutSession,
   createCustomerPortalSession,
   getMySubscription,
+  previewPlanChange,
+  changeSubscriptionPlan,
+  cancelScheduledPlanChange,
   cancelSubscription,
 };

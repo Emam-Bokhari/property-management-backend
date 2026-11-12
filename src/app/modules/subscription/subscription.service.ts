@@ -12,11 +12,205 @@ import { sendNotifications } from "../../../helpers/notificationsHelper";
 import { NOTIFICATION_TYPE } from "../notification/notification.constant";
 import { getCurrencyCode } from "../../../helpers/currencyHelper";
 
+type PlanType = "monthly" | "yearly";
+
+type PlanChangeStrategy =
+  | "trial_switch"
+  | "immediate_prorated_upgrade"
+  | "schedule_at_period_end"
+  | "cancel_scheduled_change";
+
+const addBillingInterval = (baseDate: Date, planType: PlanType): Date => {
+  const result = new Date(baseDate.getTime());
+  if (planType === "yearly") {
+    const targetYear = result.getUTCFullYear() + 1;
+    const month = result.getUTCMonth();
+    const day = result.getUTCDate();
+    result.setUTCFullYear(targetYear, month, 1);
+    const daysInTargetMonth = new Date(
+      Date.UTC(targetYear, month + 1, 0),
+    ).getUTCDate();
+    result.setUTCDate(Math.min(day, daysInTargetMonth));
+  } else {
+    const targetMonthIndex = result.getUTCMonth() + 1;
+    const day = result.getUTCDate();
+    result.setUTCDate(1);
+    result.setUTCMonth(targetMonthIndex);
+    const daysInTargetMonth = new Date(
+      Date.UTC(result.getUTCFullYear(), result.getUTCMonth() + 1, 0),
+    ).getUTCDate();
+    result.setUTCDate(Math.min(day, daysInTargetMonth));
+  }
+  return result;
+};
+
+// Shared helper: ensure a Package has a valid Stripe Product and recurring Price for the requested interval
+const ensurePackageStripePrice = async (
+  stripe: Stripe,
+  selectedPackage: any,
+  planType: PlanType,
+): Promise<string> => {
+  let priceId =
+    planType === "yearly"
+      ? selectedPackage.stripeYearlyPriceId
+      : selectedPackage.stripeMonthlyPriceId;
+
+  if (priceId && priceId.startsWith("price_")) {
+    return priceId;
+  }
+
+  const currency = getCurrencyCode();
+
+  let productId = selectedPackage.stripeProductId;
+  if (!productId || !productId.startsWith("prod_")) {
+    const prod = await stripe.products.create({
+      name: selectedPackage.name,
+      description: selectedPackage.description || undefined,
+    });
+    productId = prod.id;
+    selectedPackage.stripeProductId = prod.id;
+  }
+
+  const priceAmount =
+    planType === "yearly"
+      ? selectedPackage.yearlyPrice
+      : selectedPackage.monthlyPrice;
+
+  const newPrice = await stripe.prices.create({
+    product: productId,
+    unit_amount: Math.round(priceAmount * 100),
+    currency,
+    recurring: {
+      interval: planType === "yearly" ? "year" : "month",
+    },
+    metadata: {
+      planType,
+      packageName: selectedPackage.name,
+    },
+  });
+
+  if (planType === "yearly") {
+    selectedPackage.stripeYearlyPriceId = newPrice.id;
+  } else {
+    selectedPackage.stripeMonthlyPriceId = newPrice.id;
+  }
+
+  await selectedPackage.save();
+  return newPrice.id;
+};
+
+const extractPeriodDates = (subObj: any) => {
+  const startSec =
+    subObj.current_period_start ??
+    subObj.items?.data?.[0]?.current_period_start;
+  const endSec =
+    subObj.current_period_end ?? subObj.items?.data?.[0]?.current_period_end;
+
+  return {
+    currentPeriodStart: startSec ? new Date(startSec * 1000) : undefined,
+    currentPeriodEnd: endSec ? new Date(endSec * 1000) : undefined,
+  };
+};
+
+// Shared helper: sync local Subscription document from a live Stripe Subscription object
+const syncSubscriptionFromStripe = async (
+  subscription: any,
+  stripeSubscription: Stripe.Subscription,
+  overrides?: { packageId?: any; planType?: PlanType },
+) => {
+  const subObj = stripeSubscription as any;
+  const previousPackageId = subscription.packageId?.toString();
+  const previousPlanType = subscription.planType;
+
+  subscription.status = subObj.status as any;
+  subscription.cancelAtPeriodEnd = Boolean(subObj.cancel_at_period_end);
+
+  const { currentPeriodStart, currentPeriodEnd } = extractPeriodDates(subObj);
+  if (currentPeriodStart) {
+    subscription.currentPeriodStart = currentPeriodStart;
+  }
+  if (currentPeriodEnd) {
+    subscription.currentPeriodEnd = currentPeriodEnd;
+  }
+
+  subscription.isTrial = subObj.status === "trialing";
+  if (subObj.trial_start) {
+    subscription.trialStartsAt = new Date(subObj.trial_start * 1000);
+  }
+  if (subObj.trial_end) {
+    subscription.trialEndsAt = new Date(subObj.trial_end * 1000);
+  }
+
+  if (subObj.status === "canceled") {
+    subscription.canceledAt = subscription.canceledAt || new Date();
+  }
+
+  // Resolve packageId & planType from overrides or live Stripe subscription item price
+  if (overrides?.packageId) {
+    subscription.packageId = overrides.packageId;
+  }
+  if (overrides?.planType) {
+    subscription.planType = overrides.planType;
+  } else {
+    const firstItem = subObj.items?.data?.[0];
+    const priceObj = firstItem?.price;
+    const priceId =
+      typeof priceObj === "string" ? priceObj : priceObj?.id || undefined;
+
+    if (priceId) {
+      const matchedPackage = await Package.findOne({
+        $or: [
+          { stripeMonthlyPriceId: priceId },
+          { stripeYearlyPriceId: priceId },
+        ],
+      });
+
+      if (matchedPackage) {
+        subscription.packageId = matchedPackage._id;
+        subscription.planType =
+          matchedPackage.stripeYearlyPriceId === priceId ? "yearly" : "monthly";
+      } else if (priceObj?.recurring?.interval) {
+        subscription.planType =
+          priceObj.recurring.interval === "year" ? "yearly" : "monthly";
+      }
+    } else if (subObj.metadata?.planType) {
+      subscription.planType = subObj.metadata.planType as PlanType;
+    }
+  }
+
+  // Clear scheduled change fields once applied or if Stripe schedule is no longer attached
+  const scheduleId =
+    typeof subObj.schedule === "string"
+      ? subObj.schedule
+      : subObj.schedule?.id;
+  const scheduledTransitionApplied =
+    Boolean(subscription.scheduledPlanType) &&
+    subscription.planType === subscription.scheduledPlanType &&
+    (!subscription.scheduledPackageId ||
+      subscription.packageId?.toString() ===
+        subscription.scheduledPackageId.toString());
+
+  if (!scheduleId || scheduledTransitionApplied) {
+    subscription.stripeScheduleId = undefined;
+    subscription.scheduledPackageId = undefined;
+    subscription.scheduledPlanType = undefined;
+    subscription.scheduledChangeAt = undefined;
+  }
+
+  await subscription.save();
+
+  const planChanged =
+    previousPackageId !== subscription.packageId?.toString() ||
+    previousPlanType !== subscription.planType;
+
+  return { subscription, planChanged };
+};
+
 // 1. Create Stripe Checkout Session
 const createCheckoutSession = async (
   userId: string,
   packageId: string,
-  planType: "monthly" | "yearly",
+  planType: PlanType,
 ) => {
   const stripe = getStripe();
 
@@ -33,54 +227,11 @@ const createCheckoutSession = async (
     );
   }
 
-  // Pick price ID based on billing interval
-  let priceId =
-    planType === "yearly"
-      ? selectedPackage.stripeYearlyPriceId
-      : selectedPackage.stripeMonthlyPriceId;
-
-  // Auto-heal / generate real Stripe price if missing or not a live Stripe ID
-  if (!priceId || !priceId.startsWith("price_")) {
-    const currency = getCurrencyCode();
-
-    // Ensure Stripe product exists
-    let productId = selectedPackage.stripeProductId;
-    if (!productId || !productId.startsWith("prod_")) {
-      const prod = await stripe.products.create({
-        name: selectedPackage.name,
-        description: selectedPackage.description || undefined,
-      });
-      productId = prod.id;
-      selectedPackage.stripeProductId = prod.id;
-    }
-
-    const priceAmount =
-      planType === "yearly"
-        ? selectedPackage.yearlyPrice
-        : selectedPackage.monthlyPrice;
-
-    const newPrice = await stripe.prices.create({
-      product: productId,
-      unit_amount: Math.round(priceAmount * 100),
-      currency,
-      recurring: {
-        interval: planType === "yearly" ? "year" : "month",
-      },
-      metadata: {
-        planType,
-        packageName: selectedPackage.name,
-      },
-    });
-
-    if (planType === "yearly") {
-      selectedPackage.stripeYearlyPriceId = newPrice.id;
-    } else {
-      selectedPackage.stripeMonthlyPriceId = newPrice.id;
-    }
-
-    await selectedPackage.save();
-    priceId = newPrice.id;
-  }
+  const priceId = await ensurePackageStripePrice(
+    stripe,
+    selectedPackage,
+    planType,
+  );
 
   // Check if user already has an active or trialing subscription
   const existingActiveSubscription = await Subscription.findOne({
@@ -91,7 +242,7 @@ const createCheckoutSession = async (
   if (existingActiveSubscription) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
-      "You already have an active subscription. Use Customer Portal to change your plan.",
+      "You already have an active subscription. Use the change-plan endpoint or Customer Portal to update your plan.",
     );
   }
 
@@ -198,6 +349,7 @@ const getMySubscriptionFromDB = async (userId: string) => {
     status: { $in: ["active", "trialing", "past_due"] },
   })
     .populate("packageId")
+    .populate("scheduledPackageId")
     .sort({ createdAt: -1 });
 
   const currentPropertiesCount = await Property.countDocuments({
@@ -245,6 +397,613 @@ const getMySubscriptionFromDB = async (userId: string) => {
   };
 };
 
+// Helper: Release an active Stripe Subscription Schedule if attached
+const releaseActiveScheduleIfExists = async (
+  stripe: Stripe,
+  stripeSubscription: Stripe.Subscription,
+  subscription: any,
+) => {
+  const scheduleRef = (stripeSubscription as any).schedule;
+  const scheduleId =
+    typeof scheduleRef === "string"
+      ? scheduleRef
+      : scheduleRef?.id || subscription.stripeScheduleId;
+
+  if (scheduleId) {
+    try {
+      await stripe.subscriptionSchedules.release(scheduleId);
+    } catch (err: any) {
+      if (err?.code !== "resource_missing") {
+        throw err;
+      }
+    }
+  }
+
+  subscription.stripeScheduleId = undefined;
+  subscription.scheduledPackageId = undefined;
+  subscription.scheduledPlanType = undefined;
+  subscription.scheduledChangeAt = undefined;
+};
+
+// Helper: Validate and resolve strategy for switching/upgrading subscription plan or interval
+const resolvePlanChangeContext = async (
+  userId: string,
+  targetPackageId: string | undefined,
+  targetPlanType: PlanType,
+) => {
+  const stripe = getStripe();
+
+  const subscription = await Subscription.findOne({
+    userId,
+    status: { $in: ["active", "trialing"] },
+  }).sort({ createdAt: -1 });
+
+  if (!subscription) {
+    const overdueSubscription = await Subscription.findOne({
+      userId,
+      status: { $in: ["past_due", "unpaid"] },
+    }).sort({ createdAt: -1 });
+
+    if (overdueSubscription) {
+      throw new ApiError(
+        StatusCodes.PAYMENT_REQUIRED,
+        "Your subscription has an overdue payment. Please settle the outstanding payment in the billing portal before changing plans.",
+      );
+    }
+
+    throw new ApiError(
+      StatusCodes.NOT_FOUND,
+      "No active or trialing subscription found to update",
+    );
+  }
+
+  const resolvedPackageId =
+    targetPackageId || subscription.packageId.toString();
+
+  const [currentPackage, targetPackage] = await Promise.all([
+    Package.findById(subscription.packageId),
+    Package.findById(resolvedPackageId),
+  ]);
+
+  if (!targetPackage || !targetPackage.isActive) {
+    throw new ApiError(
+      StatusCodes.NOT_FOUND,
+      "Target package not found or inactive",
+    );
+  }
+
+  const isSamePlanAndInterval =
+    resolvedPackageId === subscription.packageId.toString() &&
+    targetPlanType === subscription.planType;
+
+  if (isSamePlanAndInterval && !subscription.stripeScheduleId) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      `You are already subscribed to the ${targetPackage.name} (${targetPlanType}) plan`,
+    );
+  }
+
+  // Prevent downgrading below current active usage limits
+  if (resolvedPackageId !== subscription.packageId.toString()) {
+    const [currentPropertiesCount, currentFlatsCount] = await Promise.all([
+      Property.countDocuments({ landlord: userId, isDeleted: { $ne: true } }),
+      Flat.countDocuments({ landlord: userId, isDeleted: { $ne: true } }),
+    ]);
+
+    if (
+      targetPackage.maxProperties !== -1 &&
+      currentPropertiesCount > targetPackage.maxProperties
+    ) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        `Cannot switch to ${targetPackage.name}: you currently have ${currentPropertiesCount} properties, but this plan allows a maximum of ${targetPackage.maxProperties}.`,
+      );
+    }
+
+    if (
+      targetPackage.maxFlats !== -1 &&
+      currentFlatsCount > targetPackage.maxFlats
+    ) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        `Cannot switch to ${targetPackage.name}: you currently have ${currentFlatsCount} units/flats, but this plan allows a maximum of ${targetPackage.maxFlats}.`,
+      );
+    }
+  }
+
+  const targetPriceId = await ensurePackageStripePrice(
+    stripe,
+    targetPackage,
+    targetPlanType,
+  );
+
+  const stripeSubscription = await stripe.subscriptions.retrieve(
+    subscription.stripeSubscriptionId,
+    { expand: ["items.data.price"] },
+  );
+
+  if (
+    stripeSubscription.status !== "active" &&
+    stripeSubscription.status !== "trialing"
+  ) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      `Subscription cannot be updated while status is '${stripeSubscription.status}'`,
+    );
+  }
+
+  const currentItem = stripeSubscription.items.data[0];
+  if (!currentItem) {
+    throw new ApiError(
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      "Stripe subscription has no active items",
+    );
+  }
+
+  const currentPrice = currentItem.price;
+  const currentInterval: PlanType =
+    currentPrice?.recurring?.interval === "year" ? "yearly" : "monthly";
+  const currentUnitAmount = (currentPrice?.unit_amount ?? 0) / 100;
+  const targetUnitAmount =
+    targetPlanType === "yearly"
+      ? targetPackage.yearlyPrice
+      : targetPackage.monthlyPrice;
+
+  const isTrialing = stripeSubscription.status === "trialing";
+  const isIntervalChange = currentInterval !== targetPlanType;
+
+  let strategy: PlanChangeStrategy;
+  if (isSamePlanAndInterval && subscription.stripeScheduleId) {
+    strategy = "cancel_scheduled_change";
+  } else if (isTrialing) {
+    strategy = "trial_switch";
+  } else if (isIntervalChange || targetUnitAmount <= currentUnitAmount) {
+    // Interval transitions (Monthly <-> Yearly) and downgrades take effect cleanly at currentPeriodEnd:
+    // new plan runs 1 year (yearly) or 1 month (monthly) starting from the current plan's end date.
+    strategy = "schedule_at_period_end";
+  } else {
+    // Same-interval package upgrade (e.g. Starter Monthly -> Pro Monthly) applies immediately
+    strategy = "immediate_prorated_upgrade";
+  }
+
+  return {
+    stripe,
+    subscription,
+    stripeSubscription,
+    currentItem,
+    currentPackage,
+    targetPackage,
+    currentInterval,
+    currentUnitAmount,
+    targetPlanType,
+    targetUnitAmount,
+    targetPriceId,
+    strategy,
+  };
+};
+
+// 3A. Preview Subscription Plan / Interval Change
+const previewPlanChange = async (
+  userId: string,
+  payload: { packageId?: string; planType: PlanType },
+) => {
+  const ctx = await resolvePlanChangeContext(
+    userId,
+    payload.packageId,
+    payload.planType,
+  );
+  const {
+    stripe,
+    subscription,
+    stripeSubscription,
+    currentItem,
+    currentPackage,
+    targetPackage,
+    currentInterval,
+    currentUnitAmount,
+    targetPlanType,
+    targetUnitAmount,
+    targetPriceId,
+    strategy,
+  } = ctx;
+
+  const subObj = stripeSubscription as any;
+  const { currentPeriodStart, currentPeriodEnd } = extractPeriodDates(subObj);
+  const currency =
+    currentItem.price?.currency || getCurrencyCode() || "usd";
+
+  const currentPlanSummary = {
+    packageId: subscription.packageId,
+    packageName: currentPackage?.name || "Current Plan",
+    planType: currentInterval,
+    price: currentUnitAmount,
+    currentPeriodStart:
+      currentPeriodStart || subscription.currentPeriodStart,
+    currentPeriodEnd: currentPeriodEnd || subscription.currentPeriodEnd,
+  };
+
+  const targetPlanSummary = {
+    packageId: targetPackage._id,
+    packageName: targetPackage.name,
+    planType: targetPlanType,
+    price: targetUnitAmount,
+  };
+
+  if (strategy === "trial_switch") {
+    const nextBillingDate =
+      subscription.trialEndsAt ||
+      (subObj.trial_end ? new Date(subObj.trial_end * 1000) : undefined) ||
+      currentPeriodEnd ||
+      subscription.currentPeriodEnd;
+    const nextPeriodEndDate = addBillingInterval(
+      nextBillingDate,
+      targetPlanType,
+    );
+
+    return {
+      strategy,
+      effectiveImmediately: true,
+      effectiveDate: new Date(),
+      currency,
+      currentPlan: currentPlanSummary,
+      targetPlan: targetPlanSummary,
+      breakdown: {
+        newPlanPrice: targetUnitAmount,
+        prorationCredit: 0,
+        subtotal: 0,
+        total: 0,
+        amountDueNow: 0,
+        nextBillingDate,
+        nextPeriodEndDate,
+        nextBillingAmount: targetUnitAmount,
+      },
+    };
+  }
+
+  if (
+    strategy === "schedule_at_period_end" ||
+    strategy === "cancel_scheduled_change"
+  ) {
+    const effectiveDate = currentPeriodEnd || subscription.currentPeriodEnd;
+    const nextPeriodEndDate = addBillingInterval(effectiveDate, targetPlanType);
+    return {
+      strategy,
+      effectiveImmediately: false,
+      effectiveDate,
+      currency,
+      currentPlan: currentPlanSummary,
+      targetPlan: targetPlanSummary,
+      breakdown: {
+        newPlanPrice: targetUnitAmount,
+        prorationCredit: 0,
+        subtotal: 0,
+        total: 0,
+        amountDueNow: 0,
+        nextBillingDate: effectiveDate,
+        nextPeriodEndDate,
+        nextBillingAmount: targetUnitAmount,
+      },
+    };
+  }
+
+  // Immediate same-interval package upgrade
+  const previewInvoice = await stripe.invoices.createPreview({
+    customer: subscription.stripeCustomerId,
+    subscription: subscription.stripeSubscriptionId,
+    subscription_details: {
+      items: [{ id: currentItem.id, price: targetPriceId }],
+      billing_cycle_anchor: "unchanged",
+      proration_behavior: "create_prorations",
+      ...(stripeSubscription.cancel_at_period_end
+        ? { cancel_at_period_end: false }
+        : {}),
+    },
+  });
+
+  let prorationCredit = 0;
+  const nextBillingDate: Date =
+    currentPeriodEnd || subscription.currentPeriodEnd;
+
+  for (const line of previewInvoice.lines?.data || []) {
+    const lineObj = line as any;
+    const amount = (lineObj.amount || 0) / 100;
+    if (amount < 0) {
+      prorationCredit += Math.abs(amount);
+    }
+  }
+
+  prorationCredit = Math.round(prorationCredit * 100) / 100;
+  const subtotal = Math.round((previewInvoice.subtotal || 0)) / 100;
+  const total = Math.round((previewInvoice.total || 0)) / 100;
+  const amountDueNow = Math.max(
+    0,
+    Math.round((previewInvoice.amount_due || 0)) / 100,
+  );
+  const nextPeriodEndDate = addBillingInterval(nextBillingDate, targetPlanType);
+
+  return {
+    strategy,
+    effectiveImmediately: true,
+    effectiveDate: new Date(),
+    currency: previewInvoice.currency || currency,
+    currentPlan: currentPlanSummary,
+    targetPlan: targetPlanSummary,
+    breakdown: {
+      newPlanPrice: targetUnitAmount,
+      prorationCredit,
+      subtotal,
+      total,
+      amountDueNow,
+      nextBillingDate,
+      nextPeriodEndDate,
+      nextBillingAmount: targetUnitAmount,
+    },
+  };
+};
+
+// 3B. Change / Upgrade Subscription Plan or Billing Interval
+const changeSubscriptionPlan = async (
+  userId: string,
+  payload: {
+    packageId?: string;
+    planType: PlanType;
+  },
+) => {
+  const ctx = await resolvePlanChangeContext(
+    userId,
+    payload.packageId,
+    payload.planType,
+  );
+  const {
+    stripe,
+    subscription,
+    stripeSubscription,
+    currentItem,
+    targetPackage,
+    targetPlanType,
+    targetPriceId,
+    strategy,
+  } = ctx;
+
+  const subObj = stripeSubscription as any;
+
+  // Cancel any pending scheduled change if returning to current plan
+  if (strategy === "cancel_scheduled_change") {
+    await releaseActiveScheduleIfExists(stripe, stripeSubscription, subscription);
+    await subscription.save();
+    await subscription.populate(["packageId", "scheduledPackageId"]);
+
+    return {
+      message: "Scheduled plan change canceled; keeping your current plan",
+      strategy,
+      effectiveImmediately: true,
+      subscription,
+      invoice: null,
+    };
+  }
+
+  // Schedule transition at currentPeriodEnd (Monthly -> Yearly = 1 year from end date; Yearly -> Monthly = 1 month from end date)
+  if (strategy === "schedule_at_period_end") {
+    await releaseActiveScheduleIfExists(stripe, stripeSubscription, subscription);
+
+    const schedule = await stripe.subscriptionSchedules.create({
+      from_subscription: stripeSubscription.id,
+    });
+
+    const currentPhase = schedule.phases[0];
+    const phaseEndDate =
+      currentPhase?.end_date ??
+      subObj.current_period_end ??
+      subObj.items?.data?.[0]?.current_period_end;
+
+    const updatedSchedule = await stripe.subscriptionSchedules.update(
+      schedule.id,
+      {
+        end_behavior: "release",
+        phases: [
+          {
+            items: [
+              {
+                price: currentItem.price.id,
+                quantity: currentItem.quantity ?? 1,
+              },
+            ],
+            start_date: currentPhase.start_date,
+            end_date: phaseEndDate,
+          },
+          {
+            items: [
+              {
+                price: targetPriceId,
+                quantity: 1,
+              },
+            ],
+            iterations: 1,
+            metadata: {
+              paymentType: "subscription",
+              userId,
+              packageId: targetPackage._id.toString(),
+              planType: targetPlanType,
+            },
+          },
+        ],
+      },
+    );
+
+    if (stripeSubscription.cancel_at_period_end) {
+      await stripe.subscriptions.update(stripeSubscription.id, {
+        cancel_at_period_end: false,
+      });
+      subscription.cancelAtPeriodEnd = false;
+    }
+
+    const effectiveDate = phaseEndDate
+      ? new Date(phaseEndDate * 1000)
+      : subscription.currentPeriodEnd;
+    const nextPeriodEndDate = addBillingInterval(effectiveDate, targetPlanType);
+
+    subscription.stripeScheduleId = updatedSchedule.id;
+    subscription.scheduledPackageId = targetPackage._id;
+    subscription.scheduledPlanType = targetPlanType;
+    subscription.scheduledChangeAt = effectiveDate;
+    await subscription.save();
+    await subscription.populate(["packageId", "scheduledPackageId"]);
+
+    await sendNotifications({
+      receiver: userId as any,
+      title: "📅 Plan Change Scheduled",
+      text: `Your subscription will switch to ${targetPackage.name} (${targetPlanType}) on ${effectiveDate.toLocaleDateString()} and run until ${nextPeriodEndDate.toLocaleDateString()}.`,
+      type: NOTIFICATION_TYPE.SUBSCRIPTION_UPDATE,
+    });
+
+    return {
+      message: `Your subscription will switch to ${targetPackage.name} (${targetPlanType}) on ${effectiveDate.toLocaleDateString()} and remain active until ${nextPeriodEndDate.toLocaleDateString()}`,
+      strategy,
+      effectiveImmediately: false,
+      effectiveDate,
+      nextPeriodEndDate,
+      subscription,
+      invoice: null,
+    };
+  }
+
+  // For immediate switches, release any existing schedule first
+  await releaseActiveScheduleIfExists(stripe, stripeSubscription, subscription);
+
+  const updateParams: Stripe.SubscriptionUpdateParams = {
+    items: [{ id: currentItem.id, price: targetPriceId }],
+    cancel_at_period_end: false,
+    billing_cycle_anchor: "unchanged",
+    metadata: {
+      ...(stripeSubscription.metadata || {}),
+      paymentType: "subscription",
+      userId,
+      packageId: targetPackage._id.toString(),
+      planType: targetPlanType,
+    },
+    expand: ["latest_invoice", "items.data.price"],
+  };
+
+  if (strategy === "trial_switch") {
+    updateParams.proration_behavior = "none";
+  } else {
+    updateParams.proration_behavior = "always_invoice";
+    updateParams.payment_behavior = "error_if_incomplete";
+  }
+
+  let updatedStripeSub: Stripe.Subscription;
+  try {
+    updatedStripeSub = await stripe.subscriptions.update(
+      stripeSubscription.id,
+      updateParams,
+    );
+  } catch (err: any) {
+    const isPaymentFailure =
+      err?.type === "StripeCardError" ||
+      err?.statusCode === 402 ||
+      err?.code === "invoice_payment_intent_requires_action" ||
+      err?.code === "card_declined";
+
+    if (isPaymentFailure) {
+      throw new ApiError(
+        StatusCodes.PAYMENT_REQUIRED,
+        err?.message ||
+          "Payment could not be completed automatically. Please update or verify your payment method in the billing portal and try again.",
+        "PAYMENT_ACTION_REQUIRED",
+      );
+    }
+    throw err;
+  }
+
+  const latestInvoice = (updatedStripeSub as any).latest_invoice as
+    | Stripe.Invoice
+    | string
+    | null;
+  const invoiceObj =
+    latestInvoice && typeof latestInvoice === "object" ? latestInvoice : null;
+
+  if (invoiceObj?.id) {
+    subscription.latestInvoiceId = invoiceObj.id;
+  }
+
+  await syncSubscriptionFromStripe(subscription, updatedStripeSub, {
+    packageId: targetPackage._id,
+    planType: targetPlanType,
+  });
+  await subscription.populate(["packageId", "scheduledPackageId"]);
+
+  const nextBillingDate =
+    strategy === "trial_switch"
+      ? subscription.trialEndsAt || subscription.currentPeriodEnd
+      : subscription.currentPeriodEnd;
+
+  const notificationText =
+    strategy === "trial_switch"
+      ? `Your plan has been switched to ${targetPackage.name} (${targetPlanType}). Your free trial remains active until ${nextBillingDate?.toLocaleDateString()}.`
+      : `Your subscription is now ${targetPackage.name} (${targetPlanType}). Next billing date: ${nextBillingDate?.toLocaleDateString()}.`;
+
+  await sendNotifications({
+    receiver: userId as any,
+    title: "🎉 Subscription Plan Updated!",
+    text: notificationText,
+    type: NOTIFICATION_TYPE.SUBSCRIPTION_UPDATE,
+  });
+
+  return {
+    message: `Subscription updated to ${targetPackage.name} (${targetPlanType}) successfully`,
+    strategy,
+    effectiveImmediately: true,
+    subscription,
+    invoice: invoiceObj
+      ? {
+          id: invoiceObj.id,
+          amountPaid: Math.round((invoiceObj.amount_paid || 0)) / 100,
+          currency: invoiceObj.currency,
+          status: invoiceObj.status,
+          hostedInvoiceUrl: invoiceObj.hosted_invoice_url,
+          invoicePdf: invoiceObj.invoice_pdf,
+        }
+      : null,
+  };
+};
+
+// 3C. Cancel a Scheduled Plan Change (e.g. scheduled Yearly -> Monthly downgrade)
+const cancelScheduledPlanChange = async (userId: string) => {
+  const stripe = getStripe();
+
+  const subscription = await Subscription.findOne({
+    userId,
+    status: { $in: ["active", "trialing"] },
+  }).sort({ createdAt: -1 });
+
+  if (!subscription) {
+    throw new ApiError(
+      StatusCodes.NOT_FOUND,
+      "No active subscription found",
+    );
+  }
+
+  if (!subscription.stripeScheduleId && !subscription.scheduledPlanType) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "There is no scheduled plan change on this subscription",
+    );
+  }
+
+  const stripeSubscription = await stripe.subscriptions.retrieve(
+    subscription.stripeSubscriptionId,
+  );
+
+  await releaseActiveScheduleIfExists(stripe, stripeSubscription, subscription);
+  await subscription.save();
+  await subscription.populate(["packageId", "scheduledPackageId"]);
+
+  return {
+    message: "Scheduled plan change has been canceled",
+    subscription,
+  };
+};
+
 // 4. Cancel Subscription
 const cancelSubscription = async (
   userId: string,
@@ -265,21 +1024,20 @@ const cancelSubscription = async (
   }
 
   if (cancelImmediately) {
-    const canceled = await stripe.subscriptions.cancel(
-      subscription.stripeSubscriptionId,
-    );
+    await stripe.subscriptions.cancel(subscription.stripeSubscriptionId);
     subscription.status = "canceled";
     subscription.canceledAt = new Date();
     subscription.cancelAtPeriodEnd = false;
+    subscription.stripeScheduleId = undefined;
+    subscription.scheduledPackageId = undefined;
+    subscription.scheduledPlanType = undefined;
+    subscription.scheduledChangeAt = undefined;
     await subscription.save();
     return { message: "Subscription canceled immediately", subscription };
   } else {
-    const updated = await stripe.subscriptions.update(
-      subscription.stripeSubscriptionId,
-      {
-        cancel_at_period_end: true,
-      },
-    );
+    await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+      cancel_at_period_end: true,
+    });
     subscription.cancelAtPeriodEnd = true;
     await subscription.save();
     return {
@@ -365,7 +1123,7 @@ const handleSubscriptionCheckoutCompleted = async (
   });
 };
 
-// B. Handle invoice.payment_succeeded (recurring renewal or trial conversion to paid)
+// B. Handle invoice.payment_succeeded (recurring renewal, plan upgrade, or trial conversion to paid)
 const handleInvoicePaymentSucceeded = async (invoice: Stripe.Invoice) => {
   const inv = invoice as any;
   const subscriptionId =
@@ -378,6 +1136,7 @@ const handleInvoicePaymentSucceeded = async (invoice: Stripe.Invoice) => {
   const stripe = getStripe();
   const stripeSubscription = await stripe.subscriptions.retrieve(
     subscriptionId as string,
+    { expand: ["items.data.price"] },
   );
   const subObj = stripeSubscription as any;
 
@@ -386,27 +1145,13 @@ const handleInvoicePaymentSucceeded = async (invoice: Stripe.Invoice) => {
   });
 
   if (subscription) {
-    subscription.status = subObj.status as any;
-    if (subObj.current_period_start) {
-      subscription.currentPeriodStart = new Date(
-        subObj.current_period_start * 1000,
-      );
-    }
-    if (subObj.current_period_end) {
-      subscription.currentPeriodEnd = new Date(
-        subObj.current_period_end * 1000,
-      );
-    }
-    subscription.latestInvoiceId = inv.id;
-    subscription.cancelAtPeriodEnd = subObj.cancel_at_period_end || false;
-
-    // Check if it was trial
     const wasTrial = subscription.isTrial;
-    if (subscription.isTrial && subObj.status === "active") {
-      subscription.isTrial = false;
-    }
+    subscription.latestInvoiceId = inv.id;
 
-    await subscription.save();
+    const { planChanged } = await syncSubscriptionFromStripe(
+      subscription,
+      stripeSubscription,
+    );
 
     // Do NOT send renewed notification on initial checkout (Stripe fires both checkout.session.completed and invoice.payment_succeeded)
     if (inv.billing_reason === "subscription_create") {
@@ -421,6 +1166,19 @@ const handleInvoicePaymentSucceeded = async (invoice: Stripe.Invoice) => {
         text: `Your free trial has ended and your subscription is now active. Next billing date: ${subscription.currentPeriodEnd.toLocaleDateString()}`,
         type: NOTIFICATION_TYPE.SUBSCRIPTION_UPDATE,
       });
+      return;
+    }
+
+    // Plan update invoice (e.g. Monthly -> Yearly via Customer Portal or direct API)
+    if (inv.billing_reason === "subscription_update") {
+      if (planChanged) {
+        await sendNotifications({
+          receiver: subscription.userId as any,
+          title: "✅ Subscription Plan Updated",
+          text: `Your subscription has been updated to ${subscription.planType}. Next billing date: ${subscription.currentPeriodEnd.toLocaleDateString()}`,
+          type: NOTIFICATION_TYPE.SUBSCRIPTION_UPDATE,
+        });
+      }
       return;
     }
 
@@ -461,34 +1219,16 @@ const handleInvoicePaymentFailed = async (invoice: Stripe.Invoice) => {
   }
 };
 
-// D. Handle customer.subscription.updated (Plan changes, cancellations at period end)
+// D. Handle customer.subscription.updated (Plan changes, interval switches, cancellations at period end)
 const handleSubscriptionUpdated = async (
   stripeSubscription: Stripe.Subscription,
 ) => {
-  const subObj = stripeSubscription as any;
   const subscription = await Subscription.findOne({
-    stripeSubscriptionId: subObj.id,
+    stripeSubscriptionId: stripeSubscription.id,
   });
 
   if (subscription) {
-    subscription.status = subObj.status as any;
-    subscription.cancelAtPeriodEnd = subObj.cancel_at_period_end || false;
-    if (subObj.current_period_start) {
-      subscription.currentPeriodStart = new Date(
-        subObj.current_period_start * 1000,
-      );
-    }
-    if (subObj.current_period_end) {
-      subscription.currentPeriodEnd = new Date(
-        subObj.current_period_end * 1000,
-      );
-    }
-
-    if (subObj.status === "canceled") {
-      subscription.canceledAt = new Date();
-    }
-
-    await subscription.save();
+    await syncSubscriptionFromStripe(subscription, stripeSubscription);
   }
 };
 
@@ -504,6 +1244,10 @@ const handleSubscriptionDeleted = async (
   if (subscription) {
     subscription.status = "canceled";
     subscription.canceledAt = new Date();
+    subscription.stripeScheduleId = undefined;
+    subscription.scheduledPackageId = undefined;
+    subscription.scheduledPlanType = undefined;
+    subscription.scheduledChangeAt = undefined;
     await subscription.save();
 
     await sendNotifications({
@@ -539,6 +1283,9 @@ export const SubscriptionService = {
   createCheckoutSession,
   createCustomerPortalSession,
   getMySubscriptionFromDB,
+  previewPlanChange,
+  changeSubscriptionPlan,
+  cancelScheduledPlanChange,
   cancelSubscription,
   // Webhook handlers
   handleSubscriptionCheckoutCompleted,

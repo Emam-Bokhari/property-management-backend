@@ -24,6 +24,10 @@ export type ISubscription = {
   cancelAtPeriodEnd: boolean;
   canceledAt?: Date;
   latestInvoiceId?: string;
+  scheduledPackageId?: Types.ObjectId | IPackage;
+  scheduledPlanType?: "monthly" | "yearly";
+  scheduledChangeAt?: Date;
+  stripeScheduleId?: string;
   isDeleted?: boolean;
   createdAt?: Date;
   updatedAt?: Date;

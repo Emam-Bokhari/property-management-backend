@@ -15,7 +15,27 @@ const cancelSubscriptionZodSchema = z.object({
   }),
 });
 
+const previewPlanChangeZodSchema = z.object({
+  body: z.object({
+    packageId: z.string().min(1).optional(),
+    planType: z.enum(["monthly", "yearly"], {
+      required_error: "Plan type must be either 'monthly' or 'yearly'",
+    }),
+  }),
+});
+
+const changePlanZodSchema = z.object({
+  body: z.object({
+    packageId: z.string().min(1).optional(),
+    planType: z.enum(["monthly", "yearly"], {
+      required_error: "Plan type must be either 'monthly' or 'yearly'",
+    }),
+  }),
+});
+
 export const SubscriptionValidation = {
   createCheckoutSessionZodSchema,
   cancelSubscriptionZodSchema,
+  previewPlanChangeZodSchema,
+  changePlanZodSchema,
 };

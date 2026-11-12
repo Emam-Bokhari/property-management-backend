@@ -75,6 +75,21 @@ const subscriptionSchema = new Schema<ISubscription, SubscriptionModel>(
     latestInvoiceId: {
       type: String,
     },
+    scheduledPackageId: {
+      type: Schema.Types.ObjectId,
+      ref: "Package",
+    },
+    scheduledPlanType: {
+      type: String,
+      enum: ["monthly", "yearly"],
+    },
+    scheduledChangeAt: {
+      type: Date,
+    },
+    stripeScheduleId: {
+      type: String,
+      trim: true,
+    },
     isDeleted: {
       type: Boolean,
       default: false,

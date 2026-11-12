@@ -27,6 +27,26 @@ router.get(
 );
 
 router.post(
+  "/preview-plan-change",
+  auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  validateRequest(SubscriptionValidation.previewPlanChangeZodSchema),
+  SubscriptionController.previewPlanChange,
+);
+
+router.patch(
+  "/change-plan",
+  auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  validateRequest(SubscriptionValidation.changePlanZodSchema),
+  SubscriptionController.changeSubscriptionPlan,
+);
+
+router.delete(
+  "/scheduled-change",
+  auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  SubscriptionController.cancelScheduledPlanChange,
+);
+
+router.post(
   "/cancel",
   auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
   validateRequest(SubscriptionValidation.cancelSubscriptionZodSchema),
