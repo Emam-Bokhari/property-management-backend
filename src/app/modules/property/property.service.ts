@@ -52,7 +52,7 @@ const createPropertyToDB = async (
 
   return await result.populate([
     "propertyType",
-    { path: "landlord", select: "firstName lastName email role profileImage" },
+    { path: "landlord", select: "name firstName lastName email phone role profileImage" },
   ]);
 };
 
@@ -234,7 +234,7 @@ const getAllPropertiesFromDB = async (
 
   const baseQuery = Property.find(filter).populate("propertyType").populate({
     path: "landlord",
-    select: "firstName lastName email role profileImage",
+    select: "name firstName lastName email phone role profileImage",
   });
 
   const queryBuilder = new QueryBuilder(baseQuery, query)
@@ -384,7 +384,7 @@ const getSinglePropertyFromDB = async (user: any, id: string) => {
     .populate("propertyType")
     .populate({
       path: "landlord",
-      select: "firstName lastName email role profileImage",
+      select: "name firstName lastName email phone role profileImage",
     });
 
   if (!property || (property as any).isDeleted) {
@@ -644,7 +644,7 @@ const updatePropertyToDB = async (
     .populate("propertyType")
     .populate({
       path: "landlord",
-      select: "firstName lastName email role profileImage",
+      select: "name firstName lastName email phone role profileImage",
     });
 
   if (!updatedProperty) {
@@ -692,7 +692,7 @@ const updateCouncilToDB = async (
     .populate("propertyType")
     .populate({
       path: "landlord",
-      select: "firstName lastName email role profileImage",
+      select: "name firstName lastName email phone role profileImage",
     });
 
   if (!updatedProperty) {
@@ -743,7 +743,7 @@ const updateParkingToDB = async (
     .populate("propertyType")
     .populate({
       path: "landlord",
-      select: "firstName lastName email role profileImage",
+      select: "name firstName lastName email phone role profileImage",
     });
 
   if (!updatedProperty) {
@@ -897,7 +897,7 @@ const updateComplianceToDB = async (
 
     return await Property.findById(id).populate("propertyType").populate({
       path: "landlord",
-      select: "firstName lastName email role profileImage",
+      select: "name firstName lastName email phone role profileImage",
     });
   }
 
@@ -931,7 +931,7 @@ const updateComplianceToDB = async (
 
   return await Property.findById(id).populate("propertyType").populate({
     path: "landlord",
-    select: "firstName lastName email role profileImage",
+    select: "name firstName lastName email phone role profileImage",
   });
 };
 
@@ -997,7 +997,7 @@ const deleteComplianceFromDB = async (
 
   return await Property.findById(id).populate("propertyType").populate({
     path: "landlord",
-    select: "firstName lastName email role profileImage",
+    select: "name firstName lastName email phone role profileImage",
   });
 };
 
@@ -1125,7 +1125,7 @@ const updateFloorPlansToDB = async (
     .populate("propertyType")
     .populate({
       path: "landlord",
-      select: "firstName lastName email role profileImage",
+      select: "name firstName lastName email phone role profileImage",
     });
 
   if (!updatedProperty) {
@@ -1170,7 +1170,7 @@ const deleteFloorPlanFromDB = async (
     .populate("propertyType")
     .populate({
       path: "landlord",
-      select: "firstName lastName email role profileImage",
+      select: "name firstName lastName email phone role profileImage",
     });
 
   if (!updatedProperty) {
@@ -1270,7 +1270,7 @@ const updateHouseRulesToDB = async (
     .populate("propertyType")
     .populate({
       path: "landlord",
-      select: "firstName lastName email role profileImage",
+      select: "name firstName lastName email phone role profileImage",
     });
 
   if (!updatedProperty) {
@@ -1315,7 +1315,7 @@ const updatePropertyPhotosToDB = async (
     .populate("propertyType")
     .populate({
       path: "landlord",
-      select: "firstName lastName email role profileImage",
+      select: "name firstName lastName email phone role profileImage",
     });
 
   if (!updatedProperty) {
@@ -1363,7 +1363,7 @@ const deletePropertyPhotoFromDB = async (
     .populate("propertyType")
     .populate({
       path: "landlord",
-      select: "firstName lastName email role profileImage",
+      select: "name firstName lastName email phone role profileImage",
     });
 
   if (!updatedProperty) {

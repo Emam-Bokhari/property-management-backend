@@ -222,7 +222,7 @@ const createAnnouncementToDB = async (
       path: "landlord",
       select: "name email role profileImage phone companyName",
     },
-    { path: "recipients", select: "name email role profileImage" },
+    { path: "recipients", select: "name email phone role profileImage" },
   ]);
 };
 
@@ -249,7 +249,7 @@ const getAllAnnouncementsFromDB = async (
       path: "landlord",
       select: "name email role profileImage phone companyName",
     },
-    { path: "recipients", select: "name email role profileImage" },
+    { path: "recipients", select: "name email phone role profileImage" },
   ]);
 
   const queryBuilder = new QueryBuilder(baseQuery, query)
@@ -283,7 +283,7 @@ const getMyAnnouncementsForTenantFromDB = async (
         path: "landlord",
         select: "name email role profileImage phone companyName",
       },
-      { path: "recipients", select: "name email role profileImage" },
+      { path: "recipients", select: "name email phone role profileImage" },
     ]);
 
     const queryBuilder = new QueryBuilder(baseQuery, query)
@@ -385,7 +385,7 @@ const getSingleAnnouncementFromDB = async (
       path: "landlord",
       select: "name email role profileImage phone companyName",
     },
-    { path: "recipients", select: "name email role profileImage" },
+    { path: "recipients", select: "name email phone role profileImage" },
   ]);
 
   if (!announcement || (announcement as any).isDeleted) {
@@ -537,7 +537,7 @@ const updateAnnouncementToDB = async (
       path: "landlord",
       select: "name email role profileImage phone companyName",
     },
-    { path: "recipients", select: "name email role profileImage" },
+    { path: "recipients", select: "name email phone role profileImage" },
   ]);
 
   return result;

@@ -172,7 +172,8 @@ const getAllChatsFromDB = async (
         path: "lastMessage",
         populate: {
           path: "sender",
-          select: "_id name profileImage email role primaryTrade companyName",
+          select:
+            "_id name profileImage email phone role primaryTrade companyName",
         },
       })
       .lean()
@@ -228,7 +229,8 @@ const getAllChatsFromDB = async (
         path: "lastMessage",
         populate: {
           path: "sender",
-          select: "_id name profileImage email role primaryTrade companyName",
+          select:
+            "_id name profileImage email phone role primaryTrade companyName",
         },
       })
       .lean()

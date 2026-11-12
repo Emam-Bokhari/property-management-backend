@@ -72,7 +72,7 @@ const createInspectionToDB = async (
     .populate("flat", "unitName floor")
     .populate(
       "inspector",
-      "firstName lastName email role profileImage",
+      "name firstName lastName email phone role profileImage",
     )) as any;
 };
 
@@ -150,7 +150,7 @@ const getAllInspectionsFromDB = async (
   const baseQuery = Inspection.find(filter)
     .populate("property", "propertyName streetAddress postCode propertyPhotos")
     .populate("flat", "unitName floor")
-    .populate("inspector", "firstName lastName email role profileImage");
+    .populate("inspector", "name firstName lastName email phone role profileImage");
 
   const queryBuilder = new QueryBuilder(baseQuery, query)
     .search(inspectionSearchableFields)
@@ -185,7 +185,7 @@ const getSingleInspectionFromDB = async (user: JwtPayload, id: string) => {
       "propertyName streetAddress postCode propertyPhotos landlord",
     )
     .populate("flat", "unitName floor tenant tenants")
-    .populate("inspector", "firstName lastName email role profileImage")
+    .populate("inspector", "name firstName lastName email phone role profileImage")
     .populate("roomChecklist.maintenanceJob");
 
   if (!inspection) {
@@ -242,7 +242,7 @@ const getChecklistTemplateByFlatFromDB = async (
     isDeleted: { $ne: true },
   })
     .populate("property", "propertyName streetAddress postCode landlord")
-    .populate("tenant", "firstName lastName email phone");
+    .populate("tenant", "name firstName lastName email phone profileImage");
 
   if (!flatDoc) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Flat not found");
@@ -309,7 +309,7 @@ const updateInspectionInDB = async (
   })
     .populate("property", "propertyName streetAddress postCode propertyPhotos")
     .populate("flat", "unitName floor")
-    .populate("inspector", "firstName lastName email role profileImage");
+    .populate("inspector", "name firstName lastName email phone role profileImage");
 
   return updatedInspection;
 };

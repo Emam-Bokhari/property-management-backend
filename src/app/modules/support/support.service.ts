@@ -39,7 +39,7 @@ const support = async (id: string, payload: TSupport) => {
 const getAllSupportsFromDB = async (query: any) => {
   const baseQuery = Support.find().populate({
     path: "userId",
-    select: "_id firstName lastName email phone role profileImage",
+    select: "_id name firstName lastName email phone role profileImage",
   });
 
   const queryBuilder = new QueryBuilder(baseQuery, query)
@@ -67,7 +67,7 @@ const getAllSupportsFromDB = async (query: any) => {
 const getSupportByIdFromDB = async (id: string) => {
   const support = await Support.findById(id).populate({
     path: "userId",
-    select: "firstName lastName role profileImage email _id phone",
+    select: "name firstName lastName role profileImage email _id phone",
   });
 
   if (!support) {

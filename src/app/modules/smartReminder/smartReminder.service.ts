@@ -113,7 +113,7 @@ const createSmartReminderToDB = async (
     },
     {
       path: "landlord",
-      select: "firstName lastName email role profileImage",
+      select: "name firstName lastName email phone role profileImage",
     },
   ]);
 
@@ -226,7 +226,7 @@ const getAllSmartRemindersFromDB = async (
     },
     {
       path: "landlord",
-      select: "firstName lastName email role profileImage",
+      select: "name firstName lastName email phone role profileImage",
     },
   ]);
 
@@ -330,7 +330,7 @@ const getSingleSmartReminderFromDB = async (user: any, id: string) => {
     },
     {
       path: "landlord",
-      select: "firstName lastName email role profileImage",
+      select: "name firstName lastName email phone role profileImage",
     },
   ]);
 
@@ -400,7 +400,7 @@ const updateSmartReminderToDB = async (
     },
     {
       path: "landlord",
-      select: "firstName lastName email role profileImage",
+      select: "name firstName lastName email phone role profileImage",
     },
   ]);
 

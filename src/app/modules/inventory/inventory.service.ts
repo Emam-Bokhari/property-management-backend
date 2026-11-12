@@ -635,7 +635,7 @@ const getTenantInventoryFromDB = async (user: JwtPayload) => {
     isDeleted: { $ne: true },
   })
     .populate("property", "propertyName streetAddress postCode propertyPhotos")
-    .populate("landlord", "firstName lastName email phone");
+    .populate("landlord", "name firstName lastName email phone profileImage");
 
   if (!flatDoc) {
     return {

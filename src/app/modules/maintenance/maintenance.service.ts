@@ -75,7 +75,7 @@ const maintenancePopulate = [
   },
   {
     path: "cancelledBy",
-    select: "name email role",
+    select: "name email phone role profileImage",
   },
 ];
 
@@ -619,6 +619,52 @@ const getAllMaintenanceFromDB = async (
   }
 
   const enhancedData = issues.map((item: any) => enhanceMaintenanceData(item));
+
+  // Ensure contractor phone number is populated from Contractor model if missing on User
+  const missingPhoneContractorIds = Array.from(
+    new Set(
+      enhancedData
+        .filter(
+          (item: any) =>
+            item.contractor &&
+            typeof item.contractor === "object" &&
+            !item.contractor.phone &&
+            item.contractor._id &&
+            mongoose.Types.ObjectId.isValid(item.contractor._id.toString()),
+        )
+        .map((item: any) => item.contractor._id.toString()),
+    ),
+  );
+
+  if (missingPhoneContractorIds.length > 0) {
+    const objectIds = missingPhoneContractorIds.map(
+      (cid) => new Types.ObjectId(cid),
+    );
+    const contractorDocs = await Contractor.find({
+      $or: [{ contractor: { $in: objectIds } }, { _id: { $in: objectIds } }],
+      isDeleted: false,
+    })
+      .select("contractor phone")
+      .lean();
+
+    const phoneMap = new Map<string, string>();
+    for (const doc of contractorDocs) {
+      if (doc.phone) {
+        if (doc.contractor) {
+          phoneMap.set(doc.contractor.toString(), doc.phone);
+        }
+        phoneMap.set(doc._id.toString(), doc.phone);
+      }
+    }
+
+    for (const item of enhancedData) {
+      if (item.contractor && typeof item.contractor === "object") {
+        const cid = item.contractor._id?.toString();
+        item.contractor.phone =
+          item.contractor.phone || (cid ? phoneMap.get(cid) : "") || "";
+      }
+    }
+  }
 
   return {
     meta: {
@@ -1261,7 +1307,7 @@ const createPaymentSessionIntoDB = async (
   const issue = await Maintenance.findById(id).populate([
     { path: "property", select: "propertyName" },
     { path: "flat", select: "unitName" },
-    { path: "contractor", select: "name email" },
+    { path: "contractor", select: "name email phone profileImage" },
   ]);
 
   if (!issue || issue.isDeleted) {

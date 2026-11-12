@@ -217,7 +217,7 @@ const getContractorReviewsFromDB = async (
   })
     .populate({
       path: "tenant",
-      select: "name profileImage email role",
+      select: "name profileImage email phone role",
     })
     .populate({
       path: "maintenance",

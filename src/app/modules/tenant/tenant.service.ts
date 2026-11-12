@@ -778,7 +778,7 @@ const getTenantHomeDashboardFromDB = async (
       isDeleted: { $ne: true },
     })
       .sort({ createdAt: -1 })
-      .populate("landlord", "name")
+      .populate("landlord", "name email phone profileImage")
       .lean(),
   ]);
 

@@ -1791,7 +1791,7 @@ const getTenantOverviewFromDB = async (authUser: JwtPayload) => {
         select: "propertyName streetAddress postCode propertyPhotos",
       },
       { path: "flat", select: "unitName floor rentPerMonth" },
-      { path: "landlord", select: "firstName lastName email phone" },
+      { path: "landlord", select: "name firstName lastName email phone profileImage" },
     ])
     .lean();
 
@@ -2746,7 +2746,7 @@ const getLandlordTenantPaymentsFromDB = async (
         path: "tenant",
         select: "name firstName lastName email phone profileImage",
       },
-      { path: "landlord", select: "name firstName lastName email phone" },
+      { path: "landlord", select: "name firstName lastName email phone profileImage" },
     ])
     .lean();
 
@@ -2762,7 +2762,7 @@ const getLandlordTenantPaymentsFromDB = async (
           path: "tenant",
           select: "name firstName lastName email phone profileImage",
         },
-        { path: "landlord", select: "name firstName lastName email phone" },
+        { path: "landlord", select: "name firstName lastName email phone profileImage" },
       ])
       .sort({ createdAt: -1 })
       .lean();

@@ -191,7 +191,7 @@ const sendBroadcastToLandlords = async (
     },
     { new: true },
   ).populate([
-    { path: "createdBy", select: "name email role profileImage" },
+    { path: "createdBy", select: "name email phone role profileImage" },
     { path: "selectedLandlords", select: "name email phone profileImage" },
   ]);
 
@@ -201,7 +201,7 @@ const sendBroadcastToLandlords = async (
 // 2. Get broadcast history for admin
 const getBroadcastsFromDB = async (query: Record<string, unknown>) => {
   const baseQuery = Broadcast.find().populate([
-    { path: "createdBy", select: "name email role profileImage" },
+    { path: "createdBy", select: "name email phone role profileImage" },
     { path: "selectedLandlords", select: "name email phone profileImage" },
   ]);
 
@@ -226,7 +226,7 @@ const getSingleBroadcastFromDB = async (id: string) => {
   }
 
   const result = await Broadcast.findById(id).populate([
-    { path: "createdBy", select: "name email role profileImage" },
+    { path: "createdBy", select: "name email phone role profileImage" },
     { path: "selectedLandlords", select: "name email phone profileImage" },
   ]);
 
