@@ -69,6 +69,7 @@ export const maintenanceFilterableFields = [
   "tenant",
   "contractor",
   "status",
+  "contractorStatus",
   "priority",
   "requesterRole",
   "tab",

@@ -431,13 +431,18 @@ const getAllMaintenanceFromDB = async (
     // Contractor view
     filter.contractor = new Types.ObjectId(userId);
 
-    if (queryCopy.tab === "pending") {
+    const normalizedTab =
+      typeof queryCopy.tab === "string"
+        ? queryCopy.tab.trim().toLowerCase()
+        : "";
+
+    if (normalizedTab === CONTRACTOR_STATUS.PENDING) {
       filter.status = {
         $in: [MAINTENANCE_STATUS.ASSIGNED, MAINTENANCE_STATUS.PENDING],
       };
-    } else if (queryCopy.tab === "scheduled") {
+    } else if (normalizedTab === CONTRACTOR_STATUS.SCHEDULED) {
       filter.status = MAINTENANCE_STATUS.SCHEDULED;
-    } else if (queryCopy.tab === "in_progress") {
+    } else if (normalizedTab === CONTRACTOR_STATUS.IN_PROGRESS) {
       filter.status = {
         $in: [
           MAINTENANCE_STATUS.IN_PROGRESS,
@@ -445,8 +450,15 @@ const getAllMaintenanceFromDB = async (
           MAINTENANCE_STATUS.INVOICE_REJECTED,
         ],
       };
-    } else if (queryCopy.tab === "completed") {
+    } else if (normalizedTab === CONTRACTOR_STATUS.COMPLETED) {
       filter.status = MAINTENANCE_STATUS.COMPLETED;
+    } else if (
+      normalizedTab &&
+      Object.values(CONTRACTOR_STATUS).includes(
+        normalizedTab as CONTRACTOR_STATUS,
+      )
+    ) {
+      filter.contractorStatus = normalizedTab;
     }
   }
 
@@ -459,6 +471,22 @@ const getAllMaintenanceFromDB = async (
   if (queryCopy.flat) {
     filter.flat = new Types.ObjectId(queryCopy.flat as string);
     delete queryCopy.flat;
+  }
+
+  // Handle contractorStatus enum filter
+  if (queryCopy.contractorStatus) {
+    const normalizedContractorStatus = String(queryCopy.contractorStatus)
+      .trim()
+      .toLowerCase();
+    const validContractorStatuses = Object.values(CONTRACTOR_STATUS) as string[];
+    if (!validContractorStatuses.includes(normalizedContractorStatus)) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        `Invalid contractorStatus. Allowed values: ${validContractorStatuses.join(", ")}`,
+      );
+    }
+    filter.contractorStatus = normalizedContractorStatus;
+    delete queryCopy.contractorStatus;
   }
 
   // Handle status filter
@@ -503,8 +531,8 @@ const getAllMaintenanceFromDB = async (
     queryBuilder.countTotal(),
   ]);
 
-  // Tab summary counts for Landlord
-  let summary: Record<string, number> | undefined;
+  // Tab summary counts for Landlord / Contractor
+  let summary: Record<string, any> | undefined;
   if (authUser.role === USER_ROLES.LANDLORD) {
     const landlordId = new Types.ObjectId(userId);
     const [allCount, tenantReportsCount, myLogsCount] = await Promise.all([
@@ -527,31 +555,31 @@ const getAllMaintenanceFromDB = async (
     };
   } else if (authUser.role === USER_ROLES.CONTRACTOR) {
     const contractorId = new Types.ObjectId(userId);
+    const contractorNotDeleted = {
+      contractor: contractorId,
+      isDeleted: { $ne: true },
+    };
     const [
       allCount,
       pendingCount,
       scheduledCount,
       inProgressCount,
       completedCount,
+      contractorStatusAgg,
     ] = await Promise.all([
+      Maintenance.countDocuments(contractorNotDeleted),
       Maintenance.countDocuments({
-        contractor: contractorId,
-        isDeleted: false,
-      }),
-      Maintenance.countDocuments({
-        contractor: contractorId,
+        ...contractorNotDeleted,
         status: {
           $in: [MAINTENANCE_STATUS.ASSIGNED, MAINTENANCE_STATUS.PENDING],
         },
-        isDeleted: false,
       }),
       Maintenance.countDocuments({
-        contractor: contractorId,
+        ...contractorNotDeleted,
         status: MAINTENANCE_STATUS.SCHEDULED,
-        isDeleted: false,
       }),
       Maintenance.countDocuments({
-        contractor: contractorId,
+        ...contractorNotDeleted,
         status: {
           $in: [
             MAINTENANCE_STATUS.IN_PROGRESS,
@@ -559,20 +587,34 @@ const getAllMaintenanceFromDB = async (
             MAINTENANCE_STATUS.INVOICE_REJECTED,
           ],
         },
-        isDeleted: false,
       }),
       Maintenance.countDocuments({
-        contractor: contractorId,
+        ...contractorNotDeleted,
         status: MAINTENANCE_STATUS.COMPLETED,
-        isDeleted: false,
       }),
+      Maintenance.aggregate([
+        { $match: contractorNotDeleted },
+        { $group: { _id: "$contractorStatus", count: { $sum: 1 } } },
+      ]),
     ]);
+
+    const byContractorStatus = Object.values(CONTRACTOR_STATUS).reduce(
+      (acc, st) => {
+        const found = contractorStatusAgg.find((item: any) => item._id === st);
+        acc[st] = found ? found.count : 0;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
     summary = {
       all: allCount,
       pending: pendingCount,
       scheduled: scheduledCount,
       inProgress: inProgressCount,
       completed: completedCount,
+      contractorStatusCounts: byContractorStatus,
+      contractorStatusEnums: Object.values(CONTRACTOR_STATUS),
     };
   }
 
