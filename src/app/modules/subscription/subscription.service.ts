@@ -692,7 +692,7 @@ const previewPlanChange = async (
     subscription: subscription.stripeSubscriptionId,
     subscription_details: {
       items: [{ id: currentItem.id, price: targetPriceId }],
-      billing_cycle_anchor: "unchanged",
+      billing_cycle_anchor: "unchanged" as any,
       proration_behavior: "create_prorations",
       ...(stripeSubscription.cancel_at_period_end
         ? { cancel_at_period_end: false }
@@ -825,7 +825,7 @@ const changeSubscriptionPlan = async (
               packageId: targetPackage._id.toString(),
               planType: targetPlanType,
             },
-          },
+          } as any,
         ],
       },
     );
@@ -873,7 +873,7 @@ const changeSubscriptionPlan = async (
   const updateParams: Stripe.SubscriptionUpdateParams = {
     items: [{ id: currentItem.id, price: targetPriceId }],
     cancel_at_period_end: false,
-    billing_cycle_anchor: "unchanged",
+    billing_cycle_anchor: "unchanged" as any,
     metadata: {
       ...(stripeSubscription.metadata || {}),
       paymentType: "subscription",
