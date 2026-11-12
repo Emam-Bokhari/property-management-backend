@@ -22,13 +22,22 @@ import {
   IContractorMetricCard,
   IUpcomingJobItem,
   IContractorProfileSummary,
+  IContractorAssignedPropertyItem,
+  IContractorEarningItem,
+  IContractorEarningsSummary,
 } from "./contractor.interface";
 import { Maintenance } from "../maintenance/maintenance.model";
 import {
   MAINTENANCE_STATUS,
   CONTRACTOR_STATUS,
+  PAYMENT_STATUS,
 } from "../maintenance/maintenance.constant";
 import { Notification } from "../notification/notification.model";
+import {
+  formatCurrency,
+  getCurrencyCode,
+  getCurrencySymbol,
+} from "../../../helpers/currencyHelper";
 import { AppOption } from "../appOption/appOption.model";
 import { AppOptionType } from "../appOption/appOption.constant";
 import { emailTemplate } from "../../../shared/emailTemplate";
@@ -923,6 +932,32 @@ const formatUpcomingJobItem = (job: any): IUpcomingJobItem => {
   };
 };
 
+// Helper: Resolve target contractor User ObjectId (supports Admin override via ?contractorId=)
+const resolveTargetContractorObjectId = (
+  authUser: JwtPayload,
+  query?: Record<string, unknown>,
+): Types.ObjectId => {
+  let targetContractorId = authUser.userId || authUser.id;
+
+  if (
+    (authUser.role === USER_ROLES.ADMIN ||
+      authUser.role === USER_ROLES.SUPER_ADMIN) &&
+    query?.contractorId &&
+    typeof query.contractorId === "string"
+  ) {
+    targetContractorId = query.contractorId;
+  }
+
+  if (
+    !targetContractorId ||
+    !mongoose.Types.ObjectId.isValid(targetContractorId)
+  ) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid contractor ID");
+  }
+
+  return new Types.ObjectId(targetContractorId);
+};
+
 // Contractor Home Dashboard Service
 const getContractorHomeDashboardFromDB = async (
   authUser: JwtPayload,
@@ -1134,6 +1169,373 @@ const getContractorHomeDashboardFromDB = async (
   };
 };
 
+// Format short date like "Mar 1, 2025" for Earnings & Payouts UI
+const formatShortDate = (value: Date | string): string => {
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+// 8. Get Contractor Assigned Properties (Assigned Properties Screen)
+const getContractorAssignedPropertiesFromDB = async (
+  authUser: JwtPayload,
+  query: Record<string, unknown>,
+) => {
+  const contractorObjectId = resolveTargetContractorObjectId(authUser, query);
+
+  const [relations, maintenanceJobs] = await Promise.all([
+    Contractor.find({
+      contractor: contractorObjectId,
+      isDeleted: { $ne: true },
+    })
+      .select("landlord status")
+      .lean(),
+    Maintenance.find({
+      contractor: contractorObjectId,
+      isDeleted: { $ne: true },
+    })
+      .select("property landlord")
+      .lean(),
+  ]);
+
+  const activeLandlordIds: Types.ObjectId[] = [];
+  const suspendedLandlordIds = new Set<string>();
+
+  for (const rel of relations) {
+    if (!rel.landlord) continue;
+    const lidStr = rel.landlord.toString();
+    if (rel.status === CONTRACTOR_RELATION_STATUS.ACTIVE) {
+      if (!activeLandlordIds.some((id) => id.toString() === lidStr)) {
+        activeLandlordIds.push(new Types.ObjectId(lidStr));
+      }
+    } else {
+      suspendedLandlordIds.add(lidStr);
+    }
+  }
+
+  const directJobPropertyIds: Types.ObjectId[] = [];
+  for (const job of maintenanceJobs) {
+    if (!job.property) continue;
+    const jobLandlordStr = job.landlord?.toString();
+    if (jobLandlordStr && suspendedLandlordIds.has(jobLandlordStr)) {
+      continue;
+    }
+    const pidStr = job.property.toString();
+    if (!directJobPropertyIds.some((id) => id.toString() === pidStr)) {
+      directJobPropertyIds.push(new Types.ObjectId(pidStr));
+    }
+  }
+
+  const orScope: Record<string, unknown>[] = [];
+  if (activeLandlordIds.length > 0) {
+    orScope.push({ landlord: { $in: activeLandlordIds } });
+  }
+  if (directJobPropertyIds.length > 0) {
+    orScope.push({ _id: { $in: directJobPropertyIds } });
+  }
+
+  if (orScope.length === 0) {
+    const page = Number(query?.page) || 1;
+    const limit = Number(query?.limit) || 10;
+    return {
+      meta: { page, limit, total: 0, totalPage: 0 },
+      data: [] as IContractorAssignedPropertyItem[],
+    };
+  }
+
+  const propertyQuery = Property.find({
+    $or: orScope,
+    isDeleted: { $ne: true },
+  })
+    .populate("propertyType", "name icon type")
+    .populate("landlord", "name email phone companyName profileImage");
+
+  const cleanQuery = { ...query };
+  delete cleanQuery.contractorId;
+
+  const queryBuilder = new QueryBuilder(propertyQuery, cleanQuery)
+    .search(["propertyName", "streetAddress", "postCode"])
+    .sort()
+    .paginate()
+    .fields();
+
+  const [properties, meta] = await Promise.all([
+    queryBuilder.modelQuery.lean(),
+    queryBuilder.countTotal(),
+  ]);
+
+  const propertyIds = properties.map((p: any) => p._id);
+
+  const [flatCounts, jobStats] =
+    propertyIds.length > 0
+      ? await Promise.all([
+          Flat.aggregate([
+            {
+              $match: {
+                property: { $in: propertyIds },
+                isDeleted: { $ne: true },
+              },
+            },
+            {
+              $group: {
+                _id: "$property",
+                count: { $sum: 1 },
+              },
+            },
+          ]),
+          Maintenance.aggregate([
+            {
+              $match: {
+                contractor: contractorObjectId,
+                property: { $in: propertyIds },
+                isDeleted: { $ne: true },
+              },
+            },
+            {
+              $group: {
+                _id: "$property",
+                totalJobsCount: { $sum: 1 },
+                activeJobsCount: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $in: [
+                          "$status",
+                          [
+                            MAINTENANCE_STATUS.ASSIGNED,
+                            MAINTENANCE_STATUS.SCHEDULED,
+                            MAINTENANCE_STATUS.IN_PROGRESS,
+                            MAINTENANCE_STATUS.WAITING_APPROVAL,
+                          ],
+                        ],
+                      },
+                      1,
+                      0,
+                    ],
+                  },
+                },
+              },
+            },
+          ]),
+        ])
+      : [[], []];
+
+  const flatCountMap = new Map<string, number>(
+    flatCounts.map((f: any) => [f._id.toString(), f.count]),
+  );
+  const jobStatsMap = new Map<
+    string,
+    { totalJobsCount: number; activeJobsCount: number }
+  >(
+    jobStats.map((j: any) => [
+      j._id.toString(),
+      {
+        totalJobsCount: j.totalJobsCount || 0,
+        activeJobsCount: j.activeJobsCount || 0,
+      },
+    ]),
+  );
+
+  const items: IContractorAssignedPropertyItem[] = properties.map(
+    (prop: any) => {
+      const pid = prop._id.toString();
+      const unitCount = flatCountMap.get(pid) || 0;
+      const isHmo = Boolean(prop.isHmo);
+      const unitNoun = isHmo
+        ? unitCount === 1
+          ? "Room"
+          : "Rooms"
+        : unitCount === 1
+          ? "Unit"
+          : "Units";
+      const unitLabel = `${unitCount} ${unitNoun}`;
+      const addressPart = [prop.streetAddress, prop.postCode]
+        .filter(Boolean)
+        .join(", ");
+      const subtitle = [addressPart, unitLabel].filter(Boolean).join(" · ");
+      const stats = jobStatsMap.get(pid) || {
+        totalJobsCount: 0,
+        activeJobsCount: 0,
+      };
+
+      return {
+        _id: prop._id,
+        id: pid,
+        propertyName: prop.propertyName || "",
+        streetAddress: prop.streetAddress || "",
+        postCode: prop.postCode || "",
+        isHmo,
+        unitCount,
+        unitLabel,
+        subtitle,
+        propertyType: prop.propertyType || null,
+        propertyPhotos: prop.propertyPhotos || [],
+        floorsInBuilding: prop.floorsInBuilding || "",
+        authorizationStatus: "authorized",
+        statusBadge: "Authorized",
+        landlord: prop.landlord || null,
+        activeJobsCount: stats.activeJobsCount,
+        totalJobsCount: stats.totalJobsCount,
+      };
+    },
+  );
+
+  return {
+    meta,
+    data: items,
+  };
+};
+
+// 9. Get Contractor Earnings & Payout History (Earnings & Payouts Screen)
+const getContractorEarningsHistoryFromDB = async (
+  authUser: JwtPayload,
+  query: Record<string, unknown>,
+) => {
+  const contractorObjectId = resolveTargetContractorObjectId(authUser, query);
+  const currency = getCurrencyCode();
+  const currencySymbol = getCurrencySymbol();
+
+  const statusFilter =
+    typeof query?.status === "string" ? query.status.toLowerCase() : "paid";
+
+  const baseFilter: Record<string, unknown> = {
+    contractor: contractorObjectId,
+    isDeleted: { $ne: true },
+  };
+
+  if (statusFilter === "pending") {
+    baseFilter.paymentStatus = { $ne: PAYMENT_STATUS.PAID };
+    baseFilter.$or = [
+      { invoiceAmount: { $gt: 0 } },
+      { invoiceAmounts: { $gt: 0 } },
+    ];
+  } else if (statusFilter !== "all") {
+    baseFilter.paymentStatus = PAYMENT_STATUS.PAID;
+  } else {
+    baseFilter.$or = [
+      { paymentStatus: PAYMENT_STATUS.PAID },
+      { invoiceAmount: { $gt: 0 } },
+      { invoiceAmounts: { $gt: 0 } },
+    ];
+  }
+
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const earningsQuery = Maintenance.find(baseFilter)
+    .populate("property", "propertyName streetAddress postCode")
+    .populate("flat", "unitName floor")
+    .populate("landlord", "name email phone companyName profileImage");
+
+  const cleanQuery = { ...query };
+  delete cleanQuery.contractorId;
+  delete cleanQuery.status;
+  if (!cleanQuery.sort) {
+    cleanQuery.sort = "-paidAt,-completedAt,-createdAt";
+  }
+
+  const queryBuilder = new QueryBuilder(earningsQuery, cleanQuery)
+    .search(["issueTitle", "jobId", "transactionId"])
+    .sort()
+    .paginate()
+    .fields();
+
+  const [allContractorInvoicedJobs, paginatedJobs, meta] = await Promise.all([
+    Maintenance.find({
+      contractor: contractorObjectId,
+      isDeleted: { $ne: true },
+      $or: [
+        { paymentStatus: PAYMENT_STATUS.PAID },
+        { invoiceAmount: { $gt: 0 } },
+        { invoiceAmounts: { $gt: 0 } },
+      ],
+    })
+      .select(
+        "invoiceAmount invoiceAmounts paymentStatus paidAt completedAt createdAt",
+      )
+      .lean(),
+    queryBuilder.modelQuery.lean(),
+    queryBuilder.countTotal(),
+  ]);
+
+  let totalEarnings = 0;
+  let thisMonthEarnings = 0;
+  let pendingPayouts = 0;
+  let totalPaidJobs = 0;
+
+  for (const job of allContractorInvoicedJobs as any[]) {
+    const amount = Number(job.invoiceAmount ?? job.invoiceAmounts ?? 0);
+    if (job.paymentStatus === PAYMENT_STATUS.PAID) {
+      totalEarnings += amount;
+      totalPaidJobs += 1;
+      const paidDate = new Date(job.paidAt || job.completedAt || job.createdAt);
+      if (!isNaN(paidDate.getTime()) && paidDate >= startOfMonth) {
+        thisMonthEarnings += amount;
+      }
+    } else if (amount > 0) {
+      pendingPayouts += amount;
+    }
+  }
+
+  const summary: IContractorEarningsSummary = {
+    totalEarnings,
+    formattedTotalEarnings: formatCurrency(totalEarnings, currencySymbol),
+    thisMonthEarnings,
+    formattedThisMonthEarnings: formatCurrency(
+      thisMonthEarnings,
+      currencySymbol,
+    ),
+    pendingPayouts,
+    formattedPendingPayouts: formatCurrency(pendingPayouts, currencySymbol),
+    totalPaidJobs,
+    currency,
+    currencySymbol,
+  };
+
+  const transactions: IContractorEarningItem[] = paginatedJobs.map(
+    (job: any) => {
+      const amount = Number(job.invoiceAmount ?? job.invoiceAmounts ?? 0);
+      const payoutDate = job.paidAt || job.completedAt || job.createdAt;
+      const prefix = job.paymentStatus === PAYMENT_STATUS.PAID ? "+" : "";
+
+      return {
+        _id: job._id,
+        id: job._id.toString(),
+        jobId: job.jobId || `#JOB-${job._id.toString().slice(-4)}`,
+        title: job.issueTitle || "",
+        issueTitle: job.issueTitle || "",
+        amount,
+        currency,
+        currencySymbol,
+        formattedAmount: `${prefix}${formatCurrency(amount, currencySymbol)}`,
+        type: "payout",
+        direction: "credit",
+        paymentStatus: job.paymentStatus || PAYMENT_STATUS.UNPAID,
+        invoiceStatus: job.invoiceStatus || null,
+        paidBy: job.paidBy || null,
+        transactionId: job.transactionId || null,
+        paidAt: payoutDate,
+        date: payoutDate,
+        dateFormatted: formatShortDate(payoutDate),
+        completedAt: job.completedAt || null,
+        property: job.property || null,
+        flat: job.flat || null,
+        landlord: job.landlord || null,
+      };
+    },
+  );
+
+  return {
+    meta,
+    summary,
+    data: transactions,
+  };
+};
+
 export const ContractorService = {
   inviteContractorToDB,
   getAllContractorsFromDB,
@@ -1143,4 +1545,6 @@ export const ContractorService = {
   resendInvitationEmail,
   removeContractorFromDB,
   getContractorHomeDashboardFromDB,
+  getContractorAssignedPropertiesFromDB,
+  getContractorEarningsHistoryFromDB,
 };

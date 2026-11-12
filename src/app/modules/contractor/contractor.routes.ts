@@ -29,6 +29,20 @@ router.get(
   ContractorController.getMyAssignedLandlords,
 );
 
+// 3b. Contractor Assigned Properties (Assigned Properties Screen)
+router.get(
+  "/assigned-properties",
+  auth(USER_ROLES.CONTRACTOR, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  ContractorController.getContractorAssignedProperties,
+);
+
+// 3c. Contractor Earnings & Payouts History (Earnings & Payouts Screen)
+router.get(
+  "/earnings",
+  auth(USER_ROLES.CONTRACTOR, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  ContractorController.getContractorEarningsHistory,
+);
+
 // 3. Get All Contractors (Landlord / Contractor / Admin - SaaS isolated)
 router.get(
   "/",

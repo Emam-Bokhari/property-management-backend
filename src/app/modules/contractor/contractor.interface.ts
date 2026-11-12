@@ -118,3 +118,60 @@ export interface IContractorHomeDashboardData {
     items: IUpcomingJobItem[];
   };
 }
+
+export interface IContractorAssignedPropertyItem {
+  _id: Types.ObjectId | string;
+  id: string;
+  propertyName: string;
+  streetAddress: string;
+  postCode: string;
+  isHmo: boolean;
+  unitCount: number;
+  unitLabel: string;
+  subtitle: string;
+  propertyType: Record<string, unknown> | null;
+  propertyPhotos: string[];
+  floorsInBuilding: string;
+  authorizationStatus: "authorized";
+  statusBadge: string;
+  landlord: Record<string, unknown> | null;
+  activeJobsCount: number;
+  totalJobsCount: number;
+}
+
+export interface IContractorEarningItem {
+  _id: Types.ObjectId | string;
+  id: string;
+  jobId: string;
+  title: string;
+  issueTitle: string;
+  amount: number;
+  currency: string;
+  currencySymbol: string;
+  formattedAmount: string;
+  type: "payout";
+  direction: "credit";
+  paymentStatus: string;
+  invoiceStatus: string | null;
+  paidBy: string | null;
+  transactionId: string | null;
+  paidAt: Date | string;
+  date: Date | string;
+  dateFormatted: string;
+  completedAt: Date | string | null;
+  property: Record<string, unknown> | null;
+  flat: Record<string, unknown> | null;
+  landlord: Record<string, unknown> | null;
+}
+
+export interface IContractorEarningsSummary {
+  totalEarnings: number;
+  formattedTotalEarnings: string;
+  thisMonthEarnings: number;
+  formattedThisMonthEarnings: string;
+  pendingPayouts: number;
+  formattedPendingPayouts: string;
+  totalPaidJobs: number;
+  currency: string;
+  currencySymbol: string;
+}

@@ -155,6 +155,52 @@ const getContractorHomeDashboard = catchAsync(
   },
 );
 
+const getContractorAssignedProperties = catchAsync(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+    }
+
+    const result =
+      await ContractorService.getContractorAssignedPropertiesFromDB(
+        req.user,
+        req.query,
+      );
+
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      message: "Contractor assigned properties retrieved successfully",
+      meta: result.meta,
+      data: result.data,
+    });
+  },
+);
+
+const getContractorEarningsHistory = catchAsync(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+    }
+
+    const result = await ContractorService.getContractorEarningsHistoryFromDB(
+      req.user,
+      req.query,
+    );
+
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      message: "Contractor earnings history retrieved successfully",
+      meta: result.meta,
+      data: {
+        summary: result.summary,
+        transactions: result.data,
+      },
+    });
+  },
+);
+
 export const ContractorController = {
   inviteContractor,
   getAllContractors,
@@ -164,4 +210,6 @@ export const ContractorController = {
   resendInvitation,
   removeContractor,
   getContractorHomeDashboard,
+  getContractorAssignedProperties,
+  getContractorEarningsHistory,
 };
