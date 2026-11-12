@@ -184,6 +184,25 @@ const createReviewIntoDB = async (
   return populatedReview;
 };
 
+const resolveContractorUserId = async (
+  contractorId: string,
+): Promise<string> => {
+  if (!mongoose.Types.ObjectId.isValid(contractorId)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid contractor ID");
+  }
+
+  // Support both User._id and Contractor relation document _id
+  const contractorRelation = await Contractor.findById(contractorId)
+    .select("contractor")
+    .lean();
+
+  if (contractorRelation?.contractor) {
+    return contractorRelation.contractor.toString();
+  }
+
+  return contractorId;
+};
+
 /**
  * 2. Get All Reviews for a Contractor with Pagination & Search
  */
@@ -191,20 +210,18 @@ const getContractorReviewsFromDB = async (
   contractorId: string,
   query: Record<string, unknown>,
 ) => {
-  if (!mongoose.Types.ObjectId.isValid(contractorId)) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid contractor ID");
-  }
+  const targetContractorId = await resolveContractorUserId(contractorId);
 
   const baseQuery = Review.find({
-    contractor: new Types.ObjectId(contractorId),
+    contractor: new Types.ObjectId(targetContractorId),
   })
     .populate({
       path: "tenant",
-      select: "name profileImage email",
+      select: "name profileImage email role",
     })
     .populate({
       path: "maintenance",
-      select: "issueTitle jobId completedAt",
+      select: "issueTitle jobId status completedAt",
     });
 
   const queryBuilder = new QueryBuilder<TReview>(baseQuery, query)
@@ -217,7 +234,7 @@ const getContractorReviewsFromDB = async (
   const [reviews, meta, summary] = await Promise.all([
     queryBuilder.modelQuery.lean(),
     queryBuilder.countTotal(),
-    Review.calculateAverageRating(contractorId),
+    Review.calculateAverageRating(targetContractorId),
   ]);
 
   return {
@@ -233,11 +250,9 @@ const getContractorReviewsFromDB = async (
 const getContractorReviewSummaryFromDB = async (
   contractorId: string,
 ): Promise<TContractorReviewSummary> => {
-  if (!mongoose.Types.ObjectId.isValid(contractorId)) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid contractor ID");
-  }
+  const targetContractorId = await resolveContractorUserId(contractorId);
 
-  return await Review.calculateAverageRating(contractorId);
+  return await Review.calculateAverageRating(targetContractorId);
 };
 
 /**
@@ -268,19 +283,23 @@ const getReviewByMaintenanceFromDB = async (maintenanceId: string) => {
 };
 
 /**
- * 5. Get My Submitted Reviews (Tenant perspective)
+ * 5. Get My Reviews (Tenant: submitted reviews, Contractor: received reviews with summary)
  */
 const getMyReviewsFromDB = async (
   authUser: JwtPayload,
   query: Record<string, unknown>,
 ) => {
-  const tenantId = (authUser.userId || authUser.id)?.toString();
-  if (!tenantId) {
+  const userId = (authUser.userId || authUser.id)?.toString();
+  if (!userId) {
     throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
   }
 
+  if (authUser.role === USER_ROLES.CONTRACTOR) {
+    return await getContractorReviewsFromDB(userId, query);
+  }
+
   const baseQuery = Review.find({
-    tenant: new Types.ObjectId(tenantId),
+    tenant: new Types.ObjectId(userId),
   })
     .populate({
       path: "contractor",
@@ -307,6 +326,27 @@ const getMyReviewsFromDB = async (
     meta,
     data: reviews,
   };
+};
+
+/**
+ * 5b. Get My Review Summary (Contractor only)
+ */
+const getMyReviewSummaryFromDB = async (
+  authUser: JwtPayload,
+): Promise<TContractorReviewSummary> => {
+  const userId = (authUser.userId || authUser.id)?.toString();
+  if (!userId) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  if (authUser.role !== USER_ROLES.CONTRACTOR) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      "Only contractors can access their rating summary",
+    );
+  }
+
+  return await Review.calculateAverageRating(userId);
 };
 
 /**
@@ -344,5 +384,6 @@ export const ReviewService = {
   getContractorReviewSummaryFromDB,
   getReviewByMaintenanceFromDB,
   getMyReviewsFromDB,
+  getMyReviewSummaryFromDB,
   getSingleReviewFromDB,
 };

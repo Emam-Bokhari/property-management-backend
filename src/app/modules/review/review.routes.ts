@@ -24,11 +24,29 @@ router.post(
 );
 
 /**
- * 2. Get reviews submitted by the logged-in tenant
+ * 2. Get my reviews (Tenant: submitted reviews, Contractor: received reviews & summary)
  */
 router.get(
   "/my-reviews",
-  auth(USER_ROLES.TENANT),
+  auth(USER_ROLES.TENANT, USER_ROLES.CONTRACTOR),
+  ReviewController.getMyReviews,
+);
+
+/**
+ * 2b. Get Logged-in Contractor's Rating Summary & Star Breakdown
+ */
+router.get(
+  "/contractor/my-reviews/summary",
+  auth(USER_ROLES.CONTRACTOR),
+  ReviewController.getMyReviewSummary,
+);
+
+/**
+ * 2c. Get Logged-in Contractor's Received Reviews (Paginated with search)
+ */
+router.get(
+  "/contractor/my-reviews",
+  auth(USER_ROLES.CONTRACTOR),
   ReviewController.getMyReviews,
 );
 
