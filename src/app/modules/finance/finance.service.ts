@@ -1439,6 +1439,18 @@ const recordPaymentIntoDB = async (
     );
   }
 
+  const flat = await Flat.findById(payload.flat).lean();
+  if (
+    !flat ||
+    flat.property.toString() !== payload.property ||
+    (isLandlord && flat.landlord?.toString() !== currentUserId)
+  ) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Flat does not belong to the selected property",
+    );
+  }
+
   const periodDate = parsePeriodMonthToDate(payload.periodMonth || paymentDate);
   const nextPeriodDate = new Date(
     Date.UTC(periodDate.getUTCFullYear(), periodDate.getUTCMonth() + 1, 1),
@@ -1476,11 +1488,16 @@ const recordPaymentIntoDB = async (
           $lt: nextPeriodDate,
         },
       },
-      { periodMonth: periodMonthString as any },
     ],
   });
 
   if (bill) {
+    if (bill.status === BILL_STATUS.PAID) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        `Rent bill for ${periodMonthString} is already fully paid`,
+      );
+    }
     if (bill.amount < fullRentAmount) {
       bill.amount = fullRentAmount;
     }
