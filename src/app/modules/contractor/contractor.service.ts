@@ -978,6 +978,7 @@ const getContractorHomeDashboardFromDB = async (
     completedThisMonthCount,
     totalCompletedCount,
     scheduledJobs,
+    upcomingJobsTotalCount,
     upcomingJobs,
   ] = await Promise.all([
     User.findById(contractorObjectId)
@@ -1037,8 +1038,15 @@ const getContractorHomeDashboardFromDB = async (
     Maintenance.find({
       contractor: contractorObjectId,
       isDeleted: { $ne: true },
-      status: {
-        $in: [MAINTENANCE_STATUS.SCHEDULED, MAINTENANCE_STATUS.IN_PROGRESS],
+      status: MAINTENANCE_STATUS.SCHEDULED,
+      contractorStatus: {
+        $nin: [
+          CONTRACTOR_STATUS.IN_PROGRESS,
+          CONTRACTOR_STATUS.INVOICE_SUBMITTED,
+          CONTRACTOR_STATUS.INVOICE_REJECTED,
+          CONTRACTOR_STATUS.COMPLETED,
+          CONTRACTOR_STATUS.DECLINED,
+        ],
       },
       scheduledDate: { $ne: null },
     })
@@ -1046,6 +1054,26 @@ const getContractorHomeDashboardFromDB = async (
       .populate("flat", "unitName")
       .sort({ scheduledDate: 1, scheduledTime: 1 })
       .lean(),
+    Maintenance.countDocuments({
+      contractor: contractorObjectId,
+      isDeleted: { $ne: true },
+      status: {
+        $in: [
+          MAINTENANCE_STATUS.SCHEDULED,
+          MAINTENANCE_STATUS.ASSIGNED,
+          MAINTENANCE_STATUS.PENDING,
+        ],
+      },
+      contractorStatus: {
+        $nin: [
+          CONTRACTOR_STATUS.IN_PROGRESS,
+          CONTRACTOR_STATUS.INVOICE_SUBMITTED,
+          CONTRACTOR_STATUS.INVOICE_REJECTED,
+          CONTRACTOR_STATUS.COMPLETED,
+          CONTRACTOR_STATUS.DECLINED,
+        ],
+      },
+    }),
     Maintenance.find({
       contractor: contractorObjectId,
       isDeleted: { $ne: true },
@@ -1053,8 +1081,16 @@ const getContractorHomeDashboardFromDB = async (
         $in: [
           MAINTENANCE_STATUS.SCHEDULED,
           MAINTENANCE_STATUS.ASSIGNED,
-          MAINTENANCE_STATUS.IN_PROGRESS,
-          MAINTENANCE_STATUS.WAITING_APPROVAL,
+          MAINTENANCE_STATUS.PENDING,
+        ],
+      },
+      contractorStatus: {
+        $nin: [
+          CONTRACTOR_STATUS.IN_PROGRESS,
+          CONTRACTOR_STATUS.INVOICE_SUBMITTED,
+          CONTRACTOR_STATUS.INVOICE_REJECTED,
+          CONTRACTOR_STATUS.COMPLETED,
+          CONTRACTOR_STATUS.DECLINED,
         ],
       },
     })
@@ -1144,7 +1180,7 @@ const getContractorHomeDashboardFromDB = async (
       totalActiveJobs: pendingReviewCount + assignedJobsCount + inProgressCount,
     },
     upcomingJobs: {
-      totalCount: upcomingJobs.length,
+      totalCount: upcomingJobsTotalCount,
       items: upcomingJobs.map(formatUpcomingJobItem),
     },
   };
