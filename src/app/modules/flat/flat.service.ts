@@ -32,7 +32,8 @@ const flatPopulateOptions = [
   },
   {
     path: "landlord",
-    select: "name firstName lastName email role profileImage phone companyName",
+    select:
+      "name firstName lastName email role profileImage phone companyName emergencyContact emergencyPhone",
   },
   {
     path: "tenant",
@@ -49,13 +50,14 @@ const singleFlatPopulateOptions = [
       {
         path: "landlord",
         select:
-          "name firstName lastName email role profileImage phone companyName",
+          "name firstName lastName email role profileImage phone companyName emergencyContact emergencyPhone",
       },
     ],
   },
   {
     path: "landlord",
-    select: "name firstName lastName email role profileImage phone companyName",
+    select:
+      "name firstName lastName email role profileImage phone companyName emergencyContact emergencyPhone",
   },
   {
     path: "tenant",
@@ -995,7 +997,8 @@ const getTenantsByFlatIdFromDB = async (
     })
     .populate({
       path: "landlord",
-      select: "name email phone profileImage companyName",
+      select:
+        "name email phone profileImage companyName emergencyContact emergencyPhone",
     })
     .populate({
       path: "property",

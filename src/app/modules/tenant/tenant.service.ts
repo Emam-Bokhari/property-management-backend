@@ -62,7 +62,8 @@ const tenancyPopulateOptions = [
   },
   {
     path: "landlord",
-    select: "name email phone profileImage companyName",
+    select:
+      "name email phone profileImage companyName emergencyContact emergencyPhone",
   },
 ];
 
@@ -789,7 +790,8 @@ const getTenantHomeDashboardFromDB = async (
       },
       {
         path: "landlord",
-        select: "name email phone profileImage companyName",
+        select:
+          "name email phone profileImage companyName emergencyContact emergencyPhone",
       },
     ])
     .lean();
@@ -893,7 +895,10 @@ const getTenantHomeDashboardFromDB = async (
       isDeleted: { $ne: true },
     })
       .sort({ createdAt: -1 })
-      .populate("landlord", "name email phone profileImage")
+      .populate(
+        "landlord",
+        "name email phone profileImage emergencyContact emergencyPhone",
+      )
       .lean(),
   ]);
 
@@ -954,6 +959,10 @@ const getTenantHomeDashboardFromDB = async (
             phone: landlordDoc.phone || "",
             companyName: landlordDoc.companyName || "",
             profileImage: landlordDoc.profileImage || "",
+            emergencyContact:
+              landlordDoc.emergencyContact || landlordDoc.emergencyPhone || "",
+            emergencyPhone:
+              landlordDoc.emergencyPhone || landlordDoc.emergencyContact || "",
           }
         : null,
     };

@@ -102,6 +102,8 @@ export interface IActiveTenancyCard {
     phone?: string;
     companyName?: string;
     profileImage?: string;
+    emergencyContact?: string;
+    emergencyPhone?: string;
   } | null;
 }
 
