@@ -16,6 +16,7 @@ export type INotification = {
     | "Contractor"
     | "SmartReminder"
     | "Bill"
+    | "FinanceBill"
     | "Inspection"
     | "Inventory"
     | "User"

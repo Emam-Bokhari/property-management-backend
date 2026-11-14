@@ -1,4 +1,4 @@
-import { model, Schema } from "mongoose";
+import mongoose, { model, Schema } from "mongoose";
 import { softDeletePlugin } from "../../../DB/plugins/softDeletePlugin";
 import {
   BILL_CATEGORY,
@@ -142,7 +142,16 @@ const financeBillSchema = new Schema<IFinanceBill, FinanceBillModel>(
 
 financeBillSchema.plugin(softDeletePlugin);
 
-export const FinanceBill = model<IFinanceBill, FinanceBillModel>(
-  "FinanceBill",
-  financeBillSchema,
-);
+export const FinanceBill =
+  (mongoose.models.FinanceBill as FinanceBillModel) ||
+  model<IFinanceBill, FinanceBillModel>("FinanceBill", financeBillSchema);
+
+// Register "Bill" model alias pointing to financebills collection so that
+// notifications populated with refPath "Bill" resolve properly
+export const Bill =
+  (mongoose.models.Bill as FinanceBillModel) ||
+  model<IFinanceBill, FinanceBillModel>(
+    "Bill",
+    financeBillSchema,
+    "financebills",
+  );

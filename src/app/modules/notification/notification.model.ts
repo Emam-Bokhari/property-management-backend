@@ -2,6 +2,7 @@ import { softDeletePlugin } from "../../../DB/plugins/softDeletePlugin";
 import { model, Schema } from "mongoose";
 import { INotification, NotificationModel } from "./notification.interface";
 import { NOTIFICATION_TYPE } from "./notification.constant";
+import "../finance/finance.model";
 
 const notificationSchema = new Schema<INotification, NotificationModel>(
   {
@@ -38,6 +39,7 @@ const notificationSchema = new Schema<INotification, NotificationModel>(
         "Contractor",
         "SmartReminder",
         "Bill",
+        "FinanceBill",
         "Inspection",
         "Inventory",
         "User",
