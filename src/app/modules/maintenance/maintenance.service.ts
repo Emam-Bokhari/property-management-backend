@@ -41,7 +41,7 @@ import { sendNotifications } from "../../../helpers/notificationsHelper";
 import { NOTIFICATION_TYPE } from "../notification/notification.constant";
 import { logger } from "../../../shared/logger";
 
-const maintenancePopulate = [
+export const maintenancePopulate = [
   {
     path: "property",
     select: "propertyName streetAddress postCode propertyPhotos city country",
@@ -132,7 +132,7 @@ const getUserId = (authUser: JwtPayload): string => {
 };
 
 // Enhance maintenance object with UI friendly metadata
-const enhanceMaintenanceData = (item: any) => {
+export const enhanceMaintenanceData = (item: any) => {
   const plain = item?.toObject ? item.toObject() : { ...item };
   return {
     ...plain,

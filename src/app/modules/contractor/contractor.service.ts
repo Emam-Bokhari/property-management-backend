@@ -33,6 +33,10 @@ import {
   CONTRACTOR_STATUS,
   PAYMENT_STATUS,
 } from "../maintenance/maintenance.constant";
+import {
+  maintenancePopulate,
+  enhanceMaintenanceData,
+} from "../maintenance/maintenance.service";
 import { Notification } from "../notification/notification.model";
 import { TenantService } from "../tenant/tenant.service";
 import {
@@ -856,6 +860,8 @@ const formatNextScheduleCard = (job: any, now: Date): INextScheduleCard => {
 
 // Helper: Format upcoming job item
 const formatUpcomingJobItem = (job: any): IUpcomingJobItem => {
+  const enhanced = enhanceMaintenanceData(job);
+
   const prop = job.property as any;
   const flat = job.flat as any;
   const locationParts: string[] = [];
@@ -919,8 +925,9 @@ const formatUpcomingJobItem = (job: any): IUpcomingJobItem => {
       : null);
 
   return {
-    id: job._id.toString(),
-    jobId: job.jobId || `#JOB-${job._id.toString().slice(-4)}`,
+    ...enhanced,
+    id: job._id ? job._id.toString() : job.id,
+    jobId: job.jobId || `#JOB-${(job._id ? job._id.toString() : "").slice(-4)}`,
     title: job.issueTitle,
     location,
     propertyId: prop?._id?.toString(),
@@ -1094,10 +1101,7 @@ const getContractorHomeDashboardFromDB = async (
         ],
       },
     })
-      .populate("property", "propertyName streetAddress city postCode")
-      .populate("flat", "unitName")
-      .populate("issueType", "name icon type")
-      .populate("landlord", "name email phone profileImage companyName")
+      .populate(maintenancePopulate)
       .sort({ scheduledDate: 1, createdAt: -1 })
       .limit(Number(query?.limit) || 10)
       .lean(),

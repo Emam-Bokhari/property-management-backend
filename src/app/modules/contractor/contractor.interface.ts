@@ -89,8 +89,10 @@ export interface IContractorOverviewStats {
 
 export interface IUpcomingJobItem {
   id: string;
+  _id?: string | Types.ObjectId;
   jobId: string;
   title: string;
+  issueTitle?: string;
   location: string;
   propertyId?: string;
   propertyName?: string;
@@ -105,6 +107,7 @@ export interface IUpcomingJobItem {
   contractorStatus?: string;
   priority?: string;
   image?: string | null;
+  [key: string]: any;
 }
 
 export interface IContractorHomeDashboardData {
