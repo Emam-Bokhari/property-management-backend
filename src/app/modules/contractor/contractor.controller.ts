@@ -241,6 +241,27 @@ const getSingleContractorTenant = catchAsync(
   },
 );
 
+const getContractorEmergencyContacts = catchAsync(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+    }
+
+    const result =
+      await ContractorService.getContractorEmergencyContactsFromDB(
+        req.user,
+        req.query,
+      );
+
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      message: "Contractor emergency contacts retrieved successfully",
+      data: result,
+    });
+  },
+);
+
 export const ContractorController = {
   inviteContractor,
   getAllContractors,
@@ -254,4 +275,5 @@ export const ContractorController = {
   getContractorEarningsHistory,
   getContractorTenants,
   getSingleContractorTenant,
+  getContractorEmergencyContacts,
 };

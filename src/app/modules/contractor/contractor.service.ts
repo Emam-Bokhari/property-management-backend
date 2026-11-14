@@ -25,6 +25,7 @@ import {
   IContractorAssignedPropertyItem,
   IContractorEarningItem,
   IContractorEarningsSummary,
+  IContractorLandlordEmergencyContact,
 } from "./contractor.interface";
 import { Maintenance } from "../maintenance/maintenance.model";
 import {
@@ -59,7 +60,8 @@ const contractorPopulateOptions = [
   },
   {
     path: "landlord",
-    select: "name email phone profileImage companyName",
+    select:
+      "name email phone profileImage companyName emergencyContact emergencyPhone address",
   },
   {
     path: "trades",
@@ -1560,6 +1562,173 @@ const getSingleContractorTenantFromDB = async (
   return tenancy;
 };
 
+// 11. Get Connected Landlords' Emergency Contacts for Contractor
+const getContractorEmergencyContactsFromDB = async (
+  authUser: JwtPayload,
+  query?: Record<string, unknown>,
+): Promise<IContractorLandlordEmergencyContact[]> => {
+  const contractorObjectId = resolveTargetContractorObjectId(authUser, query);
+
+  // Verify the contractor exists and has valid role
+  const contractorUser = await User.findOne({
+    _id: contractorObjectId,
+    isDeleted: { $ne: true },
+  }).select("name email role status");
+
+  if (!contractorUser) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Contractor not found");
+  }
+
+  // Find all active contractor-landlord relationships (invitation sent and currently active)
+  const relations = await Contractor.find({
+    contractor: contractorObjectId,
+    status: CONTRACTOR_RELATION_STATUS.ACTIVE,
+    isDeleted: { $ne: true },
+  })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  if (!relations || relations.length === 0) {
+    return [];
+  }
+
+  // Deduplicate landlord IDs while preserving the latest relation info
+  const relationMap = new Map<string, any>();
+  for (const rel of relations) {
+    const lId = rel.landlord?.toString();
+    if (lId && mongoose.Types.ObjectId.isValid(lId) && !relationMap.has(lId)) {
+      relationMap.set(lId, rel);
+    }
+  }
+
+  const landlordObjectIds = Array.from(relationMap.keys()).map(
+    (id) => new Types.ObjectId(id),
+  );
+
+  if (landlordObjectIds.length === 0) {
+    return [];
+  }
+
+  // Fetch only active, non-deleted landlords who actually exist in User collection
+  const [landlords, allProperties] = await Promise.all([
+    User.find({
+      _id: { $in: landlordObjectIds },
+      role: { $in: [USER_ROLES.LANDLORD, "landlord", "LANDLORD"] },
+      isDeleted: { $ne: true },
+    })
+      .select(
+        "name firstName lastName email phone emergencyContact emergencyPhone companyName profileImage address homeAddress status verified",
+      )
+      .lean(),
+    Property.find({
+      landlord: { $in: landlordObjectIds },
+      isDeleted: { $ne: true },
+    })
+      .select(
+        "propertyName streetAddress postCode propertyPhotos propertyType landlord isHmo",
+      )
+      .lean(),
+  ]);
+
+  // Group properties by landlord id
+  const propertiesByLandlord = new Map<string, any[]>();
+  for (const prop of allProperties) {
+    const lId = prop.landlord?.toString();
+    if (lId) {
+      if (!propertiesByLandlord.has(lId)) {
+        propertiesByLandlord.set(lId, []);
+      }
+      propertiesByLandlord.get(lId)!.push(prop);
+    }
+  }
+
+  // Build emergency contact items
+  let emergencyContacts: IContractorLandlordEmergencyContact[] = landlords.map(
+    (landlord: any) => {
+      const lId = landlord._id.toString();
+      const rel = relationMap.get(lId);
+      const landlordProperties = propertiesByLandlord.get(lId) || [];
+
+      const fullName =
+        landlord.name ||
+        [landlord.firstName, landlord.lastName].filter(Boolean).join(" ") ||
+        "Property Owner";
+      const firstName =
+        landlord.firstName || fullName.trim().split(" ")[0] || "";
+
+      const emergencyContact =
+        landlord.emergencyContact ||
+        landlord.emergencyPhone ||
+        landlord.phone ||
+        "";
+      const emergencyPhone =
+        landlord.emergencyPhone ||
+        landlord.emergencyContact ||
+        landlord.phone ||
+        "";
+
+      return {
+        landlordId: lId,
+        name: fullName,
+        firstName,
+        lastName: landlord.lastName || "",
+        email: landlord.email || "",
+        phone: landlord.phone || "",
+        emergencyContact,
+        emergencyPhone,
+        companyName: landlord.companyName || rel?.companyName || "",
+        profileImage: landlord.profileImage || "",
+        address: landlord.address || landlord.homeAddress || "",
+        connectionStatus: rel?.status || CONTRACTOR_RELATION_STATUS.ACTIVE,
+        connectedAt: rel?.invitedAt || rel?.createdAt || null,
+        totalProperties: landlordProperties.length,
+        properties: landlordProperties.map((p: any) => ({
+          id: p._id.toString(),
+          propertyName: p.propertyName || "",
+          streetAddress: p.streetAddress || "",
+          postCode: p.postCode || "",
+          displayAddress:
+            [p.propertyName, p.streetAddress, p.postCode]
+              .filter(Boolean)
+              .join(", ") || "Property Address",
+          propertyPhotos: p.propertyPhotos || [],
+          isHmo: Boolean(p.isHmo),
+        })),
+      };
+    },
+  );
+
+  // Optional search filtering (by landlord name, email, phone, emergency contact, company, or property address)
+  const searchTerm =
+    typeof query?.searchTerm === "string"
+      ? query.searchTerm.trim().toLowerCase()
+      : typeof query?.search === "string"
+        ? query.search.trim().toLowerCase()
+        : "";
+
+  if (searchTerm) {
+    emergencyContacts = emergencyContacts.filter((item) => {
+      return (
+        item.name.toLowerCase().includes(searchTerm) ||
+        item.email.toLowerCase().includes(searchTerm) ||
+        item.phone.toLowerCase().includes(searchTerm) ||
+        item.emergencyContact.toLowerCase().includes(searchTerm) ||
+        item.emergencyPhone.toLowerCase().includes(searchTerm) ||
+        (item.companyName &&
+          item.companyName.toLowerCase().includes(searchTerm)) ||
+        item.properties.some(
+          (p) =>
+            p.propertyName.toLowerCase().includes(searchTerm) ||
+            p.streetAddress.toLowerCase().includes(searchTerm) ||
+            p.postCode.toLowerCase().includes(searchTerm),
+        )
+      );
+    });
+  }
+
+  return emergencyContacts;
+};
+
 export const ContractorService = {
   inviteContractorToDB,
   getAllContractorsFromDB,
@@ -1573,4 +1742,5 @@ export const ContractorService = {
   getContractorEarningsHistoryFromDB,
   getContractorTenantsFromDB,
   getSingleContractorTenantFromDB,
+  getContractorEmergencyContactsFromDB,
 };

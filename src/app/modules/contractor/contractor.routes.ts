@@ -57,6 +57,19 @@ router.get(
   ContractorController.getSingleContractorTenant,
 );
 
+// 3f. Contractor Emergency Contacts (Emergency contacts of all connected landlords/property owners)
+router.get(
+  "/emergency-contacts",
+  auth(USER_ROLES.CONTRACTOR, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  ContractorController.getContractorEmergencyContacts,
+);
+
+router.get(
+  "/emergency-contact",
+  auth(USER_ROLES.CONTRACTOR, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  ContractorController.getContractorEmergencyContacts,
+);
+
 // 3. Get All Contractors (Landlord / Contractor / Admin - SaaS isolated)
 router.get(
   "/",

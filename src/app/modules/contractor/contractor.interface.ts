@@ -175,3 +175,32 @@ export interface IContractorEarningsSummary {
   currency: string;
   currencySymbol: string;
 }
+
+export interface IContractorEmergencyContactProperty {
+  id: string;
+  propertyName: string;
+  streetAddress: string;
+  postCode: string;
+  displayAddress: string;
+  propertyPhotos?: string[];
+  isHmo?: boolean;
+}
+
+export interface IContractorLandlordEmergencyContact {
+  landlordId: string;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
+  phone: string;
+  emergencyContact: string;
+  emergencyPhone: string;
+  companyName?: string;
+  profileImage?: string;
+  address?: string;
+  connectionStatus: string;
+  connectedAt?: Date | string | null;
+  totalProperties: number;
+  properties: IContractorEmergencyContactProperty[];
+}
+
