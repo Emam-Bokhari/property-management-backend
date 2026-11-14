@@ -74,12 +74,13 @@ router
     TenantController.deleteTenantDocument,
   );
 
-// 5. Get All Tenancies (Landlord / Tenant / Admin - SaaS isolated)
+// 5. Get All Tenancies (Landlord / Tenant / Contractor / Admin - SaaS isolated)
 router.get(
   "/",
   auth(
     USER_ROLES.LANDLORD,
     USER_ROLES.TENANT,
+    USER_ROLES.CONTRACTOR,
     USER_ROLES.ADMIN,
     USER_ROLES.SUPER_ADMIN,
   ),
@@ -93,6 +94,7 @@ router
     auth(
       USER_ROLES.LANDLORD,
       USER_ROLES.TENANT,
+      USER_ROLES.CONTRACTOR,
       USER_ROLES.ADMIN,
       USER_ROLES.SUPER_ADMIN,
     ),

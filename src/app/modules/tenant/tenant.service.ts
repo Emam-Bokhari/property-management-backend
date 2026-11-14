@@ -9,6 +9,10 @@ import { Property } from "../property/property.model";
 import { User } from "../user/user.model";
 import { USER_ROLES, STATUS } from "../../../enums/user";
 import {
+  getContractorAccessiblePropertyIds,
+  resolveTargetContractorObjectId,
+} from "../contractor/contractor.utils";
+import {
   formatCurrency,
   getCurrencySymbol,
 } from "../../../helpers/currencyHelper";
@@ -284,6 +288,71 @@ const getAllTenantsFromDB = async (
     filter.landlord = new Types.ObjectId(authUser.id);
   } else if (authUser.role === USER_ROLES.TENANT) {
     filter.tenant = new Types.ObjectId(authUser.id);
+  } else if (authUser.role === USER_ROLES.CONTRACTOR) {
+    const contractorObjectId = resolveTargetContractorObjectId(authUser, query);
+    const accessiblePropertyIds =
+      await getContractorAccessiblePropertyIds(contractorObjectId);
+
+    if (accessiblePropertyIds.length === 0) {
+      const page = Number(query?.page) || 1;
+      const limit = Number(query?.limit) || 10;
+      return {
+        meta: { page, limit, total: 0, totalPage: 0 },
+        data: [],
+      };
+    }
+
+    if (query.property) {
+      const requestedPropStr = query.property.toString();
+      const hasAccess = accessiblePropertyIds.some(
+        (pid) => pid.toString() === requestedPropStr,
+      );
+      if (!hasAccess) {
+        throw new ApiError(
+          StatusCodes.FORBIDDEN,
+          "You do not have access to tenants of this property",
+        );
+      }
+      filter.property = new Types.ObjectId(requestedPropStr);
+      delete query.property;
+    } else {
+      filter.property = { $in: accessiblePropertyIds };
+    }
+  } else if (
+    (authUser.role === USER_ROLES.ADMIN ||
+      authUser.role === USER_ROLES.SUPER_ADMIN) &&
+    query?.contractorId
+  ) {
+    const contractorObjectId = resolveTargetContractorObjectId(authUser, query);
+    const accessiblePropertyIds =
+      await getContractorAccessiblePropertyIds(contractorObjectId);
+
+    if (accessiblePropertyIds.length === 0) {
+      const page = Number(query?.page) || 1;
+      const limit = Number(query?.limit) || 10;
+      return {
+        meta: { page, limit, total: 0, totalPage: 0 },
+        data: [],
+      };
+    }
+
+    if (query.property) {
+      const requestedPropStr = query.property.toString();
+      const hasAccess = accessiblePropertyIds.some(
+        (pid) => pid.toString() === requestedPropStr,
+      );
+      if (!hasAccess) {
+        throw new ApiError(
+          StatusCodes.FORBIDDEN,
+          "Contractor does not have access to this property",
+        );
+      }
+      filter.property = new Types.ObjectId(requestedPropStr);
+      delete query.property;
+    } else {
+      filter.property = { $in: accessiblePropertyIds };
+    }
+    delete query.contractorId;
   }
 
   // Filter by property if requested
@@ -380,6 +449,25 @@ const getSingleTenantFromDB = async (authUser: JwtPayload, id: string) => {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
         "You do not have permission to view this tenancy",
+      );
+    }
+  } else if (authUser.role === USER_ROLES.CONTRACTOR) {
+    const contractorObjectId = resolveTargetContractorObjectId(authUser);
+    const accessiblePropertyIds =
+      await getContractorAccessiblePropertyIds(contractorObjectId);
+
+    const tenantPropertyId = (tenancy.property as any)?._id
+      ? (tenancy.property as any)._id.toString()
+      : tenancy.property?.toString();
+
+    const hasAccess = accessiblePropertyIds.some(
+      (pid) => pid.toString() === tenantPropertyId,
+    );
+
+    if (!hasAccess) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        "You do not have permission to view this tenant (not assigned to your property)",
       );
     }
   }

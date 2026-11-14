@@ -43,6 +43,20 @@ router.get(
   ContractorController.getContractorEarningsHistory,
 );
 
+// 3d. Contractor Assigned Tenants (All tenants under contractor's assigned properties)
+router.get(
+  "/tenants",
+  auth(USER_ROLES.CONTRACTOR, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  ContractorController.getContractorTenants,
+);
+
+// 3e. Single Tenant Under Contractor's Assigned Properties
+router.get(
+  "/tenants/:id",
+  auth(USER_ROLES.CONTRACTOR, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  ContractorController.getSingleContractorTenant,
+);
+
 // 3. Get All Contractors (Landlord / Contractor / Admin - SaaS isolated)
 router.get(
   "/",

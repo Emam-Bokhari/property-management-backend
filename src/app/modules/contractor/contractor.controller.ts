@@ -201,6 +201,46 @@ const getContractorEarningsHistory = catchAsync(
   },
 );
 
+const getContractorTenants = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const result = await ContractorService.getContractorTenantsFromDB(
+    req.user,
+    req.query,
+  );
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Tenants retrieved successfully",
+    meta: result.meta,
+    data: result.data,
+  });
+});
+
+const getSingleContractorTenant = catchAsync(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+    }
+
+    const result = await ContractorService.getSingleContractorTenantFromDB(
+      req.user,
+      req.params.id,
+      req.query,
+    );
+
+    sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      message: "Tenant retrieved successfully",
+      data: result,
+    });
+  },
+);
+
 export const ContractorController = {
   inviteContractor,
   getAllContractors,
@@ -212,4 +252,6 @@ export const ContractorController = {
   getContractorHomeDashboard,
   getContractorAssignedProperties,
   getContractorEarningsHistory,
+  getContractorTenants,
+  getSingleContractorTenant,
 };

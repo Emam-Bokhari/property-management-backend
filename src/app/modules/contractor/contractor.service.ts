@@ -33,6 +33,11 @@ import {
   PAYMENT_STATUS,
 } from "../maintenance/maintenance.constant";
 import { Notification } from "../notification/notification.model";
+import { TenantService } from "../tenant/tenant.service";
+import {
+  getContractorAccessiblePropertyIds,
+  resolveTargetContractorObjectId,
+} from "./contractor.utils";
 import {
   formatCurrency,
   getCurrencyCode,
@@ -932,32 +937,6 @@ const formatUpcomingJobItem = (job: any): IUpcomingJobItem => {
   };
 };
 
-// Helper: Resolve target contractor User ObjectId (supports Admin override via ?contractorId=)
-const resolveTargetContractorObjectId = (
-  authUser: JwtPayload,
-  query?: Record<string, unknown>,
-): Types.ObjectId => {
-  let targetContractorId = authUser.userId || authUser.id;
-
-  if (
-    (authUser.role === USER_ROLES.ADMIN ||
-      authUser.role === USER_ROLES.SUPER_ADMIN) &&
-    query?.contractorId &&
-    typeof query.contractorId === "string"
-  ) {
-    targetContractorId = query.contractorId;
-  }
-
-  if (
-    !targetContractorId ||
-    !mongoose.Types.ObjectId.isValid(targetContractorId)
-  ) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid contractor ID");
-  }
-
-  return new Types.ObjectId(targetContractorId);
-};
-
 // Contractor Home Dashboard Service
 const getContractorHomeDashboardFromDB = async (
   authUser: JwtPayload,
@@ -1536,6 +1515,51 @@ const getContractorEarningsHistoryFromDB = async (
   };
 };
 
+// 9. Get Contractor Assigned Tenants (Tenants under contractor's assigned properties)
+const getContractorTenantsFromDB = async (
+  authUser: JwtPayload,
+  query: Record<string, unknown>,
+) => {
+  return TenantService.getAllTenantsFromDB(authUser, query);
+};
+
+// 10. Get Single Tenant Under Contractor's Assigned Properties
+const getSingleContractorTenantFromDB = async (
+  authUser: JwtPayload,
+  id: string,
+  query?: Record<string, unknown>,
+) => {
+  const tenancy = await TenantService.getSingleTenantFromDB(authUser, id);
+
+  if (
+    (authUser.role === USER_ROLES.ADMIN ||
+      authUser.role === USER_ROLES.SUPER_ADMIN) &&
+    query?.contractorId &&
+    typeof query.contractorId === "string"
+  ) {
+    const contractorObjectId = resolveTargetContractorObjectId(authUser, query);
+    const accessiblePropertyIds =
+      await getContractorAccessiblePropertyIds(contractorObjectId);
+
+    const tenantPropertyId = (tenancy.property as any)?._id
+      ? (tenancy.property as any)._id.toString()
+      : tenancy.property?.toString();
+
+    const hasAccess = accessiblePropertyIds.some(
+      (pid) => pid.toString() === tenantPropertyId,
+    );
+
+    if (!hasAccess) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        "Contractor does not have access to this tenant's property",
+      );
+    }
+  }
+
+  return tenancy;
+};
+
 export const ContractorService = {
   inviteContractorToDB,
   getAllContractorsFromDB,
@@ -1547,4 +1571,6 @@ export const ContractorService = {
   getContractorHomeDashboardFromDB,
   getContractorAssignedPropertiesFromDB,
   getContractorEarningsHistoryFromDB,
+  getContractorTenantsFromDB,
+  getSingleContractorTenantFromDB,
 };
