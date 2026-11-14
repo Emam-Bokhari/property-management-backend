@@ -215,8 +215,18 @@ export const FILE_CONFIG = {
   },
   document: {
     dir: "document",
-    maxCount: 10,
-    mimeTypes: new Set(["application/pdf", "text/plain", "application/msword"]),
+    maxCount: 20,
+    mimeTypes: new Set([
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/webp",
+      "image/svg+xml",
+      "application/pdf",
+      "text/plain",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ]),
   },
   taxDocuments: {
     dir: "taxDocuments",
@@ -453,6 +463,20 @@ export const FILE_CONFIG = {
     ]),
   },
   certificates: {
+    dir: "certificate",
+    maxCount: 10,
+    mimeTypes: new Set([
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/webp",
+      "application/pdf",
+      "text/plain",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ]),
+  },
+  certificateAttachment: {
     dir: "certificate",
     maxCount: 10,
     mimeTypes: new Set([

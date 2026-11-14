@@ -2012,6 +2012,7 @@ const getTenantTransactionsFromDB = async (
         { requestedBy: tenantObjectId },
       ],
       isDeleted: { $ne: true },
+      status: { $ne: MAINTENANCE_STATUS.CANCELLED },
     };
 
     // Calculate tab-specific summary statistics

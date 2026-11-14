@@ -27,6 +27,7 @@ export type ITenancy = {
   status: TENANCY_STATUS;
   invitedAt: Date;
   notes?: TTenantNote[];
+  document?: string[];
   isDeleted?: boolean;
   deletedAt?: Date | null;
 };
@@ -45,6 +46,7 @@ export type IInviteTenantPayload = {
   advanceRent?: number;
   depositProtectionScheme?: string;
   personalMessage?: string;
+  document?: string[];
 };
 
 export type IUpdateTenancyPayload = {
@@ -56,6 +58,12 @@ export type IUpdateTenancyPayload = {
   depositProtectionScheme?: string;
   personalMessage?: string;
   status?: TENANCY_STATUS;
+  document?: string[];
+};
+
+export type ITenantDocumentPayload = {
+  document?: string[] | string;
+  documents?: string[] | string;
 };
 
 // ==========================================
@@ -86,6 +94,7 @@ export interface IActiveTenancyCard {
   leaseStartDate: Date | string;
   leaseEndDate: Date | string;
   depositProtectionScheme?: string;
+  document?: string[];
   landlord: {
     id: string;
     name: string;

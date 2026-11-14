@@ -28,6 +28,7 @@ const inviteTenantZodSchema = z.object({
       .nativeEnum(DEPOSIT_PROTECTION_SCHEME)
       .optional()
       .default(DEPOSIT_PROTECTION_SCHEME.MY_DEPOSITS),
+    document: z.union([z.string(), z.array(z.string())]).optional(),
   }),
 });
 
@@ -41,6 +42,7 @@ const updateTenancyZodSchema = z.object({
     depositProtectionScheme: z.nativeEnum(DEPOSIT_PROTECTION_SCHEME).optional(),
     personalMessage: z.string().optional(),
     status: z.nativeEnum(TENANCY_STATUS).optional(),
+    document: z.union([z.string(), z.array(z.string())]).optional(),
   }),
 });
 
@@ -79,10 +81,42 @@ const updateTenantNoteZodSchema = z.object({
     }),
 });
 
+const addTenantDocumentZodSchema = z.object({
+  body: z.object({
+    document: z.union([z.string(), z.array(z.string())]).optional(),
+    documents: z.union([z.string(), z.array(z.string())]).optional(),
+  }),
+});
+
+const updateTenantDocumentZodSchema = z.object({
+  body: z.object({
+    document: z.union([z.string(), z.array(z.string())]).optional(),
+    documents: z.union([z.string(), z.array(z.string())]).optional(),
+  }),
+});
+
+const deleteTenantDocumentZodSchema = z.object({
+  body: z
+    .object({
+      documentUrl: z.string().optional(),
+      document: z.string().optional(),
+    })
+    .optional(),
+  query: z
+    .object({
+      documentUrl: z.string().optional(),
+      document: z.string().optional(),
+    })
+    .optional(),
+});
+
 export const TenantValidation = {
   inviteTenantZodSchema,
   updateTenancyZodSchema,
   resendInviteZodSchema,
   addTenantNoteZodSchema,
   updateTenantNoteZodSchema,
+  addTenantDocumentZodSchema,
+  updateTenantDocumentZodSchema,
+  deleteTenantDocumentZodSchema,
 };

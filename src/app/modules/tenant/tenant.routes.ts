@@ -2,6 +2,8 @@ import express from "express";
 import auth from "../../middlewares/auth";
 import validateRequest from "../../middlewares/validateRequest";
 import { USER_ROLES } from "../../../enums/user";
+import fileUploadHandler from "../../middlewares/flieUploadHandler";
+import { parseFileData } from "../../middlewares/parseFileData";
 import { TenantValidation } from "./tenant.validation";
 import { TenantController } from "./tenant.controller";
 
@@ -11,6 +13,11 @@ const router = express.Router();
 router.post(
   "/invite",
   auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  fileUploadHandler(),
+  parseFileData(
+    { fieldName: "document", mode: "multiple" },
+    { fieldName: "documents", mode: "multiple" },
+  ),
   validateRequest(TenantValidation.inviteTenantZodSchema),
   TenantController.inviteTenant,
 );
@@ -34,7 +41,40 @@ router.get(
   TenantController.getMyTenancy,
 );
 
-// 3. Get All Tenancies (Landlord / Tenant / Admin - SaaS isolated)
+// 4. Tenant's Own Documents Operations (Tenant only)
+router
+  .route("/my-documents")
+  .get(
+    auth(USER_ROLES.TENANT),
+    TenantController.getTenantDocuments,
+  )
+  .post(
+    auth(USER_ROLES.TENANT),
+    fileUploadHandler(),
+    parseFileData(
+      { fieldName: "document", mode: "multiple" },
+      { fieldName: "documents", mode: "multiple" },
+    ),
+    validateRequest(TenantValidation.addTenantDocumentZodSchema),
+    TenantController.addTenantDocument,
+  )
+  .patch(
+    auth(USER_ROLES.TENANT),
+    fileUploadHandler(),
+    parseFileData(
+      { fieldName: "document", mode: "multiple" },
+      { fieldName: "documents", mode: "multiple" },
+    ),
+    validateRequest(TenantValidation.updateTenantDocumentZodSchema),
+    TenantController.updateTenantDocument,
+  )
+  .delete(
+    auth(USER_ROLES.TENANT),
+    validateRequest(TenantValidation.deleteTenantDocumentZodSchema),
+    TenantController.deleteTenantDocument,
+  );
+
+// 5. Get All Tenancies (Landlord / Tenant / Admin - SaaS isolated)
 router.get(
   "/",
   auth(
@@ -46,7 +86,7 @@ router.get(
   TenantController.getAllTenants,
 );
 
-// 4. Single Tenancy Operations (GET, PATCH, DELETE)
+// 6. Single Tenancy Operations (GET, PATCH, DELETE)
 router
   .route("/:id")
   .get(
@@ -60,6 +100,11 @@ router
   )
   .patch(
     auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    fileUploadHandler(),
+    parseFileData(
+      { fieldName: "document", mode: "multiple" },
+      { fieldName: "documents", mode: "multiple" },
+    ),
     validateRequest(TenantValidation.updateTenancyZodSchema),
     TenantController.updateTenancy,
   )
@@ -68,7 +113,7 @@ router
     TenantController.removeTenant,
   );
 
-// 5. Resend Invitation Email (Landlord / Admin)
+// 7. Resend Invitation Email (Landlord / Admin)
 router.post(
   "/:id/resend-invite",
   auth(USER_ROLES.LANDLORD, USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
@@ -76,7 +121,113 @@ router.post(
   TenantController.resendInvitation,
 );
 
-// 6. Tenant Notes Operations
+// 8. Tenant Dedicated Document Operations (Tenancy ID: Landlord / Tenant / Admin)
+router
+  .route("/:id/documents")
+  .get(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.TENANT,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+    ),
+    TenantController.getTenantDocuments,
+  )
+  .post(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.TENANT,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+    ),
+    fileUploadHandler(),
+    parseFileData(
+      { fieldName: "document", mode: "multiple" },
+      { fieldName: "documents", mode: "multiple" },
+    ),
+    validateRequest(TenantValidation.addTenantDocumentZodSchema),
+    TenantController.addTenantDocument,
+  )
+  .patch(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.TENANT,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+    ),
+    fileUploadHandler(),
+    parseFileData(
+      { fieldName: "document", mode: "multiple" },
+      { fieldName: "documents", mode: "multiple" },
+    ),
+    validateRequest(TenantValidation.updateTenantDocumentZodSchema),
+    TenantController.updateTenantDocument,
+  )
+  .delete(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.TENANT,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+    ),
+    validateRequest(TenantValidation.deleteTenantDocumentZodSchema),
+    TenantController.deleteTenantDocument,
+  );
+
+// Alias: /:id/document
+router
+  .route("/:id/document")
+  .get(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.TENANT,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+    ),
+    TenantController.getTenantDocuments,
+  )
+  .post(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.TENANT,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+    ),
+    fileUploadHandler(),
+    parseFileData(
+      { fieldName: "document", mode: "multiple" },
+      { fieldName: "documents", mode: "multiple" },
+    ),
+    validateRequest(TenantValidation.addTenantDocumentZodSchema),
+    TenantController.addTenantDocument,
+  )
+  .patch(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.TENANT,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+    ),
+    fileUploadHandler(),
+    parseFileData(
+      { fieldName: "document", mode: "multiple" },
+      { fieldName: "documents", mode: "multiple" },
+    ),
+    validateRequest(TenantValidation.updateTenantDocumentZodSchema),
+    TenantController.updateTenantDocument,
+  )
+  .delete(
+    auth(
+      USER_ROLES.LANDLORD,
+      USER_ROLES.TENANT,
+      USER_ROLES.ADMIN,
+      USER_ROLES.SUPER_ADMIN,
+    ),
+    validateRequest(TenantValidation.deleteTenantDocumentZodSchema),
+    TenantController.deleteTenantDocument,
+  );
+
+// 9. Tenant Notes Operations
 router
   .route("/:id/notes")
   .post(

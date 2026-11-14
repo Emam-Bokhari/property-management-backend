@@ -30,6 +30,14 @@ router
         fieldName: "nidPhoto",
         mode: "single",
       },
+      {
+        fieldName: "certificates",
+        mode: "multiple",
+      },
+      {
+        fieldName: "certificateAttachment",
+        mode: "multiple",
+      },
     ),
     validateRequest(UserValidation.updateProfileZodSchema),
     UserController.updateProfile,
@@ -66,6 +74,14 @@ router
         fieldName: "nidPhoto",
         mode: "single",
       },
+      {
+        fieldName: "certificates",
+        mode: "multiple",
+      },
+      {
+        fieldName: "certificateAttachment",
+        mode: "multiple",
+      },
     ),
     validateRequest(UserValidation.createUserZodSchema),
     UserController.createUser,
@@ -81,6 +97,14 @@ router
       {
         fieldName: "nidPhoto",
         mode: "single",
+      },
+      {
+        fieldName: "certificates",
+        mode: "multiple",
+      },
+      {
+        fieldName: "certificateAttachment",
+        mode: "multiple",
       },
     ),
     validateRequest(UserValidation.updateProfileZodSchema),

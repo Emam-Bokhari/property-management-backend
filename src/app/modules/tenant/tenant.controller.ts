@@ -221,6 +221,93 @@ const deleteNoteFromTenant = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const addTenantDocument = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const id = req.params.id || "my";
+  const result = await TenantService.addDocumentToTenantToDB(
+    req.user,
+    id,
+    req.body,
+  );
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Tenant document(s) uploaded successfully",
+    data: result,
+  });
+});
+
+const updateTenantDocument = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const id = req.params.id || "my";
+  const result = await TenantService.updateDocumentInTenantToDB(
+    req.user,
+    id,
+    req.body,
+  );
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Tenant document(s) updated successfully",
+    data: result,
+  });
+});
+
+const deleteTenantDocument = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const id = req.params.id || "my";
+  const payload = {
+    documentUrl:
+      (req.body?.documentUrl as string) ||
+      (req.body?.document as string) ||
+      (req.query?.documentUrl as string) ||
+      (req.query?.document as string),
+  };
+
+  const result = await TenantService.deleteDocumentFromTenantToDB(
+    req.user,
+    id,
+    payload,
+  );
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Tenant document deleted successfully",
+    data: result,
+  });
+});
+
+const getTenantDocuments = catchAsync(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, "User not authenticated");
+  }
+
+  const id = req.params.id || "my";
+  const result = await TenantService.getDocumentsByTenantIdFromDB(
+    req.user,
+    id,
+  );
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Tenant documents retrieved successfully",
+    data: result,
+  });
+});
+
 export const TenantController = {
   inviteTenant,
   getAllTenants,
@@ -234,4 +321,8 @@ export const TenantController = {
   getNotesByTenantId,
   updateNoteInTenant,
   deleteNoteFromTenant,
+  addTenantDocument,
+  updateTenantDocument,
+  deleteTenantDocument,
+  getTenantDocuments,
 };

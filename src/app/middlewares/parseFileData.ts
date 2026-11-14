@@ -51,6 +51,7 @@ const resolveMode = (
     fieldName === "flatPhotos" ||
     fieldName === "otherDocuments" ||
     fieldName === "documents" ||
+    fieldName === "document" ||
     fieldName === "inspectionPhotos" ||
     fieldName === "itemPhotos" ||
     fieldName === "attachments" ||
@@ -87,6 +88,7 @@ export const parseFileData = (...fields: FieldInput[]) => {
         "houseRules",
         "otherDocuments",
         "documents",
+        "document",
         "titles",
         "key",
         "gas",
@@ -187,6 +189,29 @@ export const parseFileData = (...fields: FieldInput[]) => {
             (files as any)["attachment"] ||
             (files as any)["images"] ||
             (files as any)["image"] ||
+            (files as any)["files"] ||
+            (files as any)["file"];
+        }
+
+        // Fallback for certificates / certificateAttachment / certificate
+        if (
+          (!fieldFiles || fieldFiles.length === 0) &&
+          (fieldName === "certificates" || fieldName === "certificateAttachment")
+        ) {
+          fieldFiles =
+            (files as any)["certificates"] ||
+            (files as any)["certificateAttachment"] ||
+            (files as any)["certificate"];
+        }
+
+        // Fallback for document / documents / files / file
+        if (
+          (!fieldFiles || fieldFiles.length === 0) &&
+          (fieldName === "document" || fieldName === "documents")
+        ) {
+          fieldFiles =
+            (files as any)["document"] ||
+            (files as any)["documents"] ||
             (files as any)["files"] ||
             (files as any)["file"];
         }
@@ -315,6 +340,76 @@ export const parseFileData = (...fields: FieldInput[]) => {
         delete parsedBody.uploadedFiles;
       }
 
+      // Merge certificates data from parsedBody with file data
+      const certFiles =
+        fileData.certificates ||
+        fileData.certificateAttachment ||
+        fileData.certificate;
+
+      if (certFiles) {
+        const uploadedUrls: string[] = Array.isArray(certFiles)
+          ? [...certFiles]
+          : [certFiles];
+
+        const certsFromBody = parsedBody.certificates ?? req.body?.certificates;
+
+        if (Array.isArray(certsFromBody)) {
+          const isObjectArray = certsFromBody.some(
+            (item: any) => item && typeof item === "object",
+          );
+
+          if (isObjectArray) {
+            let uploadIndex = 0;
+            const mergedCertificates = certsFromBody.map((item: any) => {
+              if (item && typeof item === "object") {
+                if (
+                  item.certificateAttachment &&
+                  typeof item.certificateAttachment === "string" &&
+                  item.certificateAttachment.trim().length > 0
+                ) {
+                  return item;
+                }
+                const nextUrl = uploadedUrls[uploadIndex++];
+                return {
+                  ...item,
+                  certificateAttachment: nextUrl || "",
+                };
+              }
+              return item;
+            });
+
+            while (uploadIndex < uploadedUrls.length) {
+              mergedCertificates.push({
+                certificateAttachment: uploadedUrls[uploadIndex++],
+              });
+            }
+
+            fileData.certificates = mergedCertificates;
+            delete parsedBody.certificates;
+            if (req.body?.certificates) delete req.body.certificates;
+          }
+        } else if (certsFromBody && typeof certsFromBody === "object") {
+          const nextUrl = uploadedUrls[0];
+          fileData.certificates = [
+            {
+              ...certsFromBody,
+              certificateAttachment:
+                certsFromBody.certificateAttachment || nextUrl || "",
+            },
+          ];
+          delete parsedBody.certificates;
+          if (req.body?.certificates) delete req.body.certificates;
+        } else if (!certsFromBody && fileData.certificateAttachment) {
+          fileData.certificates = uploadedUrls.map((url: string) => ({
+            certificateAttachment: url,
+          }));
+        }
+
+        if (fileData.certificateAttachment) {
+          delete fileData.certificateAttachment;
+        }
+      }
+
       // Normalize single string images in parsedBody / req.body for multiple mode / images / propertyPhotos / floorPlanPhotos / flatPhotos / attachments
       for (const { fieldName, mode } of effectiveNormalized) {
         if (
@@ -381,6 +476,16 @@ export const parseFileData = (...fields: FieldInput[]) => {
         req.body.attachments = Array.isArray(req.body.attachment)
           ? req.body.attachment
           : [req.body.attachment];
+      }
+
+      // Keep document / documents in sync on req.body
+      if (req.body.documents && !req.body.document) {
+        req.body.document = req.body.documents;
+      }
+      if (req.body.document && !req.body.documents) {
+        req.body.documents = Array.isArray(req.body.document)
+          ? req.body.document
+          : [req.body.document];
       }
 
       // If council or parking was wrapped inside req.body.council/parking without top-level propertyName (sub-route update)

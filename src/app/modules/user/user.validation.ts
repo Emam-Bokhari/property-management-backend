@@ -46,6 +46,14 @@ const createUserZodSchema = z.object({
     nidPhoto: z.string().optional(),
     companyName: z.string().optional(),
     primaryTrade: z.nativeEnum(PRIMARY_TRADE).optional(),
+    certificates: z
+      .array(
+        z.object({
+          certificateName: z.string().optional(),
+          certificateAttachment: z.string().optional(),
+        }),
+      )
+      .optional(),
   }),
 });
 
@@ -65,6 +73,14 @@ const updateProfileZodSchema = z.object({
     nidPhoto: z.string().optional(),
     companyName: z.string().optional(),
     primaryTrade: z.nativeEnum(PRIMARY_TRADE).optional(),
+    certificates: z
+      .array(
+        z.object({
+          certificateName: z.string().optional(),
+          certificateAttachment: z.string().optional(),
+        }),
+      )
+      .optional(),
   }),
 });
 

@@ -28,6 +28,7 @@ import {
   getCurrencyCode,
   getCurrencySymbol,
 } from "../../../helpers/currencyHelper";
+import { buildFuzzySearchRegex, escapeRegex } from "../../../helpers/searchHelper";
 import { USER_ROLES } from "../../../enums/user";
 import { Property } from "../property/property.model";
 import { Flat } from "../flat/flat.model";
@@ -418,12 +419,51 @@ const getAllMaintenanceFromDB = async (
   if (authUser.role === USER_ROLES.LANDLORD) {
     filter.landlord = new Types.ObjectId(userId);
 
-    // Tab filtering for Landlord
-    if (queryCopy.tab === "tenant_reports") {
-      filter.requesterRole = MAINTENANCE_REQUESTER.TENANT;
-    } else if (queryCopy.tab === "my_logs") {
-      filter.requesterRole = MAINTENANCE_REQUESTER.LANDLORD;
+    // Tab filtering for Landlord (all, tenant_reports, my_logs)
+    const rawTab = (
+      (queryCopy.tab as string) ||
+      (queryCopy.type as string) ||
+      (queryCopy.requesterRole as string) ||
+      ""
+    )
+      .trim()
+      .toLowerCase()
+      .replace(/[-\s]/g, "_");
+
+    if (
+      rawTab === "tenant_reports" ||
+      rawTab === "tenant_report" ||
+      rawTab === "tenantreports" ||
+      rawTab === "tenant"
+    ) {
+      filter.$and = filter.$and || [];
+      filter.$and.push({
+        $or: [
+          { requesterRole: MAINTENANCE_REQUESTER.TENANT },
+          {
+            requesterRole: { $exists: false },
+            tenant: { $exists: true, $ne: null },
+          },
+        ],
+      });
+    } else if (
+      rawTab === "my_logs" ||
+      rawTab === "my_log" ||
+      rawTab === "mylogs" ||
+      rawTab === "landlord"
+    ) {
+      filter.$and = filter.$and || [];
+      filter.$and.push({
+        $or: [
+          { requesterRole: MAINTENANCE_REQUESTER.LANDLORD },
+          {
+            requesterRole: { $exists: false },
+            requestedBy: new Types.ObjectId(userId),
+          },
+        ],
+      });
     }
+    // "all" or omitted/empty tab leaves requesterRole unrestricted (defaults to All)
   } else if (authUser.role === USER_ROLES.TENANT) {
     // Tenant view
     filter.tenant = new Types.ObjectId(userId);
@@ -460,17 +500,155 @@ const getAllMaintenanceFromDB = async (
     ) {
       filter.contractorStatus = normalizedTab;
     }
+  } else if (
+    authUser.role === USER_ROLES.ADMIN ||
+    authUser.role === USER_ROLES.SUPER_ADMIN
+  ) {
+    const rawTab = (
+      (queryCopy.tab as string) ||
+      (queryCopy.type as string) ||
+      (queryCopy.requesterRole as string) ||
+      ""
+    )
+      .trim()
+      .toLowerCase()
+      .replace(/[-\s]/g, "_");
+
+    if (
+      rawTab === "tenant_reports" ||
+      rawTab === "tenant_report" ||
+      rawTab === "tenantreports" ||
+      rawTab === "tenant"
+    ) {
+      filter.requesterRole = MAINTENANCE_REQUESTER.TENANT;
+    } else if (
+      rawTab === "my_logs" ||
+      rawTab === "my_log" ||
+      rawTab === "mylogs" ||
+      rawTab === "landlord"
+    ) {
+      filter.requesterRole = MAINTENANCE_REQUESTER.LANDLORD;
+    }
   }
 
-  // Handle property & flat direct filters
-  if (queryCopy.property) {
-    filter.property = new Types.ObjectId(queryCopy.property as string);
-    delete queryCopy.property;
+  // Handle property & flat direct filters (safe ObjectId check, supports "all", "undefined", empty strings)
+  const propertyParam = (queryCopy.property || queryCopy.propertyId) as
+    | string
+    | undefined;
+  if (
+    propertyParam &&
+    propertyParam !== "all" &&
+    propertyParam !== "undefined" &&
+    propertyParam !== "null" &&
+    propertyParam.trim() !== ""
+  ) {
+    if (mongoose.Types.ObjectId.isValid(propertyParam)) {
+      filter.property = new Types.ObjectId(propertyParam);
+    }
   }
+  delete queryCopy.property;
+  delete queryCopy.propertyId;
 
-  if (queryCopy.flat) {
-    filter.flat = new Types.ObjectId(queryCopy.flat as string);
-    delete queryCopy.flat;
+  const flatParam = (
+    queryCopy.flat ||
+    queryCopy.flatId ||
+    queryCopy.unit ||
+    queryCopy.unitId
+  ) as string | undefined;
+  if (
+    flatParam &&
+    flatParam !== "all" &&
+    flatParam !== "undefined" &&
+    flatParam !== "null" &&
+    flatParam.trim() !== ""
+  ) {
+    if (mongoose.Types.ObjectId.isValid(flatParam)) {
+      filter.flat = new Types.ObjectId(flatParam);
+    }
+  }
+  delete queryCopy.flat;
+  delete queryCopy.flatId;
+  delete queryCopy.unit;
+  delete queryCopy.unitId;
+
+  delete queryCopy.tab;
+  delete queryCopy.type;
+  delete queryCopy.requesterRole;
+
+  // Handle search (Search issues, tenants, flats, properties)
+  const rawSearch = (
+    queryCopy.searchTerm ||
+    queryCopy.search ||
+    queryCopy.q ||
+    ""
+  ) as string;
+  const searchTerm = rawSearch.trim();
+  delete queryCopy.searchTerm;
+  delete queryCopy.search;
+  delete queryCopy.q;
+
+  if (searchTerm) {
+    const searchRegex =
+      buildFuzzySearchRegex(searchTerm) ||
+      new RegExp(escapeRegex(searchTerm), "i");
+
+    const [matchingProperties, matchingFlats, matchingUsers] =
+      await Promise.all([
+        Property.find({
+          $or: [
+            { propertyName: searchRegex },
+            { streetAddress: searchRegex },
+          ],
+        })
+          .select("_id")
+          .lean(),
+        Flat.find({
+          unitName: searchRegex,
+        })
+          .select("_id")
+          .lean(),
+        User.find({
+          $or: [
+            { name: searchRegex },
+            { email: searchRegex },
+            { phone: searchRegex },
+          ],
+        })
+          .select("_id")
+          .lean(),
+      ]);
+
+    const propertyIds = matchingProperties.map((p) => p._id);
+    const flatIds = matchingFlats.map((f) => f._id);
+    const userIds = matchingUsers.map((u) => u._id);
+
+    const searchConditions: any[] = maintenanceSearchableFields.map(
+      (field) => ({
+        [field]: searchRegex,
+      }),
+    );
+
+    if (propertyIds.length > 0) {
+      searchConditions.push({ property: { $in: propertyIds } });
+    }
+    if (flatIds.length > 0) {
+      searchConditions.push({ flat: { $in: flatIds } });
+    }
+    if (userIds.length > 0) {
+      searchConditions.push({
+        $or: [
+          { tenant: { $in: userIds } },
+          { requestedBy: { $in: userIds } },
+        ],
+      });
+    }
+
+    if (mongoose.Types.ObjectId.isValid(searchTerm)) {
+      searchConditions.push({ _id: new Types.ObjectId(searchTerm) });
+    }
+
+    filter.$and = filter.$and || [];
+    filter.$and.push({ $or: searchConditions });
   }
 
   // Handle contractorStatus enum filter
@@ -502,10 +680,14 @@ const getAllMaintenanceFromDB = async (
     } else if (queryCopy.status === "needs_contractor") {
       filter.status = MAINTENANCE_STATUS.PENDING;
       filter.contractor = { $exists: false };
+    } else if (queryCopy.status === "all") {
+      filter.status = { $ne: MAINTENANCE_STATUS.CANCELLED };
     } else {
       filter.status = queryCopy.status;
     }
     delete queryCopy.status;
+  } else if (!filter.status) {
+    filter.status = { $ne: MAINTENANCE_STATUS.CANCELLED };
   }
 
   // Handle priority filter
@@ -513,8 +695,6 @@ const getAllMaintenanceFromDB = async (
     filter.priority = queryCopy.priority;
     delete queryCopy.priority;
   }
-
-  delete queryCopy.tab;
 
   // Base query with populations
   const baseQuery = Maintenance.find(filter).populate(maintenancePopulate);
@@ -531,33 +711,63 @@ const getAllMaintenanceFromDB = async (
     queryBuilder.countTotal(),
   ]);
 
-  // Tab summary counts for Landlord / Contractor
+  // Tab summary counts for Landlord / Contractor / Admin
   let summary: Record<string, any> | undefined;
   if (authUser.role === USER_ROLES.LANDLORD) {
     const landlordId = new Types.ObjectId(userId);
+    const landlordBaseFilter: Record<string, any> = {
+      landlord: landlordId,
+      isDeleted: { $ne: true },
+      status: { $ne: MAINTENANCE_STATUS.CANCELLED },
+    };
+
+    // If property or flat is filtered, scope summary counts accordingly
+    if (filter.property) {
+      landlordBaseFilter.property = filter.property;
+    }
+    if (filter.flat) {
+      landlordBaseFilter.flat = filter.flat;
+    }
+
     const [allCount, tenantReportsCount, myLogsCount] = await Promise.all([
-      Maintenance.countDocuments({ landlord: landlordId, isDeleted: false }),
+      Maintenance.countDocuments(landlordBaseFilter),
       Maintenance.countDocuments({
-        landlord: landlordId,
-        requesterRole: MAINTENANCE_REQUESTER.TENANT,
-        isDeleted: false,
+        ...landlordBaseFilter,
+        $or: [
+          { requesterRole: MAINTENANCE_REQUESTER.TENANT },
+          {
+            requesterRole: { $exists: false },
+            tenant: { $exists: true, $ne: null },
+          },
+        ],
       }),
       Maintenance.countDocuments({
-        landlord: landlordId,
-        requesterRole: MAINTENANCE_REQUESTER.LANDLORD,
-        isDeleted: false,
+        ...landlordBaseFilter,
+        $or: [
+          { requesterRole: MAINTENANCE_REQUESTER.LANDLORD },
+          {
+            requesterRole: { $exists: false },
+            requestedBy: landlordId,
+          },
+        ],
       }),
     ]);
     summary = {
       all: allCount,
+      allCount,
       tenantReports: tenantReportsCount,
+      tenantReportsCount,
+      tenant_reports: tenantReportsCount,
       myLogs: myLogsCount,
+      myLogsCount,
+      my_logs: myLogsCount,
     };
   } else if (authUser.role === USER_ROLES.CONTRACTOR) {
     const contractorId = new Types.ObjectId(userId);
     const contractorNotDeleted = {
       contractor: contractorId,
       isDeleted: { $ne: true },
+      status: { $ne: MAINTENANCE_STATUS.CANCELLED },
     };
     const [
       allCount,
@@ -670,6 +880,13 @@ const getAllMaintenanceFromDB = async (
     meta: {
       ...meta,
       summary,
+      ...(summary
+        ? {
+            all: summary.all,
+            tenantReports: summary.tenantReports,
+            myLogs: summary.myLogs,
+          }
+        : {}),
     },
     data: enhancedData,
   };
@@ -898,6 +1115,13 @@ const assignContractorIntoDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, "Maintenance issue not found");
   }
 
+  if (issue.status === MAINTENANCE_STATUS.CANCELLED) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Cannot assign contractor to a cancelled maintenance issue",
+    );
+  }
+
   if (
     authUser.role === USER_ROLES.LANDLORD &&
     issue.landlord.toString() !== userId
@@ -985,6 +1209,13 @@ const contractorScheduleVisitIntoDB = async (
   const issue = await Maintenance.findById(id);
   if (!issue || issue.isDeleted) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Maintenance issue not found");
+  }
+
+  if (issue.status === MAINTENANCE_STATUS.CANCELLED) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Cannot schedule visit for a cancelled maintenance issue",
+    );
   }
 
   if (issue.contractor?.toString() !== userId) {
@@ -1083,6 +1314,13 @@ const contractorStartJobIntoDB = async (authUser: JwtPayload, id: string) => {
     throw new ApiError(StatusCodes.NOT_FOUND, "Maintenance issue not found");
   }
 
+  if (issue.status === MAINTENANCE_STATUS.CANCELLED) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Cannot start a cancelled maintenance issue",
+    );
+  }
+
   if (issue.contractor?.toString() !== userId) {
     throw new ApiError(
       StatusCodes.FORBIDDEN,
@@ -1115,6 +1353,13 @@ const contractorSubmitInvoiceIntoDB = async (
   const issue = await Maintenance.findById(id);
   if (!issue || issue.isDeleted) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Maintenance issue not found");
+  }
+
+  if (issue.status === MAINTENANCE_STATUS.CANCELLED) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Cannot submit invoice for a cancelled maintenance issue",
+    );
   }
 
   if (issue.contractor?.toString() !== userId) {
@@ -1221,6 +1466,13 @@ const cancelMaintenanceIntoDB = async (
     );
   }
 
+  if (issue.status === MAINTENANCE_STATUS.CANCELLED) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Maintenance issue is already cancelled",
+    );
+  }
+
   issue.status = MAINTENANCE_STATUS.CANCELLED;
   issue.cancelledAt = new Date();
   issue.cancelledBy = new Types.ObjectId(userId);
@@ -1247,6 +1499,13 @@ const updateMaintenanceIntoDB = async (
   const issue = await Maintenance.findById(id);
   if (!issue || issue.isDeleted) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Maintenance issue not found");
+  }
+
+  if (issue.status === MAINTENANCE_STATUS.CANCELLED) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Cannot update a cancelled maintenance issue",
+    );
   }
 
   if (
@@ -1312,6 +1571,13 @@ const createPaymentSessionIntoDB = async (
 
   if (!issue || issue.isDeleted) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Maintenance issue not found");
+  }
+
+  if (issue.status === MAINTENANCE_STATUS.CANCELLED) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Cannot process payment for a cancelled maintenance issue",
+    );
   }
 
   const isLandlord =
@@ -1426,6 +1692,13 @@ const rejectInvoiceIntoDB = async (
   const issue = await Maintenance.findById(id);
   if (!issue || issue.isDeleted) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Maintenance issue not found");
+  }
+
+  if (issue.status === MAINTENANCE_STATUS.CANCELLED) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Cannot reject invoice for a cancelled maintenance issue",
+    );
   }
 
   const isLandlord =

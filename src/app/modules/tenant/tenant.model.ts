@@ -96,6 +96,36 @@ const tenancySchema = new Schema<ITenancy, TenancyModel>(
       type: [tenantNoteSchema],
       default: [],
     },
+    document: {
+      type: [String],
+      default: [],
+      set: (val: any) => {
+        if (!val) return [];
+        if (typeof val === "string") {
+          try {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed)) {
+              return parsed.map((item) =>
+                typeof item === "string"
+                  ? item
+                  : item?.url || item?.fileUrl || String(item),
+              );
+            }
+          } catch {
+            return [val];
+          }
+          return [val];
+        }
+        if (Array.isArray(val)) {
+          return val.map((item) =>
+            typeof item === "string"
+              ? item
+              : item?.url || item?.fileUrl || String(item),
+          );
+        }
+        return [val];
+      },
+    },
   },
   {
     timestamps: true,

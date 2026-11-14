@@ -204,6 +204,9 @@ const inviteTenantToDB = async (
     tenancy.depositProtectionScheme =
       payload.depositProtectionScheme || DEPOSIT_PROTECTION_SCHEME.MY_DEPOSITS;
     tenancy.personalMessage = payload.personalMessage || "";
+    if (payload.document) {
+      tenancy.document = payload.document;
+    }
     tenancy.status = TENANCY_STATUS.ACTIVE;
     tenancy.invitedAt = new Date();
     await tenancy.save();
@@ -223,6 +226,7 @@ const inviteTenantToDB = async (
         payload.depositProtectionScheme ||
         DEPOSIT_PROTECTION_SCHEME.MY_DEPOSITS,
       personalMessage: payload.personalMessage || "",
+      document: payload.document || [],
       status: TENANCY_STATUS.ACTIVE,
       invitedAt: new Date(),
     });
@@ -330,7 +334,27 @@ const getSingleTenantFromDB = async (authUser: JwtPayload, id: string) => {
     throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid tenancy ID");
   }
 
-  const tenancy = await Tenancy.findById(id).populate(tenancyPopulateOptions);
+  let tenancy = await Tenancy.findById(id).populate(tenancyPopulateOptions);
+  if (!tenancy || (tenancy as any).isDeleted) {
+    // Fallback: Check if `id` is a Tenant User ID
+    tenancy = await Tenancy.findOne({
+      tenant: new Types.ObjectId(id),
+      status: TENANCY_STATUS.ACTIVE,
+      isDeleted: { $ne: true },
+    })
+      .sort({ createdAt: -1 })
+      .populate(tenancyPopulateOptions);
+
+    if (!tenancy) {
+      tenancy = await Tenancy.findOne({
+        tenant: new Types.ObjectId(id),
+        isDeleted: { $ne: true },
+      })
+        .sort({ createdAt: -1 })
+        .populate(tenancyPopulateOptions);
+    }
+  }
+
   if (!tenancy || (tenancy as any).isDeleted) {
     throw new ApiError(StatusCodes.NOT_FOUND, "Tenancy not found");
   }
@@ -437,6 +461,9 @@ const updateTenancyToDB = async (
   }
   if (payload.status) {
     tenancy.status = payload.status;
+  }
+  if (payload.document !== undefined) {
+    tenancy.document = payload.document;
   }
 
   await tenancy.save();
@@ -830,6 +857,7 @@ const getTenantHomeDashboardFromDB = async (
       leaseStartDate: activeTenancyDoc.leaseStartDate,
       leaseEndDate: activeTenancyDoc.leaseEndDate,
       depositProtectionScheme: activeTenancyDoc.depositProtectionScheme,
+      document: activeTenancyDoc.document || [],
       landlord: landlordDoc
         ? {
             id: landlordDoc._id?.toString() || "",
@@ -1190,6 +1218,253 @@ const deleteNoteFromTenantToDB = async (
   return { message: "Note deleted successfully" };
 };
 
+// ==========================================
+// Tenant Document Operations
+// ==========================================
+
+const resolveTenancyAndCheckAccess = async (
+  authUser: JwtPayload,
+  id: string,
+  requiredAction: "view" | "modify" = "modify",
+) => {
+  let tenancy: any = null;
+
+  // Support "my" or "me" or when a logged-in tenant passes their own user ID
+  if (
+    id === "my" ||
+    id === "me" ||
+    id === "my-tenancy" ||
+    (authUser.role === USER_ROLES.TENANT && id === authUser.id)
+  ) {
+    if (authUser.role !== USER_ROLES.TENANT) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        "Only tenants can access this endpoint without a tenancy ID",
+      );
+    }
+    tenancy = await Tenancy.findOne({
+      tenant: new Types.ObjectId(authUser.id),
+      status: TENANCY_STATUS.ACTIVE,
+      isDeleted: { $ne: true },
+    })
+      .sort({ createdAt: -1 })
+      .populate(tenancyPopulateOptions);
+
+    if (!tenancy) {
+      tenancy = await Tenancy.findOne({
+        tenant: new Types.ObjectId(authUser.id),
+        isDeleted: { $ne: true },
+      })
+        .sort({ createdAt: -1 })
+        .populate(tenancyPopulateOptions);
+    }
+
+    if (!tenancy) {
+      throw new ApiError(
+        StatusCodes.NOT_FOUND,
+        "No active tenancy found for your account",
+      );
+    }
+    return tenancy;
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, "Invalid tenancy or user ID");
+  }
+
+  // 1. Try finding by Tenancy _id
+  tenancy = await Tenancy.findById(id).populate(tenancyPopulateOptions);
+
+  // 2. If not found by Tenancy _id, check if `id` is a Tenant's User ID
+  if (!tenancy || tenancy.isDeleted) {
+    tenancy = await Tenancy.findOne({
+      tenant: new Types.ObjectId(id),
+      status: TENANCY_STATUS.ACTIVE,
+      isDeleted: { $ne: true },
+    })
+      .sort({ createdAt: -1 })
+      .populate(tenancyPopulateOptions);
+
+    if (!tenancy) {
+      tenancy = await Tenancy.findOne({
+        tenant: new Types.ObjectId(id),
+        isDeleted: { $ne: true },
+      })
+        .sort({ createdAt: -1 })
+        .populate(tenancyPopulateOptions);
+    }
+  }
+
+  if (!tenancy || tenancy.isDeleted) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "Tenancy not found");
+  }
+
+  // Tenant access verification
+  if (authUser.role === USER_ROLES.TENANT) {
+    const tenantId = (tenancy.tenant as any)?._id
+      ? (tenancy.tenant as any)._id.toString()
+      : tenancy.tenant?.toString();
+
+    if (tenantId !== authUser.id) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        `You do not have permission to ${requiredAction} documents for this tenancy`,
+      );
+    }
+  }
+
+  // Landlord access verification
+  if (authUser.role === USER_ROLES.LANDLORD) {
+    const landlordId = (tenancy.landlord as any)?._id
+      ? (tenancy.landlord as any)._id.toString()
+      : tenancy.landlord?.toString();
+
+    if (landlordId !== authUser.id) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        `You do not have permission to ${requiredAction} documents for this tenancy`,
+      );
+    }
+  }
+
+  return tenancy;
+};
+
+// 12. Add / Upload Document to Tenant
+const addDocumentToTenantToDB = async (
+  authUser: JwtPayload,
+  id: string,
+  payload: { document?: string[] | string; documents?: string[] | string },
+) => {
+  const tenancy = await resolveTenancyAndCheckAccess(authUser, id, "modify");
+
+  const rawDocs = payload.document ?? payload.documents;
+  if (!rawDocs || (Array.isArray(rawDocs) && rawDocs.length === 0)) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "No document provided to upload",
+    );
+  }
+
+  const incomingDocs: string[] = Array.isArray(rawDocs)
+    ? rawDocs.map((d: any) =>
+        typeof d === "string" ? d : d?.url || d?.fileUrl || String(d),
+      )
+    : [
+        typeof rawDocs === "string"
+          ? rawDocs
+          : (rawDocs as any)?.url ||
+            (rawDocs as any)?.fileUrl ||
+            String(rawDocs),
+      ];
+
+  const validDocs = incomingDocs.filter(
+    (d) => Boolean(d && typeof d === "string" && d.trim()),
+  );
+  if (validDocs.length === 0) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "No valid document URL provided",
+    );
+  }
+
+  const currentDocs: string[] = tenancy.document || [];
+  const combinedDocs = [...currentDocs];
+  for (const doc of validDocs) {
+    if (!combinedDocs.includes(doc)) {
+      combinedDocs.push(doc);
+    }
+  }
+
+  tenancy.document = combinedDocs;
+  await tenancy.save();
+
+  return await Tenancy.findById(tenancy._id).populate(tenancyPopulateOptions);
+};
+
+// 13. Update Document in Tenant (replace / set list)
+const updateDocumentInTenantToDB = async (
+  authUser: JwtPayload,
+  id: string,
+  payload: { document?: string[] | string; documents?: string[] | string },
+) => {
+  const tenancy = await resolveTenancyAndCheckAccess(authUser, id, "modify");
+
+  const rawDocs = payload.document ?? payload.documents;
+  if (rawDocs === undefined) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "Document payload is required for update",
+    );
+  }
+
+  const incomingDocs: string[] = Array.isArray(rawDocs)
+    ? rawDocs.map((d: any) =>
+        typeof d === "string" ? d : d?.url || d?.fileUrl || String(d),
+      )
+    : [
+        typeof rawDocs === "string"
+          ? rawDocs
+          : (rawDocs as any)?.url ||
+            (rawDocs as any)?.fileUrl ||
+            String(rawDocs),
+      ];
+
+  const validDocs = incomingDocs.filter(
+    (d) => Boolean(d && typeof d === "string" && d.trim()),
+  );
+
+  tenancy.document = validDocs;
+  await tenancy.save();
+
+  return await Tenancy.findById(tenancy._id).populate(tenancyPopulateOptions);
+};
+
+// 14. Delete Single Document from Tenant
+const deleteDocumentFromTenantToDB = async (
+  authUser: JwtPayload,
+  id: string,
+  payload?: { documentUrl?: string; document?: string },
+) => {
+  const tenancy = await resolveTenancyAndCheckAccess(authUser, id, "modify");
+
+  const targetUrl = payload?.documentUrl || payload?.document;
+  if (!targetUrl) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      "documentUrl or document is required to delete",
+    );
+  }
+
+  const currentDocs: string[] = tenancy.document || [];
+  const updatedDocs = currentDocs.filter((doc) => doc !== targetUrl);
+
+  if (currentDocs.length === updatedDocs.length) {
+    throw new ApiError(
+      StatusCodes.NOT_FOUND,
+      "Document URL not found in tenancy",
+    );
+  }
+
+  tenancy.document = updatedDocs;
+  await tenancy.save();
+
+  return await Tenancy.findById(tenancy._id).populate(tenancyPopulateOptions);
+};
+
+// 15. Get Documents by Tenant / Tenancy ID
+const getDocumentsByTenantIdFromDB = async (
+  authUser: JwtPayload,
+  id: string,
+) => {
+  const tenancy = await resolveTenancyAndCheckAccess(authUser, id, "view");
+
+  return {
+    tenancyId: tenancy._id,
+    documents: tenancy.document || [],
+  };
+};
+
 export const TenantService = {
   inviteTenantToDB,
   getAllTenantsFromDB,
@@ -1203,4 +1478,8 @@ export const TenantService = {
   getNotesByTenantIdFromDB,
   updateNoteInTenantToDB,
   deleteNoteFromTenantToDB,
+  addDocumentToTenantToDB,
+  updateDocumentInTenantToDB,
+  deleteDocumentFromTenantToDB,
+  getDocumentsByTenantIdFromDB,
 };
